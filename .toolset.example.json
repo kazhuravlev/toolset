@@ -1,0 +1,50 @@
+{
+	"dir": "./bin/tools",
+	"tools": [
+		{
+			"runtime": "go",
+			"module": "github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2",
+			"alias": "golangci-lint"
+		},
+		{
+			"runtime": "go",
+			"module": "golang.org/x/tools/cmd/stringer@v0.14.0",
+			"alias": null
+		},
+		{
+			"runtime": "go",
+			"module": "golang.org/x/tools/cmd/goimports@latest",
+			"alias": null
+		},
+		{
+			"runtime": "go",
+			"module": "mvdan.cc/gofumpt@latest",
+			"alias": null
+		},
+		{
+			"runtime": "go",
+			"module": "github.com/kazhuravlev/options-gen/cmd/options-gen@latest",
+			"alias": null
+		},
+		{
+			"runtime": "go",
+			"module": "github.com/kazhuravlev/structspec/cmd/structspec@v0.4.0",
+			"alias": null
+		},
+		{
+			"runtime": "go",
+			"module": "gotest.tools/gotestsum@latest",
+			"alias": null
+		},
+		{
+			"runtime": "go",
+			"module": "github.com/hexdigest/gowrap/cmd/gowrap@latest",
+			"alias": null
+		},
+		{
+			"runtime": "go",
+			"module": "github.com/vburenin/ifacemaker@latest",
+			"alias": null
+		}
+	]
+}
