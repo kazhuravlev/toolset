@@ -43,3 +43,4 @@ toolset sync
 ## This will run installed tool and send to this tool all arguments, stdIn/Out/Err.
 toolset run golangci-lint run --fix ./...
 ```
+
