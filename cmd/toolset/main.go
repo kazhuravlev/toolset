@@ -21,6 +21,8 @@ const (
 	specFilename = ".toolset.json"
 )
 
+var version string
+
 type Tool struct {
 	Runtime string               `json:"runtime"`
 	Module  string               `json:"module"`
