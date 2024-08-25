@@ -1,0 +1,2 @@
+# Ignoring paths by glob patterns.
+ignore: [ ]
