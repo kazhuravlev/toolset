@@ -21,7 +21,7 @@ const (
 	specFilename = ".toolset.json"
 )
 
-var version string
+var version = "unknown-dirty"
 
 type Tool struct {
 	Runtime string               `json:"runtime"`
@@ -66,6 +66,13 @@ func main() {
 		Usage: "Manage local toolsets",
 		Commands: []*cli.Command{
 			{
+				Name: "version",
+				Action: func(c *cli.Context) error {
+					fmt.Println("version:", version)
+					return nil
+				},
+			},
+			{
 				Name:   "sync",
 				Action: cmdSync,
 			},
@@ -81,6 +88,12 @@ func main() {
 				Action: cmdRun,
 				Args:   true,
 			},
+			//{
+			//	Name:   "upgrade",
+			//	Usage:  "upgrade deps to latest versions",
+			//	Action: cmdUpgrade,
+			//	Args:   true,
+			//},
 		},
 	}
 
