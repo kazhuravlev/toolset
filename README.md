@@ -16,8 +16,16 @@ their versions and manage them and their updates in a straightforward manner.
 
 ## Installation
 
+### Go install
+
 ```shell
 go install github.com/kazhuravlev/toolset/cmd/toolset@latest
+```
+
+### Homebrew
+
+```shell
+brew install kazhuravlev/toolset/toolset
 ```
 
 ## Usage
