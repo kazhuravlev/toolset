@@ -53,3 +53,5 @@ Temporary Items
 .idea/
 .toolset.json
 bin/
+
+coverage.txt
