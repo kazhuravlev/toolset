@@ -1,0 +1,49 @@
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - id: toolset
+    binary: toolset
+    main: ./cmd/toolset
+    ldflags:
+      - -s
+      - -w
+      - -X main.version={{.Summary}}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+brews:
+  - name: toolset
+    goarm: "6"
+    goamd64: v3
+    repository:
+      owner: kazhuravlev
+      name: homebrew-toolset
+      branch: master
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    url_template: "https://github.com/kazhuravlev/toolset/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    commit_author:
+      name: goreleaserbot
+      email: kazhuravlev+goreleaserbot@fastmail.com
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    folder: Formula
+    homepage: "https://github.com/kazhuravlev/toolset"
+    description: "Toolset helps to keep a project-specific tools"
+    license: "MIT"
+    test: |
+      system "#{bin}/toolset help"
+archives:
+  - name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
