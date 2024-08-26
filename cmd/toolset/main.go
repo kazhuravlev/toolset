@@ -121,7 +121,7 @@ func cmdAdd(c *cli.Context) error {
 		return fmt.Errorf("no module name provided")
 	}
 
-	spec, err := readSpec(specFilename)
+	_, spec, err := readSpec(specFilename)
 	if err != nil {
 		spec = &Spec{
 			Dir:   defaultToolsDir,
@@ -160,7 +160,7 @@ func cmdAdd(c *cli.Context) error {
 }
 
 func cmdSync(*cli.Context) error {
-	spec, err := readSpec(specFilename)
+	realSpecFilename, spec, err := readSpec(specFilename)
 	if err != nil {
 		return fmt.Errorf("read spec (%s): %w", specFilename, err)
 	}
@@ -191,7 +191,7 @@ func cmdSync(*cli.Context) error {
 			return fmt.Errorf("go tool (%s) must have a version, at least `latest`", tool.Module)
 		}
 
-		if err := goInstall(tool.Module, absTargetDir, tool.Alias); err != nil {
+		if err := goInstall(filepath.Dir(realSpecFilename), tool.Module, absTargetDir, tool.Alias); err != nil {
 			return fmt.Errorf("install tool (%s): %w", tool.Module, err)
 		}
 	}
@@ -205,7 +205,7 @@ func cmdRun(c *cli.Context) error {
 		return fmt.Errorf("target is required")
 	}
 
-	spec, err := readSpec(specFilename)
+	realSpecFilename, spec, err := readSpec(specFilename)
 	if err != nil {
 		return fmt.Errorf("read spec (%s): %w", specFilename, err)
 	}
@@ -221,7 +221,7 @@ func cmdRun(c *cli.Context) error {
 
 		binName := getGoBinFromMod(tool.Module)
 		if binName == target {
-			cmd := exec.CommandContext(c.Context, getGoInstalledBinary(spec.Dir, tool.Module), c.Args().Tail()...)
+			cmd := exec.CommandContext(c.Context, getGoInstalledBinary(filepath.Dir(realSpecFilename), spec.Dir, tool.Module), c.Args().Tail()...)
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
@@ -280,18 +280,33 @@ func writeSpec(path string, spec Spec) error {
 	return nil
 }
 
-func readSpec(path string) (*Spec, error) {
+func readSpec(path string) (string, *Spec, error) {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", nil, fmt.Errorf("get abs path: %w", err)
+	}
+
 	bb, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("read spec (%s): %w", path, err)
+		if os.IsNotExist(err) {
+			specName := filepath.Base(path)
+			parentDir := filepath.Dir(filepath.Dir(path))
+			if filepath.Dir(parentDir) == parentDir {
+				return "", nil, errors.New("unable to find spec")
+			}
+
+			return readSpec(filepath.Join(parentDir, specName))
+		}
+
+		return "", nil, fmt.Errorf("read spec file (%s): %w", path, err)
 	}
 
 	var spec Spec
 	if err := json.Unmarshal(bb, &spec); err != nil {
-		return nil, fmt.Errorf("unmarshal spec (%s): %w", path, err)
+		return "", nil, fmt.Errorf("unmarshal spec (%s): %w", path, err)
 	}
 
-	return &spec, nil
+	return path, &spec, nil
 }
 
 type GoModule struct {
@@ -359,12 +374,12 @@ func getGoLatestVersion(link string) (string, string, error) {
 	return module, mod.Version, nil
 }
 
-func getGoInstalledBinary(goBinDir, mod string) string {
-	modDir := filepath.Join(goBinDir, getGoModDir(mod))
+func getGoInstalledBinary(baseDir, goBinDir, mod string) string {
+	modDir := filepath.Join(baseDir, goBinDir, getGoModDir(mod))
 	return filepath.Join(modDir, getGoBinFromMod(mod))
 }
 
-func goInstall(mod, goBinDir string, alias optional.Val[string]) error {
+func goInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error {
 	const golang = "go"
 
 	modDir := filepath.Join(goBinDir, getGoModDir(mod))
@@ -395,7 +410,7 @@ func goInstall(mod, goBinDir string, alias optional.Val[string]) error {
 		return fmt.Errorf("run go install (%s): %w", cmd.String(), err)
 	}
 
-	installedPath := getGoInstalledBinary(goBinDir, mod)
+	installedPath := getGoInstalledBinary(baseDir, goBinDir, mod)
 
 	if alias, ok := alias.Get(); ok {
 		targetPath := filepath.Join(goBinDir, alias)
