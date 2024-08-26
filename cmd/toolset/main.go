@@ -21,6 +21,8 @@ const (
 	specFilename = ".toolset.json"
 )
 
+const defaultToolsDir = "./bin/tools"
+
 var version = "unknown-dirty"
 
 type Tool struct {
@@ -71,6 +73,11 @@ func main() {
 					fmt.Println("version:", version)
 					return nil
 				},
+			},
+			{
+				Name:   "init",
+				Action: cmdInit,
+				Args:   true,
 			},
 			{
 				Name:   "sync",
@@ -182,7 +189,7 @@ func cmdAdd(c *cli.Context) error {
 	spec, err := readSpec(specFilename)
 	if err != nil {
 		spec = &Spec{
-			Dir:   "./bin/tools",
+			Dir:   defaultToolsDir,
 			Tools: nil,
 		}
 	}
@@ -322,6 +329,34 @@ func cmdRun(c *cli.Context) error {
 	}
 
 	return fmt.Errorf("target (%s) not found", target)
+}
+
+func cmdInit(c *cli.Context) error {
+	targetDir := c.Args().First()
+	if targetDir == "" {
+		targetDir = "."
+	}
+
+	targetDir, err := filepath.Abs(targetDir)
+	if err != nil {
+		return fmt.Errorf("get abs path: %w", err)
+	}
+
+	fmt.Println("directory to init:", targetDir)
+	targetSpecFile := filepath.Join(targetDir, specFilename)
+	if _, err := os.Stat(targetSpecFile); os.IsNotExist(err) {
+		spec := Spec{
+			Dir:   defaultToolsDir,
+			Tools: nil,
+		}
+		if err := writeSpec(targetSpecFile, spec); err != nil {
+			return fmt.Errorf("write spec: %w", err)
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("target spec file (%s) already exists", targetSpecFile)
 }
 
 func getGoInstalledBinary(goBinDir, mod string) string {
