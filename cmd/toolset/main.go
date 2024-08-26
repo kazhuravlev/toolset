@@ -26,9 +26,12 @@ const defaultToolsDir = "./bin/tools"
 var version = "unknown-dirty"
 
 type Tool struct {
-	Runtime string               `json:"runtime"`
-	Module  string               `json:"module"`
-	Alias   optional.Val[string] `json:"alias"`
+	// Name of runtime
+	Runtime string `json:"runtime"`
+	// Path to module with version
+	Module string `json:"module"`
+	// Alias create a link in tools. Works like exposing some tools
+	Alias optional.Val[string] `json:"alias"`
 }
 
 func (t Tool) IsSame(tool Tool) bool {
