@@ -132,14 +132,13 @@ func cmdAdd(c *cli.Context) error {
 		}
 	}
 
+	_, goModule, err := getGoModule(goBinary)
+	if err != nil {
+		return fmt.Errorf("get go module version: %w", err)
+	}
+
 	goBinaryWoVersion := strings.Split(goBinary, "@")[0]
-
 	if strings.Contains(goBinary, "@latest") || !strings.Contains(goBinary, "@") {
-		_, goModule, err := getGoModule(goBinary)
-		if err != nil {
-			return fmt.Errorf("get go module version: %w", err)
-		}
-
 		goBinary = fmt.Sprintf("%s@%s", goBinaryWoVersion, goModule.Version)
 	}
 
