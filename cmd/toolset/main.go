@@ -132,12 +132,12 @@ func cmdAdd(c *cli.Context) error {
 	goBinaryWoVersion := strings.Split(goBinary, "@")[0]
 
 	if strings.Contains(goBinary, "@latest") || !strings.Contains(goBinary, "@") {
-		_, latestVersion, err := getGoLatestVersion(goBinary)
+		_, goModule, err := getGoModule(goBinary)
 		if err != nil {
 			return fmt.Errorf("get go module version: %w", err)
 		}
 
-		goBinary = fmt.Sprintf("%s@%s", goBinaryWoVersion, latestVersion)
+		goBinary = fmt.Sprintf("%s@%s", goBinaryWoVersion, goModule.Version)
 	}
 
 	wasAdded := spec.AddTool(Tool{
@@ -348,30 +348,30 @@ func getGoModuleName(link string) (string, error) {
 	return "", errors.New("unknown module")
 }
 
-func getGoLatestVersion(link string) (string, string, error) {
+func getGoModule(link string) (string, *GoModule, error) {
 	module, err := getGoModuleName(link)
 	if err != nil {
-		return "", "", fmt.Errorf("get go module name: %w", err)
+		return "", nil, fmt.Errorf("get go module name: %w", err)
 	}
 
 	// TODO: use a proxy from env
 	// Get the latest version
 	resp, err := http.Get(fmt.Sprintf("https://proxy.golang.org/%s/@latest", module))
 	if err != nil {
-		return "", "", fmt.Errorf("get go module: %w", err)
+		return "", nil, fmt.Errorf("get go module: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("unable to get module: %s", resp.Status)
+		return "", nil, fmt.Errorf("unable to get module: %s", resp.Status)
 	}
 
 	var mod GoModule
 	if err := json.NewDecoder(resp.Body).Decode(&mod); err != nil {
-		return "", "", fmt.Errorf("unable to decode module: %w", err)
+		return "", nil, fmt.Errorf("unable to decode module: %w", err)
 	}
 
-	return module, mod.Version, nil
+	return module, &mod, nil
 }
 
 func getGoInstalledBinary(baseDir, goBinDir, mod string) string {
