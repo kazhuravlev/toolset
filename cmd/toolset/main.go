@@ -444,8 +444,8 @@ func getGoBinFromMod(mod string) string {
 
 // getGoModDir returns a dir that will keep all mod-related stuff for specific version.
 func getGoModDir(mod string) string {
-	parts := strings.Split(mod, "@")
-	binName := filepath.Base(parts[0])
+	binName := getGoBinFromMod(mod)
+	parts := strings.Split(mod, at)
 	version := parts[1]
 
 	return fmt.Sprintf(".%s___%s", binName, version)
