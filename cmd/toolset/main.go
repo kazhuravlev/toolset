@@ -430,11 +430,11 @@ func goInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error 
 	return nil
 }
 
+const at = "@"
+
 // getGoBinFromMod returns a binary name that installed by `go install`
 // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2 ==> golangci-lint
 func getGoBinFromMod(mod string) string {
-	const at = "@"
-
 	if strings.Contains(mod, at) {
 		mod = strings.Split(mod, "@")[0]
 	}
