@@ -110,71 +110,6 @@ func main() {
 	}
 }
 
-type GoModule struct {
-	Version string    `json:"Version"`
-	Time    time.Time `json:"Time"`
-	Origin  struct {
-		VCS  string `json:"VCS"`
-		URL  string `json:"URL"`
-		Hash string `json:"Hash"`
-		Ref  string `json:"Ref"`
-	} `json:"Origin"`
-}
-
-func getGoModuleName(link string) (string, error) {
-	link = strings.Split(link, "@")[0]
-
-	for {
-		// TODO: use a local proxy if configured.
-		resp, err := http.Get(fmt.Sprintf("https://proxy.golang.org/%s/@latest", link))
-		if err != nil {
-			return "", fmt.Errorf("do request to golang proxy: %w", err)
-		}
-		resp.Body.Close()
-
-		if resp.StatusCode == http.StatusOK {
-			return link, nil
-		}
-
-		if resp.StatusCode == http.StatusNotFound {
-			parts := strings.Split(link, "/")
-			if len(parts) == 1 {
-				break
-			}
-
-			link = strings.Join(parts[:len(parts)-1], "/")
-		}
-	}
-
-	return "", errors.New("unknown module")
-}
-
-func getGoLatestVersion(link string) (string, string, error) {
-	module, err := getGoModuleName(link)
-	if err != nil {
-		return "", "", fmt.Errorf("get go module name: %w", err)
-	}
-
-	// TODO: use a proxy from env
-	// Get the latest version
-	resp, err := http.Get(fmt.Sprintf("https://proxy.golang.org/%s/@latest", module))
-	if err != nil {
-		return "", "", fmt.Errorf("get go module: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("unable to get module: %s", resp.Status)
-	}
-
-	var mod GoModule
-	if err := json.NewDecoder(resp.Body).Decode(&mod); err != nil {
-		return "", "", fmt.Errorf("unable to decode module: %w", err)
-	}
-
-	return module, mod.Version, nil
-}
-
 func cmdAdd(c *cli.Context) error {
 	runtime := c.Args().First()
 	if runtime != RuntimeGo {
@@ -222,36 +157,6 @@ func cmdAdd(c *cli.Context) error {
 	}
 
 	return nil
-}
-
-func writeSpec(path string, spec Spec) error {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
-	if err != nil {
-		return fmt.Errorf("open spec: %w", err)
-	}
-
-	enc := json.NewEncoder(file)
-	enc.SetIndent("", "\t")
-
-	if err := enc.Encode(spec); err != nil {
-		return fmt.Errorf("marshal spec: %w", err)
-	}
-
-	return nil
-}
-
-func readSpec(path string) (*Spec, error) {
-	bb, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read spec (%s): %w", path, err)
-	}
-
-	var spec Spec
-	if err := json.Unmarshal(bb, &spec); err != nil {
-		return nil, fmt.Errorf("unmarshal spec (%s): %w", path, err)
-	}
-
-	return &spec, nil
 }
 
 func cmdSync(*cli.Context) error {
@@ -357,6 +262,101 @@ func cmdInit(c *cli.Context) error {
 	}
 
 	return fmt.Errorf("target spec file (%s) already exists", targetSpecFile)
+}
+
+func writeSpec(path string, spec Spec) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("open spec: %w", err)
+	}
+
+	enc := json.NewEncoder(file)
+	enc.SetIndent("", "\t")
+
+	if err := enc.Encode(spec); err != nil {
+		return fmt.Errorf("marshal spec: %w", err)
+	}
+
+	return nil
+}
+
+func readSpec(path string) (*Spec, error) {
+	bb, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read spec (%s): %w", path, err)
+	}
+
+	var spec Spec
+	if err := json.Unmarshal(bb, &spec); err != nil {
+		return nil, fmt.Errorf("unmarshal spec (%s): %w", path, err)
+	}
+
+	return &spec, nil
+}
+
+type GoModule struct {
+	Version string    `json:"Version"`
+	Time    time.Time `json:"Time"`
+	Origin  struct {
+		VCS  string `json:"VCS"`
+		URL  string `json:"URL"`
+		Hash string `json:"Hash"`
+		Ref  string `json:"Ref"`
+	} `json:"Origin"`
+}
+
+func getGoModuleName(link string) (string, error) {
+	link = strings.Split(link, "@")[0]
+
+	for {
+		// TODO: use a local proxy if configured.
+		resp, err := http.Get(fmt.Sprintf("https://proxy.golang.org/%s/@latest", link))
+		if err != nil {
+			return "", fmt.Errorf("do request to golang proxy: %w", err)
+		}
+		resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			return link, nil
+		}
+
+		if resp.StatusCode == http.StatusNotFound {
+			parts := strings.Split(link, "/")
+			if len(parts) == 1 {
+				break
+			}
+
+			link = strings.Join(parts[:len(parts)-1], "/")
+		}
+	}
+
+	return "", errors.New("unknown module")
+}
+
+func getGoLatestVersion(link string) (string, string, error) {
+	module, err := getGoModuleName(link)
+	if err != nil {
+		return "", "", fmt.Errorf("get go module name: %w", err)
+	}
+
+	// TODO: use a proxy from env
+	// Get the latest version
+	resp, err := http.Get(fmt.Sprintf("https://proxy.golang.org/%s/@latest", module))
+	if err != nil {
+		return "", "", fmt.Errorf("get go module: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("unable to get module: %s", resp.Status)
+	}
+
+	var mod GoModule
+	if err := json.NewDecoder(resp.Body).Decode(&mod); err != nil {
+		return "", "", fmt.Errorf("unable to decode module: %w", err)
+	}
+
+	return module, mod.Version, nil
 }
 
 func getGoInstalledBinary(goBinDir, mod string) string {
