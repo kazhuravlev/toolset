@@ -176,6 +176,14 @@ func cmdAdd(c *cli.Context) error {
 }
 
 func cmdSync(*cli.Context) error {
+	if err := doSync(); err != nil {
+		return fmt.Errorf("do sync: %w", err)
+	}
+
+	return nil
+}
+
+func doSync() error {
 	realSpecFilename, spec, err := readSpec(specFilename)
 	if err != nil {
 		return fmt.Errorf("read spec (%s): %w", specFilename, err)
@@ -270,6 +278,10 @@ func cmdUpgrade(*cli.Context) error {
 
 	if err := writeSpec(abdSpecFilename, *spec); err != nil {
 		return fmt.Errorf("write spec (%s): %w", abdSpecFilename, err)
+	}
+
+	if err := doSync(); err != nil {
+		return fmt.Errorf("sync upgraded tools: %w", err)
 	}
 
 	return nil
