@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kazhuravlev/optional"
@@ -183,6 +184,8 @@ func cmdSync(*cli.Context) error {
 
 	// TODO: remove all unknown aliases
 
+	wg := new(sync.WaitGroup)
+	errs := make(chan error, len(spec.Tools))
 	for _, tool := range spec.Tools {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
 		if tool.Runtime != RuntimeGo {
@@ -193,9 +196,30 @@ func cmdSync(*cli.Context) error {
 			return fmt.Errorf("go tool (%s) must have a version, at least `latest`", tool.Module)
 		}
 
-		if err := goInstall(filepath.Dir(realSpecFilename), tool.Module, absTargetDir, tool.Alias); err != nil {
-			return fmt.Errorf("install tool (%s): %w", tool.Module, err)
+		// TODO: limit goroutines
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			if err := goInstall(filepath.Dir(realSpecFilename), tool.Module, absTargetDir, tool.Alias); err != nil {
+				errs <- fmt.Errorf("install tool (%s): %w", tool.Module, err)
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errs)
+
+	var allErrors []error
+	for err := range errs {
+		if err != nil {
+			allErrors = append(allErrors, err)
 		}
+	}
+
+	if len(allErrors) > 0 {
+		return fmt.Errorf("errors encountered during sync: %w", errors.Join(allErrors...))
 	}
 
 	return nil
