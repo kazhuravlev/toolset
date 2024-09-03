@@ -50,5 +50,9 @@ toolset sync
 # Run tool
 ## This will run installed tool and send to this tool all arguments, stdIn/Out/Err.
 toolset run golangci-lint run --fix ./...
+
+# Upgrade tools
+## THis will upgrade all tools to the latest version.
+toolset upgrade
 ```
 
