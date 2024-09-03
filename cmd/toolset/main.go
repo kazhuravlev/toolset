@@ -66,6 +66,17 @@ func (s *Spec) AddTool(tool Tool) bool {
 	return true
 }
 
+func (s *Spec) AddOrUpdateTool(tool Tool) {
+	for i, t := range s.Tools {
+		if t.IsSame(tool) {
+			s.Tools[i] = tool
+			return
+		}
+	}
+
+	s.Tools = append(s.Tools, tool)
+}
+
 func main() {
 	app := &cli.App{
 		Name:  "toolset",
@@ -99,12 +110,12 @@ func main() {
 				Action: cmdRun,
 				Args:   true,
 			},
-			//{
-			//	Name:   "upgrade",
-			//	Usage:  "upgrade deps to latest versions",
-			//	Action: cmdUpgrade,
-			//	Args:   true,
-			//},
+			{
+				Name:   "upgrade",
+				Usage:  "upgrade deps to latest versions",
+				Action: cmdUpgrade,
+				Args:   true,
+			},
 		},
 	}
 
@@ -220,6 +231,43 @@ func cmdSync(*cli.Context) error {
 
 	if len(allErrors) > 0 {
 		return fmt.Errorf("errors encountered during sync: %w", errors.Join(allErrors...))
+	}
+
+	return nil
+}
+
+func cmdUpgrade(*cli.Context) error {
+	abdSpecFilename, spec, err := readSpec(specFilename)
+	if err != nil {
+		return fmt.Errorf("read spec (%s): %w", specFilename, err)
+	}
+
+	for _, tool := range spec.Tools {
+		if tool.Runtime != RuntimeGo {
+			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
+		}
+
+		_, goModule, err := getGoModule(tool.Module)
+		if err != nil {
+			return fmt.Errorf("get go module version: %w", err)
+		}
+
+		goBinaryWoVersion := strings.Split(tool.Module, "@")[0]
+		latestModule := fmt.Sprintf("%s@%s", goBinaryWoVersion, goModule.Version)
+
+		if tool.Module == latestModule {
+			continue
+		}
+
+		fmt.Println("Upgrade:", tool.Module, "=>", latestModule)
+
+		tool.Module = latestModule
+
+		spec.AddOrUpdateTool(tool)
+	}
+
+	if err := writeSpec(abdSpecFilename, *spec); err != nil {
+		return fmt.Errorf("write spec (%s): %w", abdSpecFilename, err)
 	}
 
 	return nil
