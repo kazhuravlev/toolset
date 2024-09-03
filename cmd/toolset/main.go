@@ -223,7 +223,7 @@ func doSync() error {
 		go func() {
 			defer wg.Done()
 
-			if err := goInstall(filepath.Dir(realSpecFilename), tool.Module, absTargetDir, tool.Alias); err != nil {
+			if err := goInstall(filepath.Dir(realSpecFilename), tool.Module, spec.Dir, tool.Alias); err != nil {
 				errs <- fmt.Errorf("install tool (%s): %w", tool.Module, err)
 			}
 		}()
@@ -470,7 +470,7 @@ func getGoInstalledBinary(baseDir, goBinDir, mod string) string {
 func goInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error {
 	const golang = "go"
 
-	modDir := filepath.Join(goBinDir, getGoModDir(mod))
+	modDir := filepath.Join(baseDir, goBinDir, getGoModDir(mod))
 	if err := os.MkdirAll(modDir, 0o755); err != nil {
 		return fmt.Errorf("create mod dir (%s): %w", modDir, err)
 	}
@@ -501,7 +501,7 @@ func goInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error 
 	installedPath := getGoInstalledBinary(baseDir, goBinDir, mod)
 
 	if alias, ok := alias.Get(); ok {
-		targetPath := filepath.Join(goBinDir, alias)
+		targetPath := filepath.Join(baseDir, goBinDir, alias)
 		if _, err := os.Stat(targetPath); err == nil {
 			if err := os.Remove(targetPath); err != nil {
 				return fmt.Errorf("remove alias (%s): %w", targetPath, err)
