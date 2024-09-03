@@ -91,11 +91,13 @@ func main() {
 			},
 			{
 				Name:   "init",
+				Usage:  "init toolset in specified directory",
 				Action: cmdInit,
 				Args:   true,
 			},
 			{
 				Name:   "sync",
+				Usage:  "install all required tools from .toolset.json",
 				Action: cmdSync,
 			},
 			{
@@ -112,7 +114,7 @@ func main() {
 			},
 			{
 				Name:   "upgrade",
-				Usage:  "upgrade deps to latest versions",
+				Usage:  "upgrade deps to the latest versions",
 				Action: cmdUpgrade,
 				Args:   true,
 			},
