@@ -2,15 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/sync/semaphore"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/kazhuravlev/optional"
@@ -77,6 +78,15 @@ func (s *Spec) AddOrUpdateTool(tool Tool) {
 	s.Tools = append(s.Tools, tool)
 }
 
+const keyParallel = "parallel"
+
+var flagParallel = &cli.IntFlag{
+	Name:    keyParallel,
+	Aliases: []string{"p"},
+	Usage:   "Max parallel workers",
+	Value:   4,
+}
+
 func main() {
 	app := &cli.App{
 		Name:  "toolset",
@@ -99,6 +109,7 @@ func main() {
 				Name:   "sync",
 				Usage:  "install all required tools from .toolset.json",
 				Action: cmdSync,
+				Flags:  []cli.Flag{flagParallel},
 			},
 			{
 				Name:   "add",
@@ -116,6 +127,7 @@ func main() {
 				Name:   "upgrade",
 				Usage:  "upgrade deps to the latest versions",
 				Action: cmdUpgrade,
+				Flags:  []cli.Flag{flagParallel},
 				Args:   true,
 			},
 		},
@@ -175,15 +187,18 @@ func cmdAdd(c *cli.Context) error {
 	return nil
 }
 
-func cmdSync(*cli.Context) error {
-	if err := doSync(); err != nil {
+func cmdSync(c *cli.Context) error {
+	ctx := c.Context
+
+	maxWorkers := c.Int(keyParallel)
+	if err := doSync(ctx, maxWorkers); err != nil {
 		return fmt.Errorf("do sync: %w", err)
 	}
 
 	return nil
 }
 
-func doSync() error {
+func doSync(ctx context.Context, maxWorkers int) error {
 	realSpecFilename, spec, err := readSpec(specFilename)
 	if err != nil {
 		return fmt.Errorf("read spec (%s): %w", specFilename, err)
@@ -205,8 +220,9 @@ func doSync() error {
 
 	// TODO: remove all unknown aliases
 
-	wg := new(sync.WaitGroup)
 	errs := make(chan error, len(spec.Tools))
+	// TODO: limit goroutines
+	sem := semaphore.NewWeighted(int64(maxWorkers))
 	for _, tool := range spec.Tools {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
 		if tool.Runtime != RuntimeGo {
@@ -217,11 +233,12 @@ func doSync() error {
 			return fmt.Errorf("go tool (%s) must have a version, at least `latest`", tool.Module)
 		}
 
-		// TODO: limit goroutines
+		if err := sem.Acquire(ctx, 1); err != nil {
+			return fmt.Errorf("acquire semaphore: %w", err)
+		}
 
-		wg.Add(1)
 		go func() {
-			defer wg.Done()
+			defer sem.Release(1)
 
 			if err := goInstall(filepath.Dir(realSpecFilename), tool.Module, spec.Dir, tool.Alias); err != nil {
 				errs <- fmt.Errorf("install tool (%s): %w", tool.Module, err)
@@ -229,7 +246,10 @@ func doSync() error {
 		}()
 	}
 
-	wg.Wait()
+	if err := sem.Acquire(ctx, int64(maxWorkers)); err != nil {
+		return fmt.Errorf("wait processes to end: %w", err)
+	}
+
 	close(errs)
 
 	var allErrors []error
@@ -246,7 +266,11 @@ func doSync() error {
 	return nil
 }
 
-func cmdUpgrade(*cli.Context) error {
+func cmdUpgrade(c *cli.Context) error {
+	ctx := c.Context
+
+	maxWorkers := c.Int(keyParallel)
+
 	abdSpecFilename, spec, err := readSpec(specFilename)
 	if err != nil {
 		return fmt.Errorf("read spec (%s): %w", specFilename, err)
@@ -280,7 +304,7 @@ func cmdUpgrade(*cli.Context) error {
 		return fmt.Errorf("write spec (%s): %w", abdSpecFilename, err)
 	}
 
-	if err := doSync(); err != nil {
+	if err := doSync(ctx, maxWorkers); err != nil {
 		return fmt.Errorf("sync upgraded tools: %w", err)
 	}
 
