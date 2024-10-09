@@ -356,6 +356,17 @@ func (s *Spec) AddTool(tool Tool) bool {
 	return true
 }
 
+func (s *Spec) AddInclude(include Include) bool {
+	for _, inc := range s.Includes {
+		if inc.IsSame(include) {
+			return false
+		}
+	}
+
+	s.Includes = append(s.Includes, include)
+	return true
+}
+
 func (s *Spec) AddOrUpdateTool(tool Tool) {
 	for i, t := range s.Tools {
 		if t.IsSame(tool) {
