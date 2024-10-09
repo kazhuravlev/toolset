@@ -19,15 +19,16 @@ import (
 )
 
 const (
-	RuntimeGo        = "go"
-	SpecFilename     = ".toolset.json"
-	SnapshotFilename = ".snapshot.json"
-	DefaultToolsDir  = "./bin/tools"
+	RuntimeGo       = "go"
+	SpecFilename    = ".toolset.json"
+	LockFilename    = ".toolset.lock.json"
+	DefaultToolsDir = "./bin/tools"
 )
 
 type Context struct {
 	Workdir string
 	Spec    *Spec
+	Lock    *Lock
 }
 
 func NewContext() (*Context, error) {
@@ -67,9 +68,22 @@ func NewContext() (*Context, error) {
 		spec.Dir = strings.TrimPrefix(spec.Dir, baseDir)
 	}
 
+	var lockFile Lock
+	{
+		bb, err := os.ReadFile(filepath.Join(baseDir, LockFilename))
+		if err != nil {
+			return nil, fmt.Errorf("read lock file: %w", err)
+		}
+
+		if err := json.Unmarshal(bb, &lockFile); err != nil {
+			return nil, fmt.Errorf("unmarshal lock: %w", err)
+		}
+	}
+
 	return &Context{
 		Workdir: baseDir,
 		Spec:    spec,
+		Lock:    &lockFile,
 	}, nil
 }
 
@@ -81,12 +95,45 @@ func (c *Context) SpecFilename() string {
 	return filepath.Join(c.Workdir, SpecFilename)
 }
 
+func (c *Context) LockFilename() string {
+	return filepath.Join(c.Workdir, LockFilename)
+}
+
 func (c *Context) Save() error {
 	if err := writeSpec(c.SpecFilename(), *c.Spec); err != nil {
 		return fmt.Errorf("write spec: %w", err)
 	}
 
+	if err := writeLock(c.LockFilename(), *c.Lock); err != nil {
+		return fmt.Errorf("write lock: %w", err)
+	}
+
 	return nil
+}
+
+func (c *Context) AddInclude(ctx context.Context, source string) (int, error) {
+	// Check that source is exists and valid.
+	remotes, err := fetchRemoteSpec(ctx, source)
+	if err != nil {
+		return 0, fmt.Errorf("fetch spec: %w", err)
+	}
+
+	wasAdded := c.Spec.AddInclude(Include(source))
+	if !wasAdded {
+		return 0, nil
+	}
+
+	c.Lock.Remotes = append(c.Lock.Remotes, remotes...)
+
+	var count int
+	for _, remote := range remotes {
+		for _, tool := range remote.Spec.Tools {
+			c.Lock.Tools.Add(tool)
+			count++
+		}
+	}
+
+	return count, nil
 }
 
 func (c *Context) AddGo(ctx context.Context, goBinary string, alias optional.Val[string]) (bool, string, error) {
@@ -101,17 +148,21 @@ func (c *Context) AddGo(ctx context.Context, goBinary string, alias optional.Val
 		goBinary = fmt.Sprintf("%s@%s", goBinaryWoVersion, goModule.Version)
 	}
 
-	wasAdded := c.Spec.AddTool(Tool{
+	tool := Tool{
 		Runtime: RuntimeGo,
 		Module:  goBinary,
 		Alias:   alias,
-	})
+	}
+	wasAdded := c.Spec.Tools.Add(tool)
+	if wasAdded {
+		c.Lock.Tools.Add(tool)
+	}
 
 	return wasAdded, goBinaryWoVersion, nil
 }
 
 func (c *Context) FindTool(str string) (*Tool, error) {
-	for _, tool := range c.Spec.Tools {
+	for _, tool := range c.Lock.Tools {
 		if tool.Runtime != RuntimeGo {
 			continue
 		}
@@ -180,10 +231,25 @@ func (c *Context) Sync(ctx context.Context, maxWorkers int) error {
 
 	// TODO: remove all unknown aliases
 
+	{
+		c.Lock.Tools = make(Tools, 0)
+		for _, tool := range c.Spec.Tools {
+			c.Lock.Tools.Add(tool)
+		}
+
+		// FIXME(zhuravlev): remove deleted includes from lock file.
+
+		for _, remote := range c.Lock.Remotes {
+			for _, tool := range remote.Spec.Tools {
+				c.Lock.Tools.Add(tool)
+			}
+		}
+	}
+
 	errs := make(chan error, len(c.Spec.Tools))
 
 	sem := semaphore.NewWeighted(int64(maxWorkers))
-	for _, tool := range c.Spec.Tools {
+	for _, tool := range c.Lock.Tools {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
 		if tool.Runtime != RuntimeGo {
 			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
@@ -231,6 +297,7 @@ func (c *Context) Sync(ctx context.Context, maxWorkers int) error {
 	return nil
 }
 
+// Upgrade will upgrade only spec tools. and re-fetch latest versions of includes.
 func (c *Context) Upgrade(ctx context.Context) error {
 	for _, tool := range c.Spec.Tools {
 		if tool.Runtime != RuntimeGo {
@@ -253,8 +320,27 @@ func (c *Context) Upgrade(ctx context.Context) error {
 
 		tool.Module = latestModule
 
-		c.Spec.AddOrUpdateTool(tool)
+		c.Spec.Tools.AddOrUpdateTool(tool)
+		c.Lock.Tools.AddOrUpdateTool(tool)
 	}
+
+	var resRemotes []RemoteSpec
+	for _, src := range c.Spec.Includes {
+		remotes, err := fetchRemoteSpec(ctx, string(src))
+		if err != nil {
+			return fmt.Errorf("fetch remotes: %w", err)
+		}
+
+		// FIXME(zhuravlev): remove tools from prev remotes before add a new one.
+		resRemotes = append(resRemotes, remotes...)
+		for _, remote := range remotes {
+			for _, tool := range remote.Spec.Tools {
+				c.Lock.Tools.Add(tool)
+			}
+		}
+	}
+
+	c.Lock.Remotes = resRemotes
 
 	return nil
 }
@@ -269,8 +355,9 @@ func (c *Context) CopySource(ctx context.Context, source string) (int, error) {
 
 	var count int
 	for _, spec := range specs {
-		for _, tool := range spec.Tools {
-			if c.Spec.AddTool(tool) {
+		for _, tool := range spec.Spec.Tools {
+			if c.Spec.Tools.Add(tool) {
+				c.Lock.Tools.Add(tool)
 				count++
 			}
 		}
@@ -287,6 +374,7 @@ func InitContext(dir string) (string, error) {
 	}
 
 	targetSpecFile := filepath.Join(dir, SpecFilename)
+	targetLockFile := filepath.Join(dir, LockFilename)
 
 	switch _, err := os.Stat(targetSpecFile); {
 	default:
@@ -301,6 +389,14 @@ func InitContext(dir string) (string, error) {
 		}
 		if err := writeSpec(targetSpecFile, spec); err != nil {
 			return "", fmt.Errorf("write init spec: %w", err)
+		}
+
+		lock := Lock{
+			Tools:   make([]Tool, 0),
+			Remotes: make([]RemoteSpec, 0),
+		}
+		if err := writeLock(targetLockFile, lock); err != nil {
+			return "", fmt.Errorf("write init lock: %w", err)
 		}
 
 		return targetSpecFile, nil
@@ -331,29 +427,51 @@ func (t Tool) IsSame(tool Tool) bool {
 	return m1 == m2
 }
 
-type Include struct {
-	Src string `json:"src"`
-}
+type Include string
 
 func (i Include) IsSame(include Include) bool {
-	return i.Src == include.Src
+	return i == include
 }
 
-type Spec struct {
-	Dir      string    `json:"dir"`
-	Tools    []Tool    `json:"tools"`
-	Includes []Include `json:"includes"`
+type Lock struct {
+	Tools   Tools        `json:"tools"`
+	Remotes []RemoteSpec `json:"remotes"`
 }
 
-func (s *Spec) AddTool(tool Tool) bool {
-	for _, t := range s.Tools {
+type RemoteSpec struct {
+	Source string
+	Spec   Spec
+}
+
+type Tools []Tool
+
+func (tools *Tools) Add(tool Tool) bool {
+	for _, t := range *tools {
 		if t.IsSame(tool) {
 			return false
 		}
 	}
 
-	s.Tools = append(s.Tools, tool)
+	*tools = append(*tools, tool)
+
 	return true
+}
+
+func (tools *Tools) AddOrUpdateTool(tool Tool) {
+	for i, t := range *tools {
+		if t.IsSame(tool) {
+			(*tools)[i] = tool
+			return
+		}
+	}
+
+	*tools = append(*tools, tool)
+}
+
+type Spec struct {
+	Dir      string    `json:"dir"`
+	Tools    Tools     `json:"tools"`
+	Includes []Include `json:"includes"`
 }
 
 func (s *Spec) AddInclude(include Include) bool {
@@ -365,17 +483,6 @@ func (s *Spec) AddInclude(include Include) bool {
 
 	s.Includes = append(s.Includes, include)
 	return true
-}
-
-func (s *Spec) AddOrUpdateTool(tool Tool) {
-	for i, t := range s.Tools {
-		if t.IsSame(tool) {
-			s.Tools[i] = tool
-			return
-		}
-	}
-
-	s.Tools = append(s.Tools, tool)
 }
 
 func readSpec(path string) (*Spec, error) {
@@ -403,6 +510,22 @@ func writeSpec(path string, spec Spec) error {
 
 	if err := enc.Encode(spec); err != nil {
 		return fmt.Errorf("marshal spec: %w", err)
+	}
+
+	return nil
+}
+
+func writeLock(path string, lock Lock) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("open lock: %w", err)
+	}
+
+	enc := json.NewEncoder(file)
+	enc.SetIndent("", "\t")
+
+	if err := enc.Encode(lock); err != nil {
+		return fmt.Errorf("marshal lock: %w", err)
 	}
 
 	return nil
@@ -567,7 +690,7 @@ func getGoModDir(mod string) string {
 	return fmt.Sprintf(".%s___%s", binName, version)
 }
 
-func fetchRemoteSpec(ctx context.Context, source string) ([]Spec, error) {
+func fetchRemoteSpec(ctx context.Context, source string) ([]RemoteSpec, error) {
 	u, err := url.Parse(source)
 	if err != nil {
 		return nil, fmt.Errorf("parse source addr: %w", err)
@@ -610,16 +733,19 @@ func fetchRemoteSpec(ctx context.Context, source string) ([]Spec, error) {
 		return nil, fmt.Errorf("parse source: %w", err)
 	}
 
-	var res []Spec
+	var res []RemoteSpec
 	for _, inc := range spec.Includes {
 		// FIXME(zhuravlev): add cycle detection
-		incSpecs, err := fetchRemoteSpec(ctx, inc.Src)
+		incSpecs, err := fetchRemoteSpec(ctx, string(inc))
 		if err != nil {
-			return nil, fmt.Errorf("fetch one of remotes (%s): %w", inc.Src, err)
+			return nil, fmt.Errorf("fetch one of remotes (%s): %w", inc, err)
 		}
 
 		res = append(res, incSpecs...)
 	}
 
-	return append(res, spec), nil
+	return append(res, RemoteSpec{
+		Spec:   spec,
+		Source: source,
+	}), nil
 }
