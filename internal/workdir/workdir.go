@@ -259,11 +259,20 @@ func (c *Context) Upgrade(ctx context.Context) error {
 	return nil
 }
 
+// CopySource will add all tools from source.
 // Source can be a path to file or a http url.
+func (c *Context) CopySource(ctx context.Context, source string) (int, error) {
+	specs, err := fetchRemoteSpec(ctx, source)
 	if err != nil {
+		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
 
 	var count int
+	for _, spec := range specs {
+		for _, tool := range spec.Tools {
+			if c.Spec.AddTool(tool) {
+				count++
+			}
 		}
 	}
 
