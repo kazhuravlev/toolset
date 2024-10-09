@@ -74,6 +74,18 @@ toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint
 toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.2
 ```
 
+#### Copy from another file
+
+```shell
+toolset add --copy-from path/to/another/.toolset.json
+```
+
+#### Copy from another url
+
+```shell
+toolset add --copy-from https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
+```
+
 ### Install or Update Tools
 
 Ensure all specified tools are installed or updated to the defined versions:

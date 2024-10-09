@@ -8,7 +8,10 @@ import (
 	"os"
 )
 
-const keyParallel = "parallel"
+const (
+	keyParallel = "parallel"
+	keyCopyFrom = "copy-from"
+)
 
 var version = "unknown-dirty"
 
@@ -41,7 +44,15 @@ func main() {
 				Name:   "add",
 				Usage:  "add tool",
 				Action: cmdAdd,
-				Args:   true,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     keyCopyFrom,
+						Usage:    "specify addr to source file that will be copied into current config",
+						Required: false,
+					},
+					// TODO(zhuravlev): add option to make an alias(INCLUDE) source config.
+				},
+				Args: true,
 			},
 			{
 				Name:   "sync",
@@ -88,6 +99,26 @@ func cmdInit(c *cli.Context) error {
 }
 
 func cmdAdd(c *cli.Context) error {
+	wCtx, err := workdir.NewContext()
+	if err != nil {
+		return fmt.Errorf("new context: %w", err)
+	}
+
+	if val := c.String(keyCopyFrom); val != "" {
+		count, err := wCtx.CopyFrom(c.Context, val)
+		if err != nil {
+			return fmt.Errorf("copy: %w", err)
+		}
+
+		if err := wCtx.Save(); err != nil {
+			return fmt.Errorf("save workdir: %w", err)
+		}
+
+		fmt.Println("Copied tools:", count)
+
+		return nil
+	}
+
 	runtime := c.Args().First()
 	if runtime != workdir.RuntimeGo {
 		return fmt.Errorf("unsupported runtime: %s", runtime)
@@ -96,11 +127,6 @@ func cmdAdd(c *cli.Context) error {
 	goBinary := c.Args().Get(1)
 	if goBinary == "" {
 		return fmt.Errorf("no module name provided")
-	}
-
-	wCtx, err := workdir.NewContext()
-	if err != nil {
-		return fmt.Errorf("new context: %w", err)
 	}
 
 	wasAdded, goBinaryWoVersion, err := wCtx.AddGo(c.Context, goBinary, optional.Empty[string]())

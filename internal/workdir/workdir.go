@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"github.com/kazhuravlev/optional"
 	"golang.org/x/sync/semaphore"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -255,6 +257,63 @@ func (c *Context) Upgrade(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// CopyFrom will add all tools from source.
+// Source can be a path to file or a http url.
+func (c *Context) CopyFrom(ctx context.Context, source string) (int, error) {
+	u, err := url.Parse(source)
+	if err != nil {
+		return 0, fmt.Errorf("parse source url: %w", err)
+	}
+
+	var buf []byte
+
+	if u.Scheme != "" {
+		fmt.Println("Copy from url:", u.String())
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
+		if err != nil {
+			return 0, fmt.Errorf("create request: %w", err)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return 0, fmt.Errorf("fetch source: %w", err)
+		}
+		defer resp.Body.Close()
+
+		bb, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return 0, fmt.Errorf("read response body: %w", err)
+		}
+
+		buf = bb
+	} else {
+		fmt.Println("Copy from file:", source)
+
+		bb, err := os.ReadFile(source)
+		if err != nil {
+			return 0, fmt.Errorf("read file: %w", err)
+		}
+
+		buf = bb
+	}
+
+	var src Spec
+	if err := json.Unmarshal(buf, &src); err != nil {
+		return 0, fmt.Errorf("parse source: %w", err)
+	}
+
+	var count int
+	for _, tool := range src.Tools {
+		wasAdded := c.Spec.AddTool(tool)
+		if wasAdded {
+			count++
+		}
+	}
+
+	return count, nil
 }
 
 // InitContext will initialize context in specified
