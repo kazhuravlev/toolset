@@ -11,6 +11,7 @@ import (
 const (
 	keyParallel = "parallel"
 	keyCopyFrom = "copy-from"
+	keyInclude  = "include"
 )
 
 var version = "unknown-dirty"
@@ -50,7 +51,11 @@ func main() {
 						Usage:    "specify addr to source file that will be copied into current config",
 						Required: false,
 					},
-					// TODO(zhuravlev): add option to make an alias(INCLUDE) source config.
+					&cli.StringFlag{
+						Name:     keyInclude,
+						Usage:    "specify addr to source file that will be included into current config",
+						Required: false,
+					},
 				},
 				Args: true,
 			},
@@ -105,7 +110,7 @@ func cmdAdd(c *cli.Context) error {
 	}
 
 	if val := c.String(keyCopyFrom); val != "" {
-		count, err := wCtx.CopyFrom(c.Context, val)
+		count, err := wCtx.CopySource(c.Context, val)
 		if err != nil {
 			return fmt.Errorf("copy: %w", err)
 		}
@@ -115,6 +120,21 @@ func cmdAdd(c *cli.Context) error {
 		}
 
 		fmt.Println("Copied tools:", count)
+
+		return nil
+	}
+
+	if val := c.String(keyInclude); val != "" {
+		count, err := wCtx.AddInclude(c.Context, val)
+		if err != nil {
+			return fmt.Errorf("include: %w", err)
+		}
+
+		if err := wCtx.Save(); err != nil {
+			return fmt.Errorf("save workdir: %w", err)
+		}
+
+		fmt.Println("Included tools:", count)
 
 		return nil
 	}
@@ -179,6 +199,10 @@ func cmdSync(c *cli.Context) error {
 		return fmt.Errorf("sync: %w", err)
 	}
 
+	if err := wCtx.Save(); err != nil {
+		return fmt.Errorf("save: %w", err)
+	}
+
 	return nil
 }
 
@@ -202,6 +226,10 @@ func cmdUpgrade(c *cli.Context) error {
 
 	if err := wCtx.Sync(ctx, maxWorkers); err != nil {
 		return fmt.Errorf("sync: %w", err)
+	}
+
+	if err := wCtx.Save(); err != nil {
+		return fmt.Errorf("save context: %w", err)
 	}
 
 	return nil
