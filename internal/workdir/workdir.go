@@ -286,6 +286,9 @@ func InitContext(dir string) (string, error) {
 		return "", errors.New("spec already exists")
 	case os.IsNotExist(err):
 		spec := Spec{
+			Dir:      DefaultToolsDir,
+			Tools:    make([]Tool, 0),
+			Includes: make([]Include, 0),
 		}
 		if err := writeSpec(targetSpecFile, spec); err != nil {
 			return "", fmt.Errorf("write init spec: %w", err)
