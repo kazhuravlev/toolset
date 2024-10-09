@@ -86,6 +86,14 @@ toolset add --copy-from path/to/another/.toolset.json
 toolset add --copy-from https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
 ```
 
+#### Include another url
+
+Included source will be registered explicitly. This url will be added in your `.toolset.json`.
+
+```shell
+toolset add --include https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
+```
+
 ### Install or Update Tools
 
 Ensure all specified tools are installed or updated to the defined versions:
@@ -117,3 +125,19 @@ This command ensures all tools in your toolset.json configuration are updated to
 ## Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests to improve toolset.
+
+## Questions and Answers
+
+**Which files should be added into git index?**
+
+- `.toolset.json` should be added into git index. This is like `go.mod` or `package.json`.
+- `.toolset.lock.json` should be added into git index. This is like `go.sum` or another lock files.
+- `bin/tools` dir should be excluded from index, because this dir will contain a binaries.
+
+**Is that possible to change directory that contains a binary files?**
+
+Yes. You can change it in your `.toolset.json`.
+
+**I have a strange behaviour. What I should do to fix that?**
+
+Main command - `toolset sync`. This should fix the all problems. In case when it is not fixed - create an issue.
