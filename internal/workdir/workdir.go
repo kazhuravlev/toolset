@@ -148,9 +148,26 @@ func (c *Context) RunTool(ctx context.Context, str string, args ...string) error
 	return nil
 }
 
+func (c *Context) getToolDir(tool Tool) string {
+	switch tool.Runtime {
+	default:
+		panic("unknown runtime")
+	case RuntimeGo:
+		return filepath.Join(c.GetToolsDir(), getGoModDir(tool.Module))
+	}
+}
+
+func isExists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+
+	return true
+}
+
 func (c *Context) Sync(ctx context.Context, maxWorkers int) error {
 	toolsDir := c.GetToolsDir()
-	if _, err := os.Stat(toolsDir); os.IsNotExist(err) {
+	if !isExists(toolsDir) {
 		fmt.Println("Target dir not exists. Creating...", toolsDir)
 		if err := os.MkdirAll(toolsDir, 0o755); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
@@ -172,6 +189,11 @@ func (c *Context) Sync(ctx context.Context, maxWorkers int) error {
 
 		if !strings.Contains(tool.Module, at) {
 			return fmt.Errorf("go tool (%s) must have a version, at least `latest`", tool.Module)
+		}
+
+		// NOTE(zhuravlev): do not install tool in case it's directory is exists.
+		if isExists(c.getToolDir(tool)) {
+			continue
 		}
 
 		if err := sem.Acquire(ctx, 1); err != nil {
@@ -421,6 +443,8 @@ func getGoInstalledBinary(baseDir, goBinDir, mod string) string {
 func goInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error {
 	const golang = "go"
 
+	installedPath := getGoInstalledBinary(baseDir, goBinDir, mod)
+
 	modDir := filepath.Join(baseDir, goBinDir, getGoModDir(mod))
 	if err := os.MkdirAll(modDir, 0o755); err != nil {
 		return fmt.Errorf("create mod dir (%s): %w", modDir, err)
@@ -448,8 +472,6 @@ func goInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("run go install (%s): %w", cmd.String(), err)
 	}
-
-	installedPath := getGoInstalledBinary(baseDir, goBinDir, mod)
 
 	if alias, ok := alias.Get(); ok {
 		targetPath := filepath.Join(baseDir, goBinDir, alias)
