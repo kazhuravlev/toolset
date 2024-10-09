@@ -259,57 +259,11 @@ func (c *Context) Upgrade(ctx context.Context) error {
 	return nil
 }
 
-// CopyFrom will add all tools from source.
 // Source can be a path to file or a http url.
-func (c *Context) CopyFrom(ctx context.Context, source string) (int, error) {
-	u, err := url.Parse(source)
 	if err != nil {
-		return 0, fmt.Errorf("parse source url: %w", err)
-	}
-
-	var buf []byte
-
-	if u.Scheme != "" {
-		fmt.Println("Copy from url:", u.String())
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
-		if err != nil {
-			return 0, fmt.Errorf("create request: %w", err)
-		}
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return 0, fmt.Errorf("fetch source: %w", err)
-		}
-		defer resp.Body.Close()
-
-		bb, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return 0, fmt.Errorf("read response body: %w", err)
-		}
-
-		buf = bb
-	} else {
-		fmt.Println("Copy from file:", source)
-
-		bb, err := os.ReadFile(source)
-		if err != nil {
-			return 0, fmt.Errorf("read file: %w", err)
-		}
-
-		buf = bb
-	}
-
-	var src Spec
-	if err := json.Unmarshal(buf, &src); err != nil {
-		return 0, fmt.Errorf("parse source: %w", err)
 	}
 
 	var count int
-	for _, tool := range src.Tools {
-		wasAdded := c.Spec.AddTool(tool)
-		if wasAdded {
-			count++
 		}
 	}
 
@@ -332,8 +286,6 @@ func InitContext(dir string) (string, error) {
 		return "", errors.New("spec already exists")
 	case os.IsNotExist(err):
 		spec := Spec{
-			Dir:   DefaultToolsDir,
-			Tools: make([]Tool, 0),
 		}
 		if err := writeSpec(targetSpecFile, spec); err != nil {
 			return "", fmt.Errorf("write init spec: %w", err)
@@ -367,9 +319,18 @@ func (t Tool) IsSame(tool Tool) bool {
 	return m1 == m2
 }
 
+type Include struct {
+	Src string `json:"src"`
+}
+
+func (i Include) IsSame(include Include) bool {
+	return i.Src == include.Src
+}
+
 type Spec struct {
-	Dir   string `json:"dir"`
-	Tools []Tool `json:"tools"`
+	Dir      string    `json:"dir"`
+	Tools    []Tool    `json:"tools"`
+	Includes []Include `json:"includes"`
 }
 
 func (s *Spec) AddTool(tool Tool) bool {
@@ -581,4 +542,61 @@ func getGoModDir(mod string) string {
 	version := parts[1]
 
 	return fmt.Sprintf(".%s___%s", binName, version)
+}
+
+func fetchRemoteSpec(ctx context.Context, source string) ([]Spec, error) {
+	u, err := url.Parse(source)
+	if err != nil {
+		return nil, fmt.Errorf("parse source addr: %w", err)
+	}
+
+	var buf []byte
+	if u.Scheme != "" {
+		fmt.Println("Include from url:", u.String())
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
+		if err != nil {
+			return nil, fmt.Errorf("create request: %w", err)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("fetch source: %w", err)
+		}
+		defer resp.Body.Close()
+
+		bb, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("read response body: %w", err)
+		}
+
+		buf = bb
+	} else {
+		fmt.Println("Include from file:", source)
+
+		bb, err := os.ReadFile(source)
+		if err != nil {
+			return nil, fmt.Errorf("read file: %w", err)
+		}
+
+		buf = bb
+	}
+
+	var spec Spec
+	if err := json.Unmarshal(buf, &spec); err != nil {
+		return nil, fmt.Errorf("parse source: %w", err)
+	}
+
+	var res []Spec
+	for _, inc := range spec.Includes {
+		// FIXME(zhuravlev): add cycle detection
+		incSpecs, err := fetchRemoteSpec(ctx, inc.Src)
+		if err != nil {
+			return nil, fmt.Errorf("fetch one of remotes (%s): %w", inc.Src, err)
+		}
+
+		res = append(res, incSpecs...)
+	}
+
+	return append(res, spec), nil
 }
