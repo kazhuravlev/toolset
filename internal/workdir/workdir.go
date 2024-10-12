@@ -809,6 +809,40 @@ func fetchRemoteSpec(ctx context.Context, source string) ([]RemoteSpec, error) {
 		}
 
 		buf = bb
+	case SourceUriGit:
+		fmt.Println("Include from git:", srcURI.Addr, "file:", srcURI.Path)
+
+		targetDir, err := os.MkdirTemp(os.TempDir(), "toolset")
+		if err != nil {
+			return nil, fmt.Errorf("create temp dir: %w", err)
+		}
+
+		args := []string{
+			"clone",
+			"--depth", "1",
+			srcURI.Addr,
+			targetDir,
+		}
+
+		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Stdin = nil
+		cmd.Stdout = io.Discard
+		cmd.Stderr = io.Discard
+		if err := cmd.Run(); err != nil {
+			return nil, fmt.Errorf("clobne git repo: %w", err)
+		}
+
+		targetFile := filepath.Join(targetDir, srcURI.Path)
+		bb, err := os.ReadFile(targetFile)
+		if err != nil {
+			return nil, fmt.Errorf("read file: %w", err)
+		}
+
+		if err := os.RemoveAll(targetDir); err != nil {
+			return nil, fmt.Errorf("remove temp dir: %w", err)
+		}
+
+		buf = bb
 	}
 
 	var spec Spec
