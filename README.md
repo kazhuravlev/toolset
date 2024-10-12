@@ -74,24 +74,34 @@ toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint
 toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.2
 ```
 
-#### Copy from another file
+#### Copy source
+
+When you bootstrap a new repository and want to have a copy of the `.toolset.json` file from an existing repository.
 
 ```shell
+# ... from local file
 toolset add --copy-from path/to/another/.toolset.json
-```
-
-#### Copy from another url
-
-```shell
+# ... from remote http
 toolset add --copy-from https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
+# ... from git repo (by ssh)
+toolset add --copy-from git+ssh://git@gist.github.com:3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json
+# ... from git repo (by https)
+toolset add --copy-from git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json
 ```
 
-#### Include another url
+#### Include source
 
-Included source will be registered explicitly. This url will be added in your `.toolset.json`.
+The included source will be explicitly registered. This URL will be added to your `.toolset.json` file.
 
 ```shell
+# ... from local file
+toolset add --include /path/to/.toolset.json
+# ... from remote http
 toolset add --include https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
+# ... from git repo (by ssh)
+toolset add --include git+ssh://git@gist.github.com:3f16049ce3f9f478e6b917237b2c0d88.git
+# ... from git repo (by https)
+toolset add --include git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git
 ```
 
 ### Install or Update Tools
