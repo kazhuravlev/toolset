@@ -83,6 +83,8 @@ When you bootstrap a new repository and want to have a copy of the `.toolset.jso
 toolset add --copy-from path/to/another/.toolset.json
 # ... from remote http
 toolset add --copy-from https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
+# ... from git repo (by ssh)
+toolset add --copy-from git+ssh://git@gist.github.com:3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json
 ```
 
 #### Include source
@@ -94,6 +96,8 @@ The included source will be explicitly registered. This URL will be added to you
 toolset add --include /path/to/.toolset.json
 # ... from remote http
 toolset add --include https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
+# ... from git repo (by ssh)
+toolset add --include git+ssh://git@gist.github.com:3f16049ce3f9f478e6b917237b2c0d88.git
 ```
 
 ### Install or Update Tools
