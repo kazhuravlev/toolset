@@ -85,11 +85,14 @@ toolset add --copy-from path/to/another/.toolset.json
 toolset add --copy-from https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
 ```
 
-#### Include another url
+#### Include source
 
-Included source will be registered explicitly. This url will be added in your `.toolset.json`.
+The included source will be explicitly registered. This URL will be added to your `.toolset.json` file.
 
 ```shell
+# ... from local file
+toolset add --include /path/to/.toolset.json
+# ... from remote http
 toolset add --include https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
 ```
 
