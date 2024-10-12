@@ -722,17 +722,68 @@ func getGoModDir(mod string) string {
 	return fmt.Sprintf(".%s___%s", binName, version)
 }
 
-func fetchRemoteSpec(ctx context.Context, source string) ([]RemoteSpec, error) {
-	u, err := url.Parse(source)
+type SourceUri interface {
+	isSourceUri()
+}
+
+type SourceUriFile struct {
+	Path string
+}
+
+func (SourceUriFile) isSourceUri() {}
+
+type SourceUriUrl struct {
+	URL string
+}
+
+func (SourceUriUrl) isSourceUri() {}
+
+type SourceUriGit struct {
+	Addr string
+	Path string
+}
+
+func (SourceUriGit) isSourceUri() {}
+
+func parseSourceURI(uri string) (SourceUri, error) {
+	sourceURL, err := url.Parse(uri)
 	if err != nil {
-		return nil, fmt.Errorf("parse source addr: %w", err)
+		return nil, fmt.Errorf("parse source uri: %w", err)
+	}
+
+	switch sourceURL.Scheme {
+	default:
+		return nil, fmt.Errorf("unsupported source uri scheme (%s)", sourceURL.Scheme)
+	case "":
+		// TODO(zhuravlev): make path absolute
+		return SourceUriFile{Path: uri}, nil
+	case "http", "https":
+		return SourceUriUrl{URL: uri}, nil
+	case "git+ssh":
+		parts := strings.Split(uri, ":")
+		pathToFile := parts[len(parts)-1]
+
+		return SourceUriGit{
+			Addr: strings.TrimSuffix(strings.TrimPrefix(uri, "git+ssh://"), ":"+pathToFile),
+			Path: pathToFile,
+		}, nil
+	}
+}
+
+func fetchRemoteSpec(ctx context.Context, source string) ([]RemoteSpec, error) {
+	srcURI, err := parseSourceURI(source)
+	if err != nil {
+		return nil, fmt.Errorf("parse source uri: %w", err)
 	}
 
 	var buf []byte
-	if u.Scheme != "" {
-		fmt.Println("Include from url:", u.String())
+	switch srcURI := srcURI.(type) {
+	default:
+		return nil, errors.New("unsupported source uri")
+	case SourceUriUrl:
+		fmt.Println("Include from url:", srcURI.URL)
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, srcURI.URL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("create request: %w", err)
 		}
@@ -749,10 +800,10 @@ func fetchRemoteSpec(ctx context.Context, source string) ([]RemoteSpec, error) {
 		}
 
 		buf = bb
-	} else {
-		fmt.Println("Include from file:", source)
+	case SourceUriFile:
+		fmt.Println("Include from file:", srcURI.Path)
 
-		bb, err := os.ReadFile(source)
+		bb, err := os.ReadFile(srcURI.Path)
 		if err != nil {
 			return nil, fmt.Errorf("read file: %w", err)
 		}
