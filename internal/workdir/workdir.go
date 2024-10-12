@@ -833,11 +833,13 @@ func fetchRemoteSpec(ctx context.Context, source string) ([]RemoteSpec, error) {
 		}
 
 		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
 		cmd.Stdin = nil
 		cmd.Stdout = io.Discard
-		cmd.Stderr = io.Discard
+		cmdErr := bytes.NewBufferString("")
+		cmd.Stderr = cmdErr
 		if err := cmd.Run(); err != nil {
-			return nil, fmt.Errorf("clobne git repo: %w", err)
+			return nil, fmt.Errorf("clone git repo (%s): %w", strings.TrimSpace(cmdErr.String()), err)
 		}
 
 		targetFile := filepath.Join(targetDir, srcURI.Path)
