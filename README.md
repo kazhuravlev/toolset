@@ -74,15 +74,14 @@ toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint
 toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.2
 ```
 
-#### Copy from another file
+#### Copy source
+
+When you bootstrap a new repository and want to have a copy of the `.toolset.json` file from an existing repository.
 
 ```shell
+# ... from local file
 toolset add --copy-from path/to/another/.toolset.json
-```
-
-#### Copy from another url
-
-```shell
+# ... from remote http
 toolset add --copy-from https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
 ```
 
