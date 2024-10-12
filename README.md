@@ -116,7 +116,7 @@ By default, tools are installed into ./bin/tools.
 
 ### Run a Tool
 
-Execute any installed tool with its corresponding arguments. For example, to run golangci-lint:
+Execute any installed tool with its corresponding arguments. For example, to run `golangci-lint`:
 
 ```shell
 toolset run golangci-lint run --fix ./...
@@ -151,3 +151,4 @@ Yes. You can change it in your `.toolset.json`.
 **I have a strange behaviour. What I should do to fix that?**
 
 Main command - `toolset sync`. This should fix the all problems. In case when it is not fixed - create an issue.
+
