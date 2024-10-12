@@ -85,6 +85,8 @@ toolset add --copy-from path/to/another/.toolset.json
 toolset add --copy-from https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
 # ... from git repo (by ssh)
 toolset add --copy-from git+ssh://git@gist.github.com:3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json
+# ... from git repo (by https)
+toolset add --copy-from git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json
 ```
 
 #### Include source
@@ -98,6 +100,8 @@ toolset add --include /path/to/.toolset.json
 toolset add --include https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
 # ... from git repo (by ssh)
 toolset add --include git+ssh://git@gist.github.com:3f16049ce3f9f478e6b917237b2c0d88.git
+# ... from git repo (by https)
+toolset add --include git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git
 ```
 
 ### Install or Update Tools

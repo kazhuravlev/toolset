@@ -767,6 +767,14 @@ func parseSourceURI(uri string) (SourceUri, error) {
 			Addr: strings.TrimSuffix(strings.TrimPrefix(uri, "git+ssh://"), ":"+pathToFile),
 			Path: pathToFile,
 		}, nil
+	case "git+https":
+		parts := strings.Split(uri, ":")
+		pathToFile := parts[len(parts)-1]
+
+		return SourceUriGit{
+			Addr: strings.TrimSuffix(strings.TrimPrefix(uri, "git+"), ":"+pathToFile),
+			Path: pathToFile,
+		}, nil
 	}
 }
 
