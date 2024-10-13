@@ -132,6 +132,19 @@ toolset upgrade
 
 This command ensures all tools in your toolset.json configuration are updated to the latest version.
 
+## Examples
+
+Here’s an [example](./example) of a directory with the toolset. To try it out, follow these steps:
+
+[Install](#installation) the toolset and run:
+
+```shell
+git clone git@github.com:kazhuravlev/toolset.git
+cd toolset/examples
+toolset sync
+toolset run gt --repo ../ tag last
+```
+
 ## Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests to improve toolset.
