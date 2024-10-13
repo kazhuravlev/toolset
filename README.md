@@ -60,9 +60,9 @@ toolset init .
 
 ### Add Tools
 
-### Directly to your config
+### Direct tools
 
-Add tools directly to your configuration.
+Explicitly add tool to your configuration. They have an priority on top of includes.
 
 ```shell
 # Add the latest version (automatically resolves to the most recent version)
@@ -103,7 +103,7 @@ toolset add --include git+ssh://git@gist.github.com:3f16049ce3f9f478e6b917237b2c
 toolset add --include git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git
 ```
 
-### Install or Update Tools
+### Install tools
 
 Ensure all specified tools are installed or updated to the defined versions:
 
@@ -113,7 +113,7 @@ toolset sync
 
 By default, tools are installed into ./bin/tools.
 
-### Run a Tool
+### Run a tool
 
 Execute any installed tool with its corresponding arguments. For example, to run `golangci-lint`:
 
@@ -121,7 +121,7 @@ Execute any installed tool with its corresponding arguments. For example, to run
 toolset run golangci-lint run --fix ./...
 ```
 
-### Upgrade Tools
+### Upgrade tools
 
 To upgrade all tools to their latest available versions, run:
 
