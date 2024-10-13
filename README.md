@@ -60,21 +60,20 @@ toolset init .
 
 ### Add Tools
 
-Add tools to your configuration. You can specify the latest version or pin a specific version:
+### Directly to your config
 
-#### Add the latest version (automatically resolves to the most recent version):
+Add tools directly to your configuration.
 
 ```shell
+# Add the latest version (automatically resolves to the most recent version)
 toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint
-```
-
-#### Add a specific version
-
-```shell
+# ... or with @latest
+toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+# Add a specific version
 toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.2
 ```
 
-#### Copy source
+#### Copy from source
 
 When you bootstrap a new repository and want to have a copy of the `.toolset.json` file from an existing repository.
 
