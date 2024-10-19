@@ -113,7 +113,7 @@ func cmdInit(c *cli.Context) error {
 		targetDir = "."
 	}
 
-	absSpecName, err := workdir.InitContext(targetDir)
+	absSpecName, err := workdir.Init(targetDir)
 	if err != nil {
 		return fmt.Errorf("init workdir: %w", err)
 	}

@@ -77,7 +77,7 @@ func NewContext() (*Context, error) {
 						return nil, fmt.Errorf("migrate toolset to lockfile: %w", err)
 					}
 
-					if _, err := InitContext(baseDir); err != nil {
+					if _, err := Init(baseDir); err != nil {
 						return nil, fmt.Errorf("re-init toolset: %w", err)
 					}
 
@@ -388,8 +388,8 @@ func (c *Context) CopySource(ctx context.Context, source string, tags []string) 
 	return count, nil
 }
 
-// InitContext will initialize context in specified
-func InitContext(dir string) (string, error) {
+// Init will initialize context in specified
+func Init(dir string) (string, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return "", fmt.Errorf("get abs path: %w", err)
