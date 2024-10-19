@@ -50,7 +50,7 @@ func New() (*Workdir, error) {
 
 	baseDir := filepath.Dir(toolsetFilename)
 
-	spec, err := readSpec(toolsetFilename)
+	spec, err := readJson[Spec](toolsetFilename)
 	if err != nil {
 		return nil, fmt.Errorf("spec file not found: %w", err)
 	}
@@ -129,11 +129,11 @@ func (c *Workdir) LockFilename() string {
 }
 
 func (c *Workdir) Save() error {
-	if err := writeSpec(c.SpecFilename(), *c.Spec); err != nil {
+	if err := writeJson(*c.Spec, c.SpecFilename()); err != nil {
 		return fmt.Errorf("write spec: %w", err)
 	}
 
-	if err := writeLock(c.LockFilename(), *c.Lock); err != nil {
+	if err := writeJson(*c.Lock, c.LockFilename()); err != nil {
 		return fmt.Errorf("write lock: %w", err)
 	}
 
@@ -419,7 +419,7 @@ func Init(dir string) (string, error) {
 			Tools:    make([]Tool, 0),
 			Includes: make([]Include, 0),
 		}
-		if err := writeSpec(targetSpecFile, spec); err != nil {
+		if err := writeJson(spec, targetSpecFile); err != nil {
 			return "", fmt.Errorf("write init spec: %w", err)
 		}
 
@@ -427,7 +427,7 @@ func Init(dir string) (string, error) {
 			Tools:   make([]Tool, 0),
 			Remotes: make([]RemoteSpec, 0),
 		}
-		if err := writeLock(targetLockFile, lock); err != nil {
+		if err := writeJson(lock, targetLockFile); err != nil {
 			return "", fmt.Errorf("write init lock: %w", err)
 		}
 

@@ -27,47 +27,35 @@ func isExists(path string) bool {
 	return true
 }
 
-func readSpec(path string) (*Spec, error) {
+func readJson[T any](path string) (*T, error) {
 	bb, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("read spec file (%s): %w", path, err)
+		return nil, fmt.Errorf("read file (%s): %w", path, err)
 	}
 
-	var spec Spec
-	if err := json.Unmarshal(bb, &spec); err != nil {
-		return nil, fmt.Errorf("unmarshal spec (%s): %w", path, err)
+	var res T
+	if err := json.Unmarshal(bb, &res); err != nil {
+		return nil, fmt.Errorf("parse file (%s): %w", path, err)
 	}
 
-	return &spec, nil
+	return &res, nil
 }
 
-func writeSpec(path string, spec Spec) error {
+func writeJson(in any, path string) error {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 	if err != nil {
-		return fmt.Errorf("open spec: %w", err)
+		return fmt.Errorf("open file: %w", err)
 	}
 
 	enc := json.NewEncoder(file)
 	enc.SetIndent("", "\t")
 
-	if err := enc.Encode(spec); err != nil {
-		return fmt.Errorf("marshal spec: %w", err)
+	if err := enc.Encode(in); err != nil {
+		return fmt.Errorf("marshal file: %w", err)
 	}
 
-	return nil
-}
-
-func writeLock(path string, lock Lock) error {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
-	if err != nil {
-		return fmt.Errorf("open lock: %w", err)
-	}
-
-	enc := json.NewEncoder(file)
-	enc.SetIndent("", "\t")
-
-	if err := enc.Encode(lock); err != nil {
-		return fmt.Errorf("marshal lock: %w", err)
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("close file: %w", err)
 	}
 
 	return nil
