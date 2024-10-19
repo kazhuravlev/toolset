@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	RuntimeGo       = "go"
+	runtimeGo       = "go"
 	specFilename    = ".toolset.json"
 	lockFilename    = ".toolset.lock.json"
 	defaultToolsDir = "./bin/tools"
@@ -167,7 +167,7 @@ func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) 
 }
 
 func (c *Workdir) Add(ctx context.Context, runtime, goBinary string, alias optional.Val[string], tags []string) (bool, string, error) {
-	if runtime != RuntimeGo {
+	if runtime != runtimeGo {
 		return false, "", fmt.Errorf("unsupported runtime: %s", runtime)
 	}
 
@@ -187,7 +187,7 @@ func (c *Workdir) Add(ctx context.Context, runtime, goBinary string, alias optio
 	}
 
 	tool := Tool{
-		Runtime: RuntimeGo,
+		Runtime: runtimeGo,
 		Module:  goBinary,
 		Alias:   alias,
 		Tags:    tags,
@@ -202,7 +202,7 @@ func (c *Workdir) Add(ctx context.Context, runtime, goBinary string, alias optio
 
 func (c *Workdir) FindTool(str string) (*Tool, error) {
 	for _, tool := range c.Lock.Tools {
-		if tool.Runtime != RuntimeGo {
+		if tool.Runtime != runtimeGo {
 			continue
 		}
 
@@ -245,7 +245,7 @@ func (c *Workdir) getToolDir(tool Tool) string {
 	switch tool.Runtime {
 	default:
 		panic("unknown runtime")
-	case RuntimeGo:
+	case runtimeGo:
 		return filepath.Join(c.GetToolsDir(), getGoModDir(tool.Module))
 	}
 }
@@ -282,7 +282,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 	sem := semaphore.NewWeighted(int64(maxWorkers))
 	for _, tool := range c.Lock.Tools.Filter(tags) {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
-		if tool.Runtime != RuntimeGo {
+		if tool.Runtime != runtimeGo {
 			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
 		}
 
@@ -331,7 +331,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 // Upgrade will upgrade only spec tools. and re-fetch latest versions of includes.
 func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 	for _, tool := range c.Spec.Tools.Filter(tags) {
-		if tool.Runtime != RuntimeGo {
+		if tool.Runtime != runtimeGo {
 			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
 		}
 
