@@ -166,7 +166,15 @@ func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) 
 	return count, nil
 }
 
-func (c *Workdir) AddGo(ctx context.Context, goBinary string, alias optional.Val[string], tags []string) (bool, string, error) {
+func (c *Workdir) Add(ctx context.Context, runtime, goBinary string, alias optional.Val[string], tags []string) (bool, string, error) {
+	if runtime != RuntimeGo {
+		return false, "", fmt.Errorf("unsupported runtime: %s", runtime)
+	}
+
+	if goBinary == "" {
+		return false, "", errors.New("golang binary not provided")
+	}
+
 	goBinaryWoVersion := strings.Split(goBinary, at)[0]
 
 	_, goModule, err := getGoModule(ctx, goBinary)

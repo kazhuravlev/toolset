@@ -162,18 +162,11 @@ func cmdAdd(c *cli.Context) error {
 	}
 
 	runtime := c.Args().First()
-	if runtime != workdir.RuntimeGo {
-		return fmt.Errorf("unsupported runtime: %s", runtime)
-	}
+	module := c.Args().Get(1)
 
-	goBinary := c.Args().Get(1)
-	if goBinary == "" {
-		return fmt.Errorf("no module name provided")
-	}
-
-	wasAdded, goBinaryWoVersion, err := wCtx.AddGo(c.Context, goBinary, optional.Empty[string](), tags)
+	wasAdded, goBinaryWoVersion, err := wCtx.Add(c.Context, runtime, module, optional.Empty[string](), tags)
 	if err != nil {
-		return fmt.Errorf("add go module: %w", err)
+		return fmt.Errorf("add module: %w", err)
 	}
 
 	if err := wCtx.Save(); err != nil {
