@@ -20,13 +20,13 @@ const (
 	DefaultToolsDir = "./bin/tools"
 )
 
-type Context struct {
+type Workdir struct {
 	Workdir string
 	Spec    *Spec
 	Lock    *Lock
 }
 
-func New() (*Context, error) {
+func New() (*Workdir, error) {
 	// Make abs path to spec.
 	toolsetFilename, err := filepath.Abs(SpecFilename)
 	if err != nil {
@@ -109,26 +109,26 @@ func New() (*Context, error) {
 		}
 	}
 
-	return &Context{
+	return &Workdir{
 		Workdir: baseDir,
 		Spec:    spec,
 		Lock:    &lockFile,
 	}, nil
 }
 
-func (c *Context) GetToolsDir() string {
+func (c *Workdir) GetToolsDir() string {
 	return filepath.Join(c.Workdir, c.Spec.Dir)
 }
 
-func (c *Context) SpecFilename() string {
+func (c *Workdir) SpecFilename() string {
 	return filepath.Join(c.Workdir, SpecFilename)
 }
 
-func (c *Context) LockFilename() string {
+func (c *Workdir) LockFilename() string {
 	return filepath.Join(c.Workdir, LockFilename)
 }
 
-func (c *Context) Save() error {
+func (c *Workdir) Save() error {
 	if err := writeSpec(c.SpecFilename(), *c.Spec); err != nil {
 		return fmt.Errorf("write spec: %w", err)
 	}
@@ -140,7 +140,7 @@ func (c *Context) Save() error {
 	return nil
 }
 
-func (c *Context) AddInclude(ctx context.Context, source string, tags []string) (int, error) {
+func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) (int, error) {
 	// Check that source is exists and valid.
 	remotes, err := fetchRemoteSpec(ctx, source, tags)
 	if err != nil {
@@ -166,7 +166,7 @@ func (c *Context) AddInclude(ctx context.Context, source string, tags []string) 
 	return count, nil
 }
 
-func (c *Context) AddGo(ctx context.Context, goBinary string, alias optional.Val[string], tags []string) (bool, string, error) {
+func (c *Workdir) AddGo(ctx context.Context, goBinary string, alias optional.Val[string], tags []string) (bool, string, error) {
 	goBinaryWoVersion := strings.Split(goBinary, at)[0]
 
 	_, goModule, err := getGoModule(ctx, goBinary)
@@ -192,7 +192,7 @@ func (c *Context) AddGo(ctx context.Context, goBinary string, alias optional.Val
 	return wasAdded, goBinaryWoVersion, nil
 }
 
-func (c *Context) FindTool(str string) (*Tool, error) {
+func (c *Workdir) FindTool(str string) (*Tool, error) {
 	for _, tool := range c.Lock.Tools {
 		if tool.Runtime != RuntimeGo {
 			continue
@@ -214,7 +214,7 @@ func (c *Context) FindTool(str string) (*Tool, error) {
 	return nil, fmt.Errorf("tool (%s) not found", str)
 }
 
-func (c *Context) RunTool(ctx context.Context, str string, args ...string) error {
+func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error {
 	tool, err := c.FindTool(str)
 	if err != nil {
 		return err
@@ -232,7 +232,7 @@ func (c *Context) RunTool(ctx context.Context, str string, args ...string) error
 	return nil
 }
 
-func (c *Context) getToolDir(tool Tool) string {
+func (c *Workdir) getToolDir(tool Tool) string {
 	switch tool.Runtime {
 	default:
 		panic("unknown runtime")
@@ -241,7 +241,7 @@ func (c *Context) getToolDir(tool Tool) string {
 	}
 }
 
-func (c *Context) Sync(ctx context.Context, maxWorkers int, tags []string) error {
+func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
 	toolsDir := c.GetToolsDir()
 	if !isExists(toolsDir) {
 		fmt.Println("Target dir not exists. Creating...", toolsDir)
@@ -318,7 +318,7 @@ func (c *Context) Sync(ctx context.Context, maxWorkers int, tags []string) error
 }
 
 // Upgrade will upgrade only spec tools. and re-fetch latest versions of includes.
-func (c *Context) Upgrade(ctx context.Context, tags []string) error {
+func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 	for _, tool := range c.Spec.Tools.Filter(tags) {
 		if tool.Runtime != RuntimeGo {
 			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
@@ -368,7 +368,7 @@ func (c *Context) Upgrade(ctx context.Context, tags []string) error {
 
 // CopySource will add all tools from source.
 // Source can be a path to file or a http url.
-func (c *Context) CopySource(ctx context.Context, source string, tags []string) (int, error) {
+func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) (int, error) {
 	specs, err := fetchRemoteSpec(ctx, source, tags)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
