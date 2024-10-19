@@ -112,7 +112,7 @@ type RemoteSpec struct {
 }
 
 func (r *RemoteSpec) UnmarshalJSON(bb []byte) error {
-	// NOTE(zhuravlev): this is migration from Tags to tags
+	// NOTE(zhuravlev): Migration: from Tags to tags
 	var spec struct {
 		Source string   `json:"source"`
 		Spec   Spec     `json:"spec"`

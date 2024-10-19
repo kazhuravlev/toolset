@@ -362,7 +362,6 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 			return fmt.Errorf("fetch remotes: %w", err)
 		}
 
-		// FIXME(zhuravlev): remove tools from prev remotes before add a new one.
 		resRemotes = append(resRemotes, remotes...)
 		for _, remote := range remotes {
 			for _, tool := range remote.Spec.Tools {
