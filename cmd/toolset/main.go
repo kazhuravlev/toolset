@@ -126,7 +126,7 @@ func cmdInit(c *cli.Context) error {
 func cmdAdd(c *cli.Context) error {
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.NewContext()
+	wCtx, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
@@ -195,7 +195,7 @@ func cmdRun(c *cli.Context) error {
 		return fmt.Errorf("target is required")
 	}
 
-	wCtx, err := workdir.NewContext()
+	wCtx, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
@@ -213,7 +213,7 @@ func cmdSync(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.NewContext()
+	wCtx, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
@@ -235,7 +235,7 @@ func cmdUpgrade(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.NewContext()
+	wCtx, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}

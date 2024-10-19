@@ -26,7 +26,7 @@ type Context struct {
 	Lock    *Lock
 }
 
-func NewContext() (*Context, error) {
+func New() (*Context, error) {
 	// Make abs path to spec.
 	toolsetFilename, err := filepath.Abs(SpecFilename)
 	if err != nil {
@@ -81,7 +81,7 @@ func NewContext() (*Context, error) {
 						return nil, fmt.Errorf("re-init toolset: %w", err)
 					}
 
-					wCtx, err := NewContext()
+					wCtx, err := New()
 					if err != nil {
 						return nil, fmt.Errorf("new context in re-created workdir: %w", err)
 					}
