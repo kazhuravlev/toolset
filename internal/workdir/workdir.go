@@ -72,36 +72,38 @@ func NewContext() (*Context, error) {
 	{
 		bb, err := os.ReadFile(filepath.Join(baseDir, LockFilename))
 		if err != nil {
-			// NOTE(zhuravlev): Migration to new version.
-			if os.IsNotExist(err) {
-				fmt.Println("Migrate to `lock-based` version...")
+			// NOTE(zhuravlev): Migration: add lockfile.
+			{
+				if os.IsNotExist(err) {
+					fmt.Println("Migrate to `lock-based` version...")
 
-				toolsetFilenameBak := toolsetFilename + "_bak"
-				if err := os.Rename(toolsetFilename, toolsetFilenameBak); err != nil {
-					return nil, fmt.Errorf("migrate toolset to lockfile: %w", err)
+					toolsetFilenameBak := toolsetFilename + "_bak"
+					if err := os.Rename(toolsetFilename, toolsetFilenameBak); err != nil {
+						return nil, fmt.Errorf("migrate toolset to lockfile: %w", err)
+					}
+
+					if _, err := InitContext(baseDir); err != nil {
+						return nil, fmt.Errorf("re-init toolset: %w", err)
+					}
+
+					wCtx, err := NewContext()
+					if err != nil {
+						return nil, fmt.Errorf("new context in re-created workdir: %w", err)
+					}
+
+					for _, tool := range spec.Tools {
+						wCtx.Spec.Tools.Add(tool)
+						wCtx.Lock.Tools.Add(tool)
+					}
+
+					if err := wCtx.Save(); err != nil {
+						return nil, fmt.Errorf("save lock-based workdir: %w", err)
+					}
+
+					os.Remove(toolsetFilenameBak)
+
+					return wCtx, nil
 				}
-
-				if _, err := InitContext(baseDir); err != nil {
-					return nil, fmt.Errorf("re-init toolset: %w", err)
-				}
-
-				wCtx, err := NewContext()
-				if err != nil {
-					return nil, fmt.Errorf("new context in re-created workdir: %w", err)
-				}
-
-				for _, tool := range spec.Tools {
-					wCtx.Spec.Tools.Add(tool)
-					wCtx.Lock.Tools.Add(tool)
-				}
-
-				if err := wCtx.Save(); err != nil {
-					return nil, fmt.Errorf("save lock-based workdir: %w", err)
-				}
-
-				os.Remove(toolsetFilenameBak)
-
-				return wCtx, nil
 			}
 
 			return nil, fmt.Errorf("read lock file: %w", err)
