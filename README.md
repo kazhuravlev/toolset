@@ -60,48 +60,130 @@ toolset init .
 
 ### Add Tools
 
-Add tools to your configuration. You can specify the latest version or pin a specific version:
+### Direct tools
 
-#### Add the latest version (automatically resolves to the most recent version):
+Explicitly add tool to your configuration. They have an priority on top of includes.
 
 ```shell
+# Add the latest version (automatically resolves to the most recent version)
 toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint
-```
-
-#### Add a specific version
-
-```shell
+# ... or with @latest
+toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+# Add a specific version
 toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.2
 ```
 
-### Install or Update Tools
+#### Copy from source
+
+When you bootstrap a new repository and want to have a copy of the `.toolset.json` file from an existing repository.
+
+```shell
+# ... from local file
+toolset add --copy-from path/to/another/.toolset.json
+# ... from remote http
+toolset add --copy-from https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
+# ... from git repo (by ssh)
+toolset add --copy-from git+ssh://git@gist.github.com:3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json
+# ... from git repo (by https)
+toolset add --copy-from git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json
+```
+
+#### Include source
+
+The included source will be explicitly registered. This URL will be added to your `.toolset.json` file.
+
+```shell
+# ... from local file
+toolset add --include /path/to/.toolset.json
+# ... from remote http
+toolset add --include https://gist.githubusercontent.com/kazhuravlev/3f16049ce3f9f478e6b917237b2c0d88/raw/44a2ea7d2817e77e2cd90f29343788c864d36567/sample-toolset.json
+# ... from git repo (by ssh)
+toolset add --include git+ssh://git@gist.github.com:3f16049ce3f9f478e6b917237b2c0d88.git
+# ... from git repo (by https)
+toolset add --include git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git
+```
+
+#### Add tags to tools
+
+Add one or more tags to each tool. It will allow you to install only selected tools. Tools that have a tag can be
+filtered in `toolset sync` and `toolset upgrade`. See the docs bellow.
+
+```shell 
+# Add linter to group `linters` and `ci`
+toolset add --tags linters,ci go github.com/golangci/golangci-lint/cmd/golangci-lint
+# Add tools to group `ci`
+toolset add --tags ci go github.com/jstemmer/go-junit-report/v2@latest
+toolset add --tags ci go github.com/boumenot/gocover-cobertura
+```
+
+### Install tools
 
 Ensure all specified tools are installed or updated to the defined versions:
 
 ```shell
+# Make sure that all tools installed with a correct version.
 toolset sync
+# ...do it only for some set of tools
+toolset sync --tags linters
 ```
 
 By default, tools are installed into ./bin/tools.
 
-### Run a Tool
+### Run a tool
 
-Execute any installed tool with its corresponding arguments. For example, to run golangci-lint:
+Execute any installed tool with its corresponding arguments. For example, to run `golangci-lint`:
 
 ```shell
 toolset run golangci-lint run --fix ./...
 ```
 
-### Upgrade Tools
+### Upgrade tools
 
 To upgrade all tools to their latest available versions, run:
 
 ```shell
+# Upgrade all tools
 toolset upgrade
+# Upgrade only specific tools
+toolset upgrade --tags ci
 ```
 
 This command ensures all tools in your toolset.json configuration are updated to the latest version.
 
+## Examples
+
+Here’s an [example](./example) of a directory with the toolset. To try it out, follow these steps:
+
+[Install](#installation) the toolset and run:
+
+```shell
+git clone git@github.com:kazhuravlev/toolset.git
+cd toolset/example
+# Install all tools
+toolset sync
+# ... and check installed tools
+ls ./bin/tools
+# Run installed tool
+toolset run gt --repo ../ tag last
+```
+
 ## Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests to improve toolset.
+
+## Questions and Answers
+
+**Which files should be added into git index?**
+
+- `.toolset.json` should be added into git index. This is like `go.mod` or `package.json`.
+- `.toolset.lock.json` should be added into git index. This is like `go.sum` or another lock files.
+- `bin/tools` dir should be excluded from index, because this dir will contain a binaries.
+
+**Is that possible to change directory that contains a binary files?**
+
+Yes. You can change it in your `.toolset.json`.
+
+**I have a strange behaviour. What I should do to fix that?**
+
+Main command - `toolset sync`. This should fix the all problems. In case when it is not fixed - create an issue.
+
