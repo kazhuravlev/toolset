@@ -35,7 +35,7 @@ func New() (*Workdir, error) {
 
 	// Check that file is exists in current or parent directories.
 	for {
-		if _, err := os.Stat(toolsetFilename); os.IsNotExist(err) {
+		if !isExists(toolsetFilename) {
 			parentDir := filepath.Dir(filepath.Dir(toolsetFilename))
 			if filepath.Dir(parentDir) == parentDir {
 				return nil, errors.New("unable to find spec in fs tree")

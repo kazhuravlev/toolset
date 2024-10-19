@@ -17,6 +17,8 @@ import (
 	"strings"
 )
 
+const at = "@"
+
 func isExists(path string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
@@ -183,8 +185,6 @@ func goInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error 
 
 	return nil
 }
-
-const at = "@"
 
 // getGoBinFromMod returns a binary name that installed by `go install`
 // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2 ==> golangci-lint
