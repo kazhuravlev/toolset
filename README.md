@@ -159,7 +159,11 @@ Here’s an [example](./example) of a directory with the toolset. To try it out,
 ```shell
 git clone git@github.com:kazhuravlev/toolset.git
 cd toolset/example
+# Install all tools
 toolset sync
+# ... and check installed tools
+ls ./bin/tools
+# Run installed tool
 toolset run gt --repo ../ tag last
 ```
 

@@ -3,52 +3,68 @@
 		{
 			"runtime": "go",
 			"module": "gotest.tools/gotestsum@v1.12.0",
-			"alias": null
+			"alias": null,
+			"tags": [
+				"ci"
+			]
 		},
 		{
 			"runtime": "go",
 			"module": "github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3",
-			"alias": null
+			"alias": null,
+			"tags": [
+				"ci"
+			]
 		},
 		{
 			"runtime": "go",
 			"module": "github.com/kazhuravlev/git-tools/cmd/gt@v0.11.1",
-			"alias": null
+			"alias": null,
+			"tags": [
+				"local"
+			]
 		},
 		{
 			"runtime": "go",
 			"module": "golang.org/x/tools/cmd/stringer@v0.26.0",
-			"alias": null
+			"alias": null,
+			"tags": null
 		},
 		{
 			"runtime": "go",
 			"module": "github.com/kazhuravlev/options-gen/cmd/options-gen@v0.33.0",
-			"alias": null
+			"alias": null,
+			"tags": null
 		},
 		{
 			"runtime": "go",
 			"module": "golang.org/x/tools/cmd/goimports@v0.26.0",
-			"alias": null
+			"alias": null,
+			"tags": null
 		},
 		{
 			"runtime": "go",
 			"module": "mvdan.cc/gofumpt@v0.7.0",
-			"alias": null
+			"alias": null,
+			"tags": null
 		},
 		{
 			"runtime": "go",
 			"module": "github.com/kazhuravlev/structspec/cmd/structspec@v0.4.2",
-			"alias": null
+			"alias": null,
+			"tags": null
 		},
 		{
 			"runtime": "go",
 			"module": "github.com/hexdigest/gowrap/cmd/gowrap@v1.4.0",
-			"alias": null
+			"alias": null,
+			"tags": null
 		},
 		{
 			"runtime": "go",
 			"module": "github.com/vburenin/ifacemaker@v1.2.1",
-			"alias": null
+			"alias": null,
+			"tags": null
 		}
 	],
 	"remotes": [
@@ -60,51 +76,61 @@
 					{
 						"runtime": "go",
 						"module": "golang.org/x/tools/cmd/stringer@v0.26.0",
-						"alias": null
+						"alias": null,
+						"tags": null
 					},
 					{
 						"runtime": "go",
 						"module": "github.com/kazhuravlev/options-gen/cmd/options-gen@v0.33.0",
-						"alias": null
+						"alias": null,
+						"tags": null
 					},
 					{
 						"runtime": "go",
 						"module": "golang.org/x/tools/cmd/goimports@v0.26.0",
-						"alias": null
+						"alias": null,
+						"tags": null
 					},
 					{
 						"runtime": "go",
 						"module": "mvdan.cc/gofumpt@v0.7.0",
-						"alias": null
+						"alias": null,
+						"tags": null
 					},
 					{
 						"runtime": "go",
 						"module": "github.com/kazhuravlev/structspec/cmd/structspec@v0.4.2",
-						"alias": null
+						"alias": null,
+						"tags": null
 					},
 					{
 						"runtime": "go",
 						"module": "gotest.tools/gotestsum@v1.12.0",
-						"alias": null
+						"alias": null,
+						"tags": null
 					},
 					{
 						"runtime": "go",
 						"module": "github.com/hexdigest/gowrap/cmd/gowrap@v1.4.0",
-						"alias": null
+						"alias": null,
+						"tags": null
 					},
 					{
 						"runtime": "go",
 						"module": "github.com/vburenin/ifacemaker@v1.2.1",
-						"alias": null
+						"alias": null,
+						"tags": null
 					},
 					{
 						"runtime": "go",
 						"module": "github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0",
-						"alias": null
+						"alias": null,
+						"tags": null
 					}
 				],
 				"includes": null
-			}
+			},
+			"Tags": null
 		}
 	]
 }
