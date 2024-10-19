@@ -142,7 +142,7 @@ func (c *Workdir) Save() error {
 
 func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) (int, error) {
 	// Check that source is exists and valid.
-	remotes, err := fetchRemoteSpec(ctx, source, tags)
+	remotes, err := fetchRemoteSpec(ctx, source, tags, nil)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
@@ -357,7 +357,7 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 
 	var resRemotes []RemoteSpec
 	for _, inc := range c.Spec.Includes {
-		remotes, err := fetchRemoteSpec(ctx, inc.Src, inc.Tags)
+		remotes, err := fetchRemoteSpec(ctx, inc.Src, inc.Tags, nil)
 		if err != nil {
 			return fmt.Errorf("fetch remotes: %w", err)
 		}
@@ -380,7 +380,7 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 // CopySource will add all tools from source.
 // Source can be a path to file or a http url or git repo.
 func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) (int, error) {
-	specs, err := fetchRemoteSpec(ctx, source, tags)
+	specs, err := fetchRemoteSpec(ctx, source, tags, nil)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}

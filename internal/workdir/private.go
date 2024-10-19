@@ -256,7 +256,15 @@ func parseSourceURI(uri string) (SourceUri, error) {
 	}
 }
 
-func fetchRemoteSpec(ctx context.Context, source string, tags []string) ([]RemoteSpec, error) {
+func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded []string) ([]RemoteSpec, error) {
+	{
+		if slices.Contains(excluded, source) {
+			return []RemoteSpec{}, nil
+		}
+
+		excluded = append(excluded, source)
+	}
+
 	srcURI, err := parseSourceURI(source)
 	if err != nil {
 		return nil, fmt.Errorf("parse source uri: %w", err)
@@ -340,13 +348,16 @@ func fetchRemoteSpec(ctx context.Context, source string, tags []string) ([]Remot
 
 	var res []RemoteSpec
 	for _, inc := range spec.Includes {
-		// FIXME(zhuravlev): add cycle detection
-		incSpecs, err := fetchRemoteSpec(ctx, inc.Src, append(slices.Clone(tags), inc.Tags...))
+		remotes, err := fetchRemoteSpec(ctx, inc.Src, append(slices.Clone(tags), inc.Tags...), excluded)
 		if err != nil {
 			return nil, fmt.Errorf("fetch one of remotes (%s): %w", inc, err)
 		}
 
-		res = append(res, incSpecs...)
+		for _, remote := range remotes {
+			excluded = append(excluded, remote.Source)
+		}
+
+		res = append(res, remotes...)
 	}
 
 	return append(res, RemoteSpec{
