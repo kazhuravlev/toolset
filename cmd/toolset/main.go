@@ -67,7 +67,7 @@ func main() {
 			},
 			{
 				Name:   "sync",
-				Usage:  "install all required tools from " + workdir.SpecFilename,
+				Usage:  "install all required tools from toolset file",
 				Action: cmdSync,
 				Flags: []cli.Flag{
 					flagParallel,
