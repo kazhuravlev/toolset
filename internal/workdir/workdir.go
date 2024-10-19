@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -72,36 +73,38 @@ func NewContext() (*Context, error) {
 	{
 		bb, err := os.ReadFile(filepath.Join(baseDir, LockFilename))
 		if err != nil {
-			// NOTE(zhuravlev): Migration to new version.
-			if os.IsNotExist(err) {
-				fmt.Println("Migrate to `lock-based` version...")
+			// NOTE(zhuravlev): Migration: add lockfile.
+			{
+				if os.IsNotExist(err) {
+					fmt.Println("Migrate to `lock-based` version...")
 
-				toolsetFilenameBak := toolsetFilename + "_bak"
-				if err := os.Rename(toolsetFilename, toolsetFilenameBak); err != nil {
-					return nil, fmt.Errorf("migrate toolset to lockfile: %w", err)
+					toolsetFilenameBak := toolsetFilename + "_bak"
+					if err := os.Rename(toolsetFilename, toolsetFilenameBak); err != nil {
+						return nil, fmt.Errorf("migrate toolset to lockfile: %w", err)
+					}
+
+					if _, err := InitContext(baseDir); err != nil {
+						return nil, fmt.Errorf("re-init toolset: %w", err)
+					}
+
+					wCtx, err := NewContext()
+					if err != nil {
+						return nil, fmt.Errorf("new context in re-created workdir: %w", err)
+					}
+
+					for _, tool := range spec.Tools {
+						wCtx.Spec.Tools.Add(tool)
+						wCtx.Lock.Tools.Add(tool)
+					}
+
+					if err := wCtx.Save(); err != nil {
+						return nil, fmt.Errorf("save lock-based workdir: %w", err)
+					}
+
+					os.Remove(toolsetFilenameBak)
+
+					return wCtx, nil
 				}
-
-				if _, err := InitContext(baseDir); err != nil {
-					return nil, fmt.Errorf("re-init toolset: %w", err)
-				}
-
-				wCtx, err := NewContext()
-				if err != nil {
-					return nil, fmt.Errorf("new context in re-created workdir: %w", err)
-				}
-
-				for _, tool := range spec.Tools {
-					wCtx.Spec.Tools.Add(tool)
-					wCtx.Lock.Tools.Add(tool)
-				}
-
-				if err := wCtx.Save(); err != nil {
-					return nil, fmt.Errorf("save lock-based workdir: %w", err)
-				}
-
-				os.Remove(toolsetFilenameBak)
-
-				return wCtx, nil
 			}
 
 			return nil, fmt.Errorf("read lock file: %w", err)
@@ -143,14 +146,14 @@ func (c *Context) Save() error {
 	return nil
 }
 
-func (c *Context) AddInclude(ctx context.Context, source string) (int, error) {
+func (c *Context) AddInclude(ctx context.Context, source string, tags []string) (int, error) {
 	// Check that source is exists and valid.
-	remotes, err := fetchRemoteSpec(ctx, source)
+	remotes, err := fetchRemoteSpec(ctx, source, tags)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
 
-	wasAdded := c.Spec.AddInclude(Include(source))
+	wasAdded := c.Spec.AddInclude(Include{Src: source, Tags: tags})
 	if !wasAdded {
 		return 0, nil
 	}
@@ -160,6 +163,7 @@ func (c *Context) AddInclude(ctx context.Context, source string) (int, error) {
 	var count int
 	for _, remote := range remotes {
 		for _, tool := range remote.Spec.Tools {
+			tool.Tags = append(tool.Tags, remote.Tags...)
 			c.Lock.Tools.Add(tool)
 			count++
 		}
@@ -168,7 +172,7 @@ func (c *Context) AddInclude(ctx context.Context, source string) (int, error) {
 	return count, nil
 }
 
-func (c *Context) AddGo(ctx context.Context, goBinary string, alias optional.Val[string]) (bool, string, error) {
+func (c *Context) AddGo(ctx context.Context, goBinary string, alias optional.Val[string], tags []string) (bool, string, error) {
 	goBinaryWoVersion := strings.Split(goBinary, at)[0]
 
 	_, goModule, err := getGoModule(ctx, goBinary)
@@ -184,6 +188,7 @@ func (c *Context) AddGo(ctx context.Context, goBinary string, alias optional.Val
 		Runtime: RuntimeGo,
 		Module:  goBinary,
 		Alias:   alias,
+		Tags:    tags,
 	}
 	wasAdded := c.Spec.Tools.Add(tool)
 	if wasAdded {
@@ -250,7 +255,7 @@ func isExists(path string) bool {
 	return true
 }
 
-func (c *Context) Sync(ctx context.Context, maxWorkers int) error {
+func (c *Context) Sync(ctx context.Context, maxWorkers int, tags []string) error {
 	toolsDir := c.GetToolsDir()
 	if !isExists(toolsDir) {
 		fmt.Println("Target dir not exists. Creating...", toolsDir)
@@ -261,18 +266,15 @@ func (c *Context) Sync(ctx context.Context, maxWorkers int) error {
 
 	fmt.Println("Target dir:", toolsDir)
 
-	// TODO: remove all unknown aliases
-
 	{
 		c.Lock.Tools = make(Tools, 0)
 		for _, tool := range c.Spec.Tools {
 			c.Lock.Tools.Add(tool)
 		}
 
-		// FIXME(zhuravlev): remove deleted includes from lock file.
-
 		for _, remote := range c.Lock.Remotes {
 			for _, tool := range remote.Spec.Tools {
+				tool.Tags = append(tool.Tags, remote.Tags...)
 				c.Lock.Tools.Add(tool)
 			}
 		}
@@ -281,7 +283,7 @@ func (c *Context) Sync(ctx context.Context, maxWorkers int) error {
 	errs := make(chan error, len(c.Spec.Tools))
 
 	sem := semaphore.NewWeighted(int64(maxWorkers))
-	for _, tool := range c.Lock.Tools {
+	for _, tool := range c.Lock.Tools.Filter(tags) {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
 		if tool.Runtime != RuntimeGo {
 			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
@@ -330,8 +332,8 @@ func (c *Context) Sync(ctx context.Context, maxWorkers int) error {
 }
 
 // Upgrade will upgrade only spec tools. and re-fetch latest versions of includes.
-func (c *Context) Upgrade(ctx context.Context) error {
-	for _, tool := range c.Spec.Tools {
+func (c *Context) Upgrade(ctx context.Context, tags []string) error {
+	for _, tool := range c.Spec.Tools.Filter(tags) {
 		if tool.Runtime != RuntimeGo {
 			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
 		}
@@ -357,8 +359,8 @@ func (c *Context) Upgrade(ctx context.Context) error {
 	}
 
 	var resRemotes []RemoteSpec
-	for _, src := range c.Spec.Includes {
-		remotes, err := fetchRemoteSpec(ctx, string(src))
+	for _, inc := range c.Spec.Includes {
+		remotes, err := fetchRemoteSpec(ctx, inc.Src, inc.Tags)
 		if err != nil {
 			return fmt.Errorf("fetch remotes: %w", err)
 		}
@@ -367,6 +369,7 @@ func (c *Context) Upgrade(ctx context.Context) error {
 		resRemotes = append(resRemotes, remotes...)
 		for _, remote := range remotes {
 			for _, tool := range remote.Spec.Tools {
+				tool.Tags = append(tool.Tags, remote.Tags...)
 				c.Lock.Tools.Add(tool)
 			}
 		}
@@ -379,8 +382,8 @@ func (c *Context) Upgrade(ctx context.Context) error {
 
 // CopySource will add all tools from source.
 // Source can be a path to file or a http url.
-func (c *Context) CopySource(ctx context.Context, source string) (int, error) {
-	specs, err := fetchRemoteSpec(ctx, source)
+func (c *Context) CopySource(ctx context.Context, source string, tags []string) (int, error) {
+	specs, err := fetchRemoteSpec(ctx, source, tags)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
@@ -388,6 +391,7 @@ func (c *Context) CopySource(ctx context.Context, source string) (int, error) {
 	var count int
 	for _, spec := range specs {
 		for _, tool := range spec.Spec.Tools {
+			tool.Tags = append(tool.Tags, tags...)
 			if c.Spec.Tools.Add(tool) {
 				c.Lock.Tools.Add(tool)
 				count++
@@ -442,6 +446,7 @@ type Tool struct {
 	Module string `json:"module"`
 	// Alias create a link in tools. Works like exposing some tools
 	Alias optional.Val[string] `json:"alias"`
+	Tags  []string             `json:"tags"`
 }
 
 func (t Tool) IsSame(tool Tool) bool {
@@ -459,10 +464,36 @@ func (t Tool) IsSame(tool Tool) bool {
 	return m1 == m2
 }
 
-type Include string
+// TODO(zhuravlev): migrate from string to object
+type Include struct {
+	Src  string   `json:"src"`
+	Tags []string `json:"tags"`
+}
 
 func (i Include) IsSame(include Include) bool {
-	return i == include
+	return i.Src == include.Src
+}
+
+func (i *Include) UnmarshalJSON(bb []byte) error {
+	var incStruct struct {
+		Src  string   `json:"src"`
+		Tags []string `json:"tags"`
+	}
+	if err := json.Unmarshal(bb, &incStruct); err != nil {
+		// NOTE: Migration: probably this is an old version of include. This version is just a string.
+		var inc string
+		if errStr := json.Unmarshal(bb, &inc); errStr != nil {
+			return fmt.Errorf("unmarshal Include: %w", errors.Join(err, errStr))
+		}
+
+		i.Src = inc
+		i.Tags = []string{}
+		return nil
+	}
+
+	*i = incStruct
+
+	return nil
 }
 
 type Lock struct {
@@ -471,8 +502,9 @@ type Lock struct {
 }
 
 type RemoteSpec struct {
-	Source string
-	Spec   Spec
+	Source string   `json:"Source"` // TODO(zhuravlev): make it lowercase, add migration
+	Spec   Spec     `json:"Spec"`
+	Tags   []string `json:"Tags"`
 }
 
 type Tools []Tool
@@ -498,6 +530,27 @@ func (tools *Tools) AddOrUpdateTool(tool Tool) {
 	}
 
 	*tools = append(*tools, tool)
+}
+
+func (tools *Tools) Filter(tags []string) Tools {
+	if len(tags) == 0 {
+		return *tools
+	}
+
+	res := make(Tools, 0)
+
+	for _, t := range *tools {
+		isTarget := slices.ContainsFunc(t.Tags, func(tag string) bool {
+			return slices.Contains(tags, tag)
+		})
+		if !isTarget {
+			continue
+		}
+
+		res = append(res, t)
+	}
+
+	return res
 }
 
 type Spec struct {
@@ -778,7 +831,7 @@ func parseSourceURI(uri string) (SourceUri, error) {
 	}
 }
 
-func fetchRemoteSpec(ctx context.Context, source string) ([]RemoteSpec, error) {
+func fetchRemoteSpec(ctx context.Context, source string, tags []string) ([]RemoteSpec, error) {
 	srcURI, err := parseSourceURI(source)
 	if err != nil {
 		return nil, fmt.Errorf("parse source uri: %w", err)
@@ -863,7 +916,7 @@ func fetchRemoteSpec(ctx context.Context, source string) ([]RemoteSpec, error) {
 	var res []RemoteSpec
 	for _, inc := range spec.Includes {
 		// FIXME(zhuravlev): add cycle detection
-		incSpecs, err := fetchRemoteSpec(ctx, string(inc))
+		incSpecs, err := fetchRemoteSpec(ctx, inc.Src, append(slices.Clone(tags), inc.Tags...))
 		if err != nil {
 			return nil, fmt.Errorf("fetch one of remotes (%s): %w", inc, err)
 		}
@@ -874,5 +927,6 @@ func fetchRemoteSpec(ctx context.Context, source string) ([]RemoteSpec, error) {
 	return append(res, RemoteSpec{
 		Spec:   spec,
 		Source: source,
+		Tags:   tags,
 	}), nil
 }

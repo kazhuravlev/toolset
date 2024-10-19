@@ -60,9 +60,9 @@ toolset init .
 
 ### Add Tools
 
-### Directly to your config
+### Direct tools
 
-Add tools directly to your configuration.
+Explicitly add tool to your configuration. They have an priority on top of includes.
 
 ```shell
 # Add the latest version (automatically resolves to the most recent version)
@@ -103,12 +103,28 @@ toolset add --include git+ssh://git@gist.github.com:3f16049ce3f9f478e6b917237b2c
 toolset add --include git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git
 ```
 
+#### Add tags to tools
+
+Add one or more tags to each tool. It will allow you to install only selected tools. Tools that have a tag can be
+filtered in `toolset sync` and `toolset upgrade`. See the docs bellow.
+
+```shell 
+# Add linter to group `linters` and `ci`
+toolset add --tags linters,ci go github.com/golangci/golangci-lint/cmd/golangci-lint
+# Add tools to group `ci`
+toolset add --tags ci go github.com/jstemmer/go-junit-report/v2@latest
+toolset add --tags ci go github.com/boumenot/gocover-cobertura
+```
+
 ### Install tools
 
 Ensure all specified tools are installed or updated to the defined versions:
 
 ```shell
+# Make sure that all tools installed with a correct version.
 toolset sync
+# ...do it only for some set of tools
+toolset sync --tags linters
 ```
 
 By default, tools are installed into ./bin/tools.
@@ -126,7 +142,10 @@ toolset run golangci-lint run --fix ./...
 To upgrade all tools to their latest available versions, run:
 
 ```shell
+# Upgrade all tools
 toolset upgrade
+# Upgrade only specific tools
+toolset upgrade --tags ci
 ```
 
 This command ensures all tools in your toolset.json configuration are updated to the latest version.
