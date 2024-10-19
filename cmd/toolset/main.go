@@ -12,6 +12,7 @@ const (
 	keyParallel = "parallel"
 	keyCopyFrom = "copy-from"
 	keyInclude  = "include"
+	keyTags     = "tags"
 )
 
 var version = "unknown-dirty"
@@ -56,6 +57,11 @@ func main() {
 						Usage:    "specify addr to source file that will be included into current config",
 						Required: false,
 					},
+					&cli.StringSliceFlag{
+						Name:     keyTags,
+						Usage:    "add one or more tags to this tool",
+						Required: false,
+					},
 				},
 				Args: true,
 			},
@@ -63,7 +69,14 @@ func main() {
 				Name:   "sync",
 				Usage:  "install all required tools from " + workdir.SpecFilename,
 				Action: cmdSync,
-				Flags:  []cli.Flag{flagParallel},
+				Flags: []cli.Flag{
+					flagParallel,
+					&cli.StringSliceFlag{
+						Name:     keyTags,
+						Usage:    "filter tools by tags",
+						Required: false,
+					},
+				},
 			},
 			{
 				Name:   "run",
@@ -75,8 +88,15 @@ func main() {
 				Name:   "upgrade",
 				Usage:  "upgrade deps to the latest versions",
 				Action: cmdUpgrade,
-				Flags:  []cli.Flag{flagParallel},
-				Args:   true,
+				Flags: []cli.Flag{
+					flagParallel,
+					&cli.StringSliceFlag{
+						Name:     keyTags,
+						Usage:    "filter tools by tags",
+						Required: false,
+					},
+				},
+				Args: true,
 			},
 		},
 	}
@@ -104,13 +124,15 @@ func cmdInit(c *cli.Context) error {
 }
 
 func cmdAdd(c *cli.Context) error {
+	tags := c.StringSlice(keyTags)
+
 	wCtx, err := workdir.NewContext()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
 
 	if val := c.String(keyCopyFrom); val != "" {
-		count, err := wCtx.CopySource(c.Context, val)
+		count, err := wCtx.CopySource(c.Context, val, tags)
 		if err != nil {
 			return fmt.Errorf("copy: %w", err)
 		}
@@ -125,7 +147,7 @@ func cmdAdd(c *cli.Context) error {
 	}
 
 	if val := c.String(keyInclude); val != "" {
-		count, err := wCtx.AddInclude(c.Context, val)
+		count, err := wCtx.AddInclude(c.Context, val, tags)
 		if err != nil {
 			return fmt.Errorf("include: %w", err)
 		}
@@ -149,7 +171,7 @@ func cmdAdd(c *cli.Context) error {
 		return fmt.Errorf("no module name provided")
 	}
 
-	wasAdded, goBinaryWoVersion, err := wCtx.AddGo(c.Context, goBinary, optional.Empty[string]())
+	wasAdded, goBinaryWoVersion, err := wCtx.AddGo(c.Context, goBinary, optional.Empty[string](), tags)
 	if err != nil {
 		return fmt.Errorf("add go module: %w", err)
 	}
@@ -189,13 +211,14 @@ func cmdSync(c *cli.Context) error {
 	ctx := c.Context
 
 	maxWorkers := c.Int(keyParallel)
+	tags := c.StringSlice(keyTags)
 
 	wCtx, err := workdir.NewContext()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
 
-	if err := wCtx.Sync(ctx, maxWorkers); err != nil {
+	if err := wCtx.Sync(ctx, maxWorkers, tags); err != nil {
 		return fmt.Errorf("sync: %w", err)
 	}
 
@@ -210,13 +233,14 @@ func cmdUpgrade(c *cli.Context) error {
 	ctx := c.Context
 
 	maxWorkers := c.Int(keyParallel)
+	tags := c.StringSlice(keyTags)
 
 	wCtx, err := workdir.NewContext()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
 
-	if err := wCtx.Upgrade(c.Context); err != nil {
+	if err := wCtx.Upgrade(c.Context, tags); err != nil {
 		return fmt.Errorf("upgrade: %w", err)
 	}
 
@@ -224,7 +248,7 @@ func cmdUpgrade(c *cli.Context) error {
 		return fmt.Errorf("save context: %w", err)
 	}
 
-	if err := wCtx.Sync(ctx, maxWorkers); err != nil {
+	if err := wCtx.Sync(ctx, maxWorkers, tags); err != nil {
 		return fmt.Errorf("sync: %w", err)
 	}
 
