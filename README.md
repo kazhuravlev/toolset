@@ -158,7 +158,7 @@ Here’s an [example](./example) of a directory with the toolset. To try it out,
 
 ```shell
 git clone git@github.com:kazhuravlev/toolset.git
-cd toolset/examples
+cd toolset/example
 toolset sync
 toolset run gt --repo ../ tag last
 ```
