@@ -106,9 +106,35 @@ type Lock struct {
 }
 
 type RemoteSpec struct {
-	Source string   `json:"Source"` // TODO(zhuravlev): make it lowercase, add migration
-	Spec   Spec     `json:"Spec"`
-	Tags   []string `json:"Tags"`
+	Source string   `json:"source"`
+	Spec   Spec     `json:"spec"`
+	Tags   []string `json:"tags"`
+}
+
+func (r *RemoteSpec) UnmarshalJSON(bb []byte) error {
+	// NOTE(zhuravlev): this is migration from Tags to tags
+	var spec struct {
+		Source string   `json:"source"`
+		Spec   Spec     `json:"spec"`
+		Tags   []string `json:"tags"`
+	}
+	if err := json.Unmarshal(bb, &spec); err != nil {
+		var specOld struct {
+			Source string   `json:"Source"`
+			Spec   Spec     `json:"Spec"`
+			Tags   []string `json:"Tags"`
+		}
+		if errOld := json.Unmarshal(bb, &specOld); errOld != nil {
+			return fmt.Errorf("unmarshal RemoteSpec: %w", errors.Join(err, errOld))
+		}
+
+		*r = RemoteSpec(specOld)
+		return nil
+	}
+
+	*r = spec
+
+	return nil
 }
 
 type Tools []Tool
