@@ -388,7 +388,7 @@ func (c *Context) CopySource(ctx context.Context, source string, tags []string) 
 	return count, nil
 }
 
-// Init will initialize context in specified
+// Init will initialize context in specified directory.
 func Init(dir string) (string, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
