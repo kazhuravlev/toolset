@@ -15,9 +15,9 @@ import (
 
 const (
 	RuntimeGo       = "go"
-	SpecFilename    = ".toolset.json"
-	LockFilename    = ".toolset.lock.json"
-	DefaultToolsDir = "./bin/tools"
+	specFilename    = ".toolset.json"
+	lockFilename    = ".toolset.lock.json"
+	defaultToolsDir = "./bin/tools"
 )
 
 type Workdir struct {
@@ -28,7 +28,7 @@ type Workdir struct {
 
 func New() (*Workdir, error) {
 	// Make abs path to spec.
-	toolsetFilename, err := filepath.Abs(SpecFilename)
+	toolsetFilename, err := filepath.Abs(specFilename)
 	if err != nil {
 		return nil, fmt.Errorf("get abs spec path: %w", err)
 	}
@@ -41,7 +41,7 @@ func New() (*Workdir, error) {
 				return nil, errors.New("unable to find spec in fs tree")
 			}
 
-			toolsetFilename = filepath.Join(parentDir, SpecFilename)
+			toolsetFilename = filepath.Join(parentDir, specFilename)
 			continue
 		}
 
@@ -65,7 +65,7 @@ func New() (*Workdir, error) {
 
 	var lockFile Lock
 	{
-		bb, err := os.ReadFile(filepath.Join(baseDir, LockFilename))
+		bb, err := os.ReadFile(filepath.Join(baseDir, lockFilename))
 		if err != nil {
 			// NOTE(zhuravlev): Migration: add lockfile.
 			{
@@ -121,11 +121,11 @@ func (c *Workdir) GetToolsDir() string {
 }
 
 func (c *Workdir) SpecFilename() string {
-	return filepath.Join(c.Workdir, SpecFilename)
+	return filepath.Join(c.Workdir, specFilename)
 }
 
 func (c *Workdir) LockFilename() string {
-	return filepath.Join(c.Workdir, LockFilename)
+	return filepath.Join(c.Workdir, lockFilename)
 }
 
 func (c *Workdir) Save() error {
@@ -214,6 +214,7 @@ func (c *Workdir) FindTool(str string) (*Tool, error) {
 	return nil, fmt.Errorf("tool (%s) not found", str)
 }
 
+// RunTool will run a tool by its name and args.
 func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error {
 	tool, err := c.FindTool(str)
 	if err != nil {
@@ -241,6 +242,8 @@ func (c *Workdir) getToolDir(tool Tool) string {
 	}
 }
 
+// Sync will read the locked tools and try to install the desired version. It will skip the installation in
+// case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
 	toolsDir := c.GetToolsDir()
 	if !isExists(toolsDir) {
@@ -367,7 +370,7 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 }
 
 // CopySource will add all tools from source.
-// Source can be a path to file or a http url.
+// Source can be a path to file or a http url or git repo.
 func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) (int, error) {
 	specs, err := fetchRemoteSpec(ctx, source, tags)
 	if err != nil {
@@ -395,8 +398,8 @@ func Init(dir string) (string, error) {
 		return "", fmt.Errorf("get abs path: %w", err)
 	}
 
-	targetSpecFile := filepath.Join(dir, SpecFilename)
-	targetLockFile := filepath.Join(dir, LockFilename)
+	targetSpecFile := filepath.Join(dir, specFilename)
+	targetLockFile := filepath.Join(dir, lockFilename)
 
 	switch _, err := os.Stat(targetSpecFile); {
 	default:
@@ -405,7 +408,7 @@ func Init(dir string) (string, error) {
 		return "", errors.New("spec already exists")
 	case os.IsNotExist(err):
 		spec := Spec{
-			Dir:      DefaultToolsDir,
+			Dir:      defaultToolsDir,
 			Tools:    make([]Tool, 0),
 			Includes: make([]Include, 0),
 		}
