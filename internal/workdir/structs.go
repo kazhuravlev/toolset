@@ -69,7 +69,6 @@ func (t Tool) IsSame(tool Tool) bool {
 	return m1 == m2
 }
 
-// TODO(zhuravlev): migrate from string to object
 type Include struct {
 	Src  string   `json:"src"`
 	Tags []string `json:"tags"`
