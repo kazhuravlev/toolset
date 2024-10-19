@@ -229,7 +229,11 @@ func parseSourceURI(uri string) (SourceUri, error) {
 	default:
 		return nil, fmt.Errorf("unsupported source uri scheme (%s)", sourceURL.Scheme)
 	case "":
-		// TODO(zhuravlev): make path absolute
+		uri, err := filepath.Abs(uri)
+		if err != nil {
+			return nil, fmt.Errorf("resolve absolute path: %w", err)
+		}
+
 		return SourceUriFile{Path: uri}, nil
 	case "http", "https":
 		return SourceUriUrl{URL: uri}, nil
