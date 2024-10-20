@@ -12,15 +12,15 @@ import (
 	"time"
 )
 
-type goSrc struct {
-	Canonical string
-	Module    string
-	Version   string
-	Program   string
+type parsedMod struct {
+	Canonical string // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
+	Module    string // github.com/golangci/golangci-lint/cmd/golangci-lint
+	Version   string // v1.55.2
+	Program   string // golangci-lint
 }
 
 // parse will parse source string and try to extract all details about mentioned golang program.
-func parse(str string) (*goSrc, error) {
+func parse(str string) (*parsedMod, error) {
 	var canonical, module, version, program string
 
 	{
@@ -53,7 +53,7 @@ func parse(str string) (*goSrc, error) {
 
 	}
 
-	return &goSrc{
+	return &parsedMod{
 		Canonical: canonical,
 		Module:    module,
 		Version:   version,
@@ -61,7 +61,18 @@ func parse(str string) (*goSrc, error) {
 	}, nil
 }
 
-func getGoModule(ctx context.Context, link string) (*goModule, error) {
+type fetchedMod struct {
+	Version string    `json:"Version"`
+	Time    time.Time `json:"Time"`
+	Origin  struct {
+		VCS  string `json:"VCS"`
+		URL  string `json:"URL"`
+		Hash string `json:"Hash"`
+		Ref  string `json:"Ref"`
+	} `json:"Origin"`
+}
+
+func fetch(ctx context.Context, link string) (*fetchedMod, error) {
 	link = strings.Split(link, at)[0]
 
 	for {
@@ -92,7 +103,7 @@ func getGoModule(ctx context.Context, link string) (*goModule, error) {
 			return nil, fmt.Errorf("unable to get module: %s", resp.Status)
 		}
 
-		var mod goModule
+		var mod fetchedMod
 		if err := json.NewDecoder(resp.Body).Decode(&mod); err != nil {
 			return nil, fmt.Errorf("unable to decode module: %w", err)
 		}
@@ -101,37 +112,6 @@ func getGoModule(ctx context.Context, link string) (*goModule, error) {
 	}
 
 	return nil, errors.New("unknown module")
-}
-
-// getProgramName returns a binary name that installed by `go install`
-// github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2 ==> golangci-lint
-func getProgramName(mod string) string {
-	src, err := parse(mod)
-	if err != nil {
-		panic("unknown program")
-	}
-
-	return src.Program
-}
-
-// getGoModDir returns a dir that will keep all mod-related stuff for specific version.
-func getGoModDir(mod string) string {
-	binName := getProgramName(mod)
-	parts := strings.Split(mod, at)
-	version := parts[1]
-
-	return fmt.Sprintf(".%s___%s", binName, version)
-}
-
-type goModule struct {
-	Version string    `json:"Version"`
-	Time    time.Time `json:"Time"`
-	Origin  struct {
-		VCS  string `json:"VCS"`
-		URL  string `json:"URL"`
-		Hash string `json:"Hash"`
-		Ref  string `json:"Ref"`
-	} `json:"Origin"`
 }
 
 func isExists(path string) bool {
