@@ -174,3 +174,37 @@ type GoModule struct {
 		Ref  string `json:"Ref"`
 	} `json:"Origin"`
 }
+
+type Runtime struct {
+}
+
+func New() *Runtime {
+	return &Runtime{}
+}
+
+// Parse will parse string to normal version.
+// github.com/kazhuravlev/toolset/cmd/toolset@latest
+// github.com/kazhuravlev/toolset/cmd/toolset
+// github.com/kazhuravlev/toolset/cmd/toolset@v4.2
+func (r *Runtime) Parse(ctx context.Context, program string) (string, error) {
+	if program == "" {
+		return "", errors.New("program name not provided")
+	}
+
+	_, goModule, err := GetGoModule(ctx, program)
+	if err != nil {
+		return "", fmt.Errorf("get go module version: %w", err)
+	}
+
+	goBinaryWoVersion := strings.Split(program, At)[0]
+	if strings.Contains(program, "@latest") || !strings.Contains(program, At) {
+		program = fmt.Sprintf("%s%s%s", goBinaryWoVersion, At, goModule.Version)
+	}
+
+	return program, nil
+}
+
+func (r *Runtime) GetProgramDir(program string) string {
+	return GetGoModDir(program)
+}
+
