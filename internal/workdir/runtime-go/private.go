@@ -106,25 +106,12 @@ func getGoModule(ctx context.Context, link string) (*goModule, error) {
 // getProgramName returns a binary name that installed by `go install`
 // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2 ==> golangci-lint
 func getProgramName(mod string) string {
-	// github.com/user/repo@v1.0.0 => github.com/user/repo
-	if strings.Contains(mod, at) {
-		mod = strings.Split(mod, at)[0]
+	src, err := parse(mod)
+	if err != nil {
+		panic("unknown program")
 	}
 
-	// github.com/user/repo/cmd/program => program
-	if strings.Contains(mod, "/cmd/") {
-		mod = strings.Split(mod, "/cmd/")[1]
-		return filepath.Base(mod)
-	}
-
-	parts := strings.Split(mod, "/")
-	// github.com/user/repo/v3 => repo
-	if strings.HasPrefix(parts[len(parts)-1], "v") {
-		prevPart := parts[len(parts)-2]
-		return prevPart
-	}
-
-	return filepath.Base(mod)
+	return src.Program
 }
 
 // getGoModDir returns a dir that will keep all mod-related stuff for specific version.
