@@ -26,8 +26,26 @@ var flagParallel = &cli.IntFlag{
 
 func main() {
 	app := &cli.App{
-		Name:  "toolset",
-		Usage: "Manage local toolsets",
+		Name:                 "toolset",
+		Usage:                "Manage local toolsets",
+		EnableBashCompletion: true,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:   "generate-fish-completion",
+				Hidden: true,
+				Action: func(c *cli.Context, _ bool) error {
+					res, err := c.App.ToFishCompletion()
+					if err != nil {
+						return err
+					}
+
+					fmt.Println(res)
+
+					os.Exit(0)
+					return nil
+				},
+			},
+		},
 		Commands: []*cli.Command{
 			{
 				Name: "version",
