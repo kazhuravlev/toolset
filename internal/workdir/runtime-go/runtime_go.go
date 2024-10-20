@@ -77,17 +77,17 @@ func GetGoModule(ctx context.Context, link string) (string, *GoModule, error) {
 	return module, &mod, nil
 }
 
-func GetGoInstalledBinary(baseDir, goBinDir, mod string) string {
-	modDir := filepath.Join(baseDir, goBinDir, GetGoModDir(mod))
+func GetGoInstalledBinary(toolsDir, mod string) string {
+	modDir := filepath.Join(toolsDir, GetGoModDir(mod))
 	return filepath.Join(modDir, GetProgramName(mod))
 }
 
-func GoInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error {
+func GoInstall(toolsDir, mod string, alias optional.Val[string]) error {
 	const golang = "go"
 
-	installedPath := GetGoInstalledBinary(baseDir, goBinDir, mod)
+	installedPath := GetGoInstalledBinary(toolsDir, mod)
 
-	modDir := filepath.Join(baseDir, goBinDir, GetGoModDir(mod))
+	modDir := filepath.Join(toolsDir, GetGoModDir(mod))
 	if err := os.MkdirAll(modDir, 0o755); err != nil {
 		return fmt.Errorf("create mod dir (%s): %w", modDir, err)
 	}
@@ -116,7 +116,7 @@ func GoInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error 
 	}
 
 	if alias, ok := alias.Get(); ok {
-		targetPath := filepath.Join(baseDir, goBinDir, alias)
+		targetPath := filepath.Join(toolsDir, alias)
 		if _, err := os.Stat(targetPath); err == nil {
 			if err := os.Remove(targetPath); err != nil {
 				return fmt.Errorf("remove alias (%s): %w", targetPath, err)

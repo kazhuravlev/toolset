@@ -22,6 +22,8 @@ const (
 )
 
 type IRuntime interface {
+	// Sync(ctx context.Context, baseDir string, tool Tool) error
+	// GetLatestVersion(ctx context.Context, tool Tool) (*Tool, error)
 	Parse(ctx context.Context, program string) (string, error)
 	GetProgramDir(program string) string
 	GetProgramName(program string) string
@@ -226,7 +228,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return err
 	}
 
-	goBinary := runtimego.GetGoInstalledBinary(c.dir, c.spec.Dir, tool.Module)
+	goBinary := runtimego.GetGoInstalledBinary(c.getToolsDir(), tool.Module)
 	cmd := exec.CommandContext(ctx, goBinary, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -296,7 +298,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 		go func() {
 			defer sem.Release(1)
 
-			if err := runtimego.GoInstall(c.dir, tool.Module, c.spec.Dir, tool.Alias); err != nil {
+			if err := runtimego.GoInstall(c.getToolsDir(), tool.Module, tool.Alias); err != nil {
 				errs <- fmt.Errorf("install tool (%s): %w", tool.Module, err)
 			}
 		}()
