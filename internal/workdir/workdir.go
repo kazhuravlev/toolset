@@ -27,6 +27,7 @@ type IRuntime interface {
 	IsInstalled(program string) bool
 	Install(ctx context.Context, program string) error
 	Run(ctx context.Context, program string, args ...string) error
+	GetLatest(ctx context.Context, module string) (string, bool, error)
 }
 
 type Workdir struct {
@@ -342,21 +343,24 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 // Upgrade will upgrade only spec tools. and re-fetch latest versions of includes.
 func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 	for _, tool := range c.spec.Tools.Filter(tags) {
-		_, goModule, err := runtimego.GetGoModule(ctx, tool.Module)
-		if err != nil {
-			return fmt.Errorf("get go module version: %w", err)
+		// FIXME(zhuravlev): remove all "is runtime supported" checks by checking it once at spec load.
+		rt, ok := c.runtimes[tool.Runtime]
+		if !ok {
+			return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
 		}
 
-		goBinaryWoVersion := strings.Split(tool.Module, runtimego.At)[0]
-		latestModule := fmt.Sprintf("%s@%s", goBinaryWoVersion, goModule.Version)
+		module, haveUpdate, err := rt.GetLatest(ctx, tool.Module)
+		if err != nil {
+			return fmt.Errorf("get latest module: %w", err)
+		}
 
-		if tool.Module == latestModule {
+		if !haveUpdate {
 			continue
 		}
 
-		fmt.Println("Upgrade:", tool.Module, "=>", latestModule)
+		fmt.Println("Upgrade:", tool.Module, "=>", module)
 
-		tool.Module = latestModule
+		tool.Module = module
 
 		c.spec.Tools.AddOrUpdateTool(tool)
 		c.lock.Tools.AddOrUpdateTool(tool)
@@ -395,6 +399,7 @@ func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) 
 	for _, spec := range specs {
 		for _, tool := range spec.Spec.Tools {
 			tool.Tags = append(tool.Tags, tags...)
+			// TODO(zhuravlev): should we use an official way to add a tool (like `c.Add()`)?
 			if c.spec.Tools.Add(tool) {
 				c.lock.Tools.Add(tool)
 				count++

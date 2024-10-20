@@ -14,10 +14,10 @@ import (
 	"time"
 )
 
-const At = "@"
+const at = "@"
 
 func getGoModuleName(link string) (string, error) {
-	link = strings.Split(link, At)[0]
+	link = strings.Split(link, at)[0]
 
 	for {
 		// TODO: use a local proxy if configured.
@@ -44,7 +44,7 @@ func getGoModuleName(link string) (string, error) {
 	return "", errors.New("unknown module")
 }
 
-func GetGoModule(ctx context.Context, link string) (string, *GoModule, error) {
+func getGoModule(ctx context.Context, link string) (string, *GoModule, error) {
 	// FIXME: duplicated http request
 	module, err := getGoModuleName(link)
 	if err != nil {
@@ -80,8 +80,8 @@ func GetGoModule(ctx context.Context, link string) (string, *GoModule, error) {
 // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2 ==> golangci-lint
 func getProgramName(mod string) string {
 	// github.com/user/repo@v1.0.0 => github.com/user/repo
-	if strings.Contains(mod, At) {
-		mod = strings.Split(mod, At)[0]
+	if strings.Contains(mod, at) {
+		mod = strings.Split(mod, at)[0]
 	}
 
 	// github.com/user/repo/cmd/program => program
@@ -103,7 +103,7 @@ func getProgramName(mod string) string {
 // getGoModDir returns a dir that will keep all mod-related stuff for specific version.
 func getGoModDir(mod string) string {
 	binName := getProgramName(mod)
-	parts := strings.Split(mod, At)
+	parts := strings.Split(mod, at)
 	version := parts[1]
 
 	return fmt.Sprintf(".%s___%s", binName, version)
@@ -124,6 +124,22 @@ type Runtime struct {
 	baseDir string
 }
 
+func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, error) {
+	_, goModule, err := getGoModule(ctx, module)
+	if err != nil {
+		return "", false, fmt.Errorf("get go module: %w", err)
+	}
+
+	goBinaryWoVersion := strings.Split(module, at)[0]
+	latestModule := fmt.Sprintf("%s%s%s", goBinaryWoVersion, at, goModule.Version)
+
+	if module == latestModule {
+		return module, false, nil
+	}
+
+	return latestModule, true, nil
+}
+
 func (r *Runtime) GetProgramName(program string) string {
 	return getProgramName(program)
 }
@@ -141,14 +157,14 @@ func (r *Runtime) Parse(ctx context.Context, program string) (string, error) {
 		return "", errors.New("program name not provided")
 	}
 
-	_, goModule, err := GetGoModule(ctx, program)
+	_, goModule, err := getGoModule(ctx, program)
 	if err != nil {
 		return "", fmt.Errorf("get go module version: %w", err)
 	}
 
-	goBinaryWoVersion := strings.Split(program, At)[0]
-	if strings.Contains(program, "@latest") || !strings.Contains(program, At) {
-		program = fmt.Sprintf("%s%s%s", goBinaryWoVersion, At, goModule.Version)
+	goBinaryWoVersion := strings.Split(program, at)[0]
+	if strings.Contains(program, "@latest") || !strings.Contains(program, at) {
+		program = fmt.Sprintf("%s%s%s", goBinaryWoVersion, at, goModule.Version)
 	}
 
 	return program, nil
