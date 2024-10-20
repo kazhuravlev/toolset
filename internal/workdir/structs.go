@@ -47,6 +47,8 @@ func (t Tool) IsSame(tool Tool) bool {
 		return false
 	}
 
+	// FIXME(zhuravlev): make it runtime-agnostic
+
 	m1 := strings.Split(t.Module, "@")[0]
 	m2 := strings.Split(tool.Module, "@")[0]
 
