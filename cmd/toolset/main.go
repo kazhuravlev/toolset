@@ -128,7 +128,7 @@ func cmdAdd(c *cli.Context) error {
 
 	wd, err := workdir.New()
 	if err != nil {
-		return fmt.Errorf("new context: %w", err)
+		return fmt.Errorf("new workdir: %w", err)
 	}
 
 	if val := c.String(keyCopyFrom); val != "" {
@@ -190,7 +190,7 @@ func cmdRun(c *cli.Context) error {
 
 	wd, err := workdir.New()
 	if err != nil {
-		return fmt.Errorf("new context: %w", err)
+		return fmt.Errorf("new workdir: %w", err)
 	}
 
 	if err := wd.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
@@ -208,7 +208,7 @@ func cmdSync(c *cli.Context) error {
 
 	wd, err := workdir.New()
 	if err != nil {
-		return fmt.Errorf("new context: %w", err)
+		return fmt.Errorf("new workdir: %w", err)
 	}
 
 	if err := wd.Sync(ctx, maxWorkers, tags); err != nil {
@@ -230,7 +230,7 @@ func cmdUpgrade(c *cli.Context) error {
 
 	wd, err := workdir.New()
 	if err != nil {
-		return fmt.Errorf("new context: %w", err)
+		return fmt.Errorf("new workdir: %w", err)
 	}
 
 	if err := wd.Upgrade(c.Context, tags); err != nil {
