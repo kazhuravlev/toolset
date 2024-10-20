@@ -67,7 +67,7 @@ func main() {
 			},
 			{
 				Name:   "sync",
-				Usage:  "install all required tools from " + workdir.SpecFilename,
+				Usage:  "install all required tools from toolset file",
 				Action: cmdSync,
 				Flags: []cli.Flag{
 					flagParallel,
@@ -113,7 +113,7 @@ func cmdInit(c *cli.Context) error {
 		targetDir = "."
 	}
 
-	absSpecName, err := workdir.InitContext(targetDir)
+	absSpecName, err := workdir.Init(targetDir)
 	if err != nil {
 		return fmt.Errorf("init workdir: %w", err)
 	}
@@ -126,7 +126,7 @@ func cmdInit(c *cli.Context) error {
 func cmdAdd(c *cli.Context) error {
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.NewContext()
+	wCtx, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
@@ -162,18 +162,11 @@ func cmdAdd(c *cli.Context) error {
 	}
 
 	runtime := c.Args().First()
-	if runtime != workdir.RuntimeGo {
-		return fmt.Errorf("unsupported runtime: %s", runtime)
-	}
+	module := c.Args().Get(1)
 
-	goBinary := c.Args().Get(1)
-	if goBinary == "" {
-		return fmt.Errorf("no module name provided")
-	}
-
-	wasAdded, goBinaryWoVersion, err := wCtx.AddGo(c.Context, goBinary, optional.Empty[string](), tags)
+	wasAdded, mod, err := wCtx.Add(c.Context, runtime, module, optional.Empty[string](), tags)
 	if err != nil {
-		return fmt.Errorf("add go module: %w", err)
+		return fmt.Errorf("add module: %w", err)
 	}
 
 	if err := wCtx.Save(); err != nil {
@@ -181,9 +174,9 @@ func cmdAdd(c *cli.Context) error {
 	}
 
 	if !wasAdded {
-		fmt.Printf("tool already exists in toolset: %s\n", goBinaryWoVersion)
+		fmt.Printf("tool already exists in toolset: %s\n", mod)
 	} else {
-		fmt.Printf("tool added to toolset: %s\n", goBinaryWoVersion)
+		fmt.Printf("tool added to toolset: %s\n", mod)
 	}
 
 	return nil
@@ -195,7 +188,7 @@ func cmdRun(c *cli.Context) error {
 		return fmt.Errorf("target is required")
 	}
 
-	wCtx, err := workdir.NewContext()
+	wCtx, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
@@ -213,7 +206,7 @@ func cmdSync(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.NewContext()
+	wCtx, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
@@ -235,7 +228,7 @@ func cmdUpgrade(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.NewContext()
+	wCtx, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
