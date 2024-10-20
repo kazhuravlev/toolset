@@ -212,6 +212,12 @@ func (c *Workdir) FindTool(str string) (*Tool, error) {
 			return nil, fmt.Errorf("unsupported runtime: %s", tool.Runtime)
 		}
 
+		// ...by alias
+		if tool.Alias.HasVal() && tool.Alias.Val() == str {
+			return &tool, nil
+		}
+
+		// ...by canonical binary from module
 		if rt.GetProgramName(tool.Module) != str {
 			continue
 		}
