@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,40 +22,34 @@ func New(baseDir string) *Runtime {
 	return &Runtime{baseDir: baseDir}
 }
 
-func (r *Runtime) GetProgramName(program string) string {
-	return getProgramName(program)
-}
-
 // Parse will parse string to normal version.
 // github.com/kazhuravlev/toolset/cmd/toolset@latest
 // github.com/kazhuravlev/toolset/cmd/toolset
 // github.com/kazhuravlev/toolset/cmd/toolset@v4.2
-func (r *Runtime) Parse(ctx context.Context, program string) (string, error) {
-	if program == "" {
+func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
+	if str == "" {
 		return "", errors.New("program name not provided")
 	}
 
-	goModule, err := getGoModule(ctx, program)
+	goModule, err := getGoModule(ctx, str)
 	if err != nil {
 		return "", fmt.Errorf("get go module version: %w", err)
 	}
 
-	goBinaryWoVersion := strings.Split(program, at)[0]
-	if strings.Contains(program, "@latest") || !strings.Contains(program, at) {
-		program = fmt.Sprintf("%s%s%s", goBinaryWoVersion, at, goModule.Version)
+	goBinaryWoVersion := strings.Split(str, at)[0]
+	if strings.Contains(str, "@latest") || !strings.Contains(str, at) {
+		str = fmt.Sprintf("%s%s%s", goBinaryWoVersion, at, goModule.Version)
 	}
 
-	return program, nil
+	return str, nil
 }
 
-func (r *Runtime) GetProgramDir(program string) string {
-	return filepath.Join(r.baseDir, getGoModDir(program))
-}
-
-func (r *Runtime) IsInstalled(program string) bool {
-	programDir := filepath.Join(r.baseDir, r.GetProgramDir(program))
-
-	return isExists(programDir)
+func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.ModuleInfo, error) {
+	return &structs.ModuleInfo{
+		Name:        r.getProgramName(module),
+		BinaryPath:  r.getBinaryPath(module),
+		IsInstalled: isExists(r.getBinaryPath(module)),
+	}, nil
 }
 
 func (r *Runtime) Install(ctx context.Context, program string) error {
@@ -86,12 +81,8 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 	return nil
 }
 
-func (r *Runtime) GetBinaryPath(program string) string {
-	return filepath.Join(r.GetProgramDir(program), r.GetProgramName(program))
-}
-
 func (r *Runtime) Run(ctx context.Context, program string, args ...string) error {
-	programBinary := r.GetBinaryPath(program)
+	programBinary := r.getBinaryPath(program)
 	cmd := exec.CommandContext(ctx, programBinary, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -119,3 +110,12 @@ func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, e
 	return latestModule, true, nil
 }
 
+func (r *Runtime) getProgramName(program string) string {
+	return getProgramName(program)
+}
+
+func (r *Runtime) getBinaryPath(program string) string {
+	programDir := filepath.Join(r.baseDir, getGoModDir(program))
+
+	return filepath.Join(programDir, r.getProgramName(program))
+}
