@@ -165,6 +165,8 @@ toolset sync
 ls ./bin/tools
 # Run installed tool
 toolset run gt --repo ../ tag last
+# List installed tools
+toolset list
 ```
 
 ## Contributing
