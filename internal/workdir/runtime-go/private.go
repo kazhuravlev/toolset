@@ -12,6 +12,55 @@ import (
 	"time"
 )
 
+type goSrc struct {
+	Canonical string
+	Module    string
+	Version   string
+	Program   string
+}
+
+// parse will parse source string and try to extract all details about mentioned golang program.
+func parse(str string) (*goSrc, error) {
+	var canonical, module, version, program string
+
+	{
+		parts := strings.Split(str, at)
+		switch len(parts) {
+		default:
+			return nil, errors.New("invalid format")
+		case 1: // have no version. means latest
+			version = "latest"
+		case 2: // have version. parse it
+			version = parts[1]
+		}
+
+		module = parts[0]
+		canonical = module + at + version
+
+		// github.com/user/repo/cmd/program => program
+		if strings.Contains(module, "/cmd/") {
+			program = filepath.Base(strings.Split(module, "/cmd/")[1])
+		} else {
+			// github.com/user/repo/v3 => repo
+			parts := strings.Split(module, "/")
+			lastPart := parts[len(parts)-1]
+			if strings.HasPrefix(lastPart, "v") {
+				program = parts[len(parts)-2]
+			} else {
+				program = lastPart
+			}
+		}
+
+	}
+
+	return &goSrc{
+		Canonical: canonical,
+		Module:    module,
+		Version:   version,
+		Program:   program,
+	}, nil
+}
+
 func getGoModule(ctx context.Context, link string) (*goModule, error) {
 	link = strings.Split(link, at)[0]
 
