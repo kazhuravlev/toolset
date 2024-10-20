@@ -117,24 +117,24 @@ func New() (*Workdir, error) {
 	}, nil
 }
 
-func (c *Workdir) GetToolsDir() string {
+func (c *Workdir) getToolsDir() string {
 	return filepath.Join(c.dir, c.spec.Dir)
 }
 
-func (c *Workdir) SpecFilename() string {
+func (c *Workdir) getSpecFilename() string {
 	return filepath.Join(c.dir, specFilename)
 }
 
-func (c *Workdir) LockFilename() string {
+func (c *Workdir) getLockFilename() string {
 	return filepath.Join(c.dir, lockFilename)
 }
 
 func (c *Workdir) Save() error {
-	if err := writeJson(*c.spec, c.SpecFilename()); err != nil {
+	if err := writeJson(*c.spec, c.getSpecFilename()); err != nil {
 		return fmt.Errorf("write spec: %w", err)
 	}
 
-	if err := writeJson(*c.lock, c.LockFilename()); err != nil {
+	if err := writeJson(*c.lock, c.getLockFilename()); err != nil {
 		return fmt.Errorf("write lock: %w", err)
 	}
 
@@ -247,14 +247,14 @@ func (c *Workdir) getToolDir(tool Tool) string {
 	default:
 		panic("unknown runtime")
 	case runtimeGo:
-		return filepath.Join(c.GetToolsDir(), runtimego.GetGoModDir(tool.Module))
+		return filepath.Join(c.getToolsDir(), runtimego.GetGoModDir(tool.Module))
 	}
 }
 
 // Sync will read the locked tools and try to install the desired version. It will skip the installation in
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
-	toolsDir := c.GetToolsDir()
+	toolsDir := c.getToolsDir()
 	if !isExists(toolsDir) {
 		fmt.Println("Target dir not exists. Creating...", toolsDir)
 		if err := os.MkdirAll(toolsDir, 0o755); err != nil {
