@@ -22,7 +22,7 @@ func New(baseDir string) *Runtime {
 }
 
 func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, error) {
-	_, goModule, err := getGoModule(ctx, module)
+	goModule, err := getGoModuleName(ctx, module)
 	if err != nil {
 		return "", false, fmt.Errorf("get go module: %w", err)
 	}
@@ -50,7 +50,7 @@ func (r *Runtime) Parse(ctx context.Context, program string) (string, error) {
 		return "", errors.New("program name not provided")
 	}
 
-	_, goModule, err := getGoModule(ctx, program)
+	goModule, err := getGoModuleName(ctx, program)
 	if err != nil {
 		return "", fmt.Errorf("get go module version: %w", err)
 	}
