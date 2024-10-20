@@ -78,8 +78,8 @@ func GetGoModule(ctx context.Context, link string) (string, *GoModule, error) {
 }
 
 func GetGoInstalledBinary(toolsDir, mod string) string {
-	modDir := filepath.Join(toolsDir, GetGoModDir(mod))
-	return filepath.Join(modDir, GetProgramName(mod))
+	modDir := filepath.Join(toolsDir, getGoModDir(mod))
+	return filepath.Join(modDir, getProgramName(mod))
 }
 
 func GoInstall(toolsDir, mod string, alias optional.Val[string]) error {
@@ -87,7 +87,7 @@ func GoInstall(toolsDir, mod string, alias optional.Val[string]) error {
 
 	installedPath := GetGoInstalledBinary(toolsDir, mod)
 
-	modDir := filepath.Join(toolsDir, GetGoModDir(mod))
+	modDir := filepath.Join(toolsDir, getGoModDir(mod))
 	if err := os.MkdirAll(modDir, 0o755); err != nil {
 		return fmt.Errorf("create mod dir (%s): %w", modDir, err)
 	}
@@ -131,9 +131,9 @@ func GoInstall(toolsDir, mod string, alias optional.Val[string]) error {
 	return nil
 }
 
-// GetProgramName returns a binary name that installed by `go install`
+// getProgramName returns a binary name that installed by `go install`
 // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2 ==> golangci-lint
-func GetProgramName(mod string) string {
+func getProgramName(mod string) string {
 	// github.com/user/repo@v1.0.0 => github.com/user/repo
 	if strings.Contains(mod, At) {
 		mod = strings.Split(mod, At)[0]
@@ -155,9 +155,9 @@ func GetProgramName(mod string) string {
 	return filepath.Base(mod)
 }
 
-// GetGoModDir returns a dir that will keep all mod-related stuff for specific version.
-func GetGoModDir(mod string) string {
-	binName := GetProgramName(mod)
+// getGoModDir returns a dir that will keep all mod-related stuff for specific version.
+func getGoModDir(mod string) string {
+	binName := getProgramName(mod)
 	parts := strings.Split(mod, At)
 	version := parts[1]
 
@@ -179,7 +179,7 @@ type Runtime struct {
 }
 
 func (r *Runtime) GetProgramName(program string) string {
-	return GetProgramName(program)
+	return getProgramName(program)
 }
 
 func New() *Runtime {
@@ -209,7 +209,7 @@ func (r *Runtime) Parse(ctx context.Context, program string) (string, error) {
 }
 
 func (r *Runtime) GetProgramDir(program string) string {
-	return GetGoModDir(program)
+	return getGoModDir(program)
 }
 
 //func (r *Runtime) Sync(ctx context.Context, baseDir string, tool workdir.Tool) error {
