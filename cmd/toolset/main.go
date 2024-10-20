@@ -126,18 +126,18 @@ func cmdInit(c *cli.Context) error {
 func cmdAdd(c *cli.Context) error {
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.New()
+	wd, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
 
 	if val := c.String(keyCopyFrom); val != "" {
-		count, err := wCtx.CopySource(c.Context, val, tags)
+		count, err := wd.CopySource(c.Context, val, tags)
 		if err != nil {
 			return fmt.Errorf("copy: %w", err)
 		}
 
-		if err := wCtx.Save(); err != nil {
+		if err := wd.Save(); err != nil {
 			return fmt.Errorf("save workdir: %w", err)
 		}
 
@@ -147,12 +147,12 @@ func cmdAdd(c *cli.Context) error {
 	}
 
 	if val := c.String(keyInclude); val != "" {
-		count, err := wCtx.AddInclude(c.Context, val, tags)
+		count, err := wd.AddInclude(c.Context, val, tags)
 		if err != nil {
 			return fmt.Errorf("include: %w", err)
 		}
 
-		if err := wCtx.Save(); err != nil {
+		if err := wd.Save(); err != nil {
 			return fmt.Errorf("save workdir: %w", err)
 		}
 
@@ -164,12 +164,12 @@ func cmdAdd(c *cli.Context) error {
 	runtime := c.Args().First()
 	module := c.Args().Get(1)
 
-	wasAdded, mod, err := wCtx.Add(c.Context, runtime, module, optional.Empty[string](), tags)
+	wasAdded, mod, err := wd.Add(c.Context, runtime, module, optional.Empty[string](), tags)
 	if err != nil {
 		return fmt.Errorf("add module: %w", err)
 	}
 
-	if err := wCtx.Save(); err != nil {
+	if err := wd.Save(); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
 
@@ -188,12 +188,12 @@ func cmdRun(c *cli.Context) error {
 		return fmt.Errorf("target is required")
 	}
 
-	wCtx, err := workdir.New()
+	wd, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
 
-	if err := wCtx.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
+	if err := wd.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
 		return fmt.Errorf("run tool: %w", err)
 	}
 
@@ -206,16 +206,16 @@ func cmdSync(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.New()
+	wd, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
 
-	if err := wCtx.Sync(ctx, maxWorkers, tags); err != nil {
+	if err := wd.Sync(ctx, maxWorkers, tags); err != nil {
 		return fmt.Errorf("sync: %w", err)
 	}
 
-	if err := wCtx.Save(); err != nil {
+	if err := wd.Save(); err != nil {
 		return fmt.Errorf("save: %w", err)
 	}
 
@@ -228,24 +228,24 @@ func cmdUpgrade(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.New()
+	wd, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new context: %w", err)
 	}
 
-	if err := wCtx.Upgrade(c.Context, tags); err != nil {
+	if err := wd.Upgrade(c.Context, tags); err != nil {
 		return fmt.Errorf("upgrade: %w", err)
 	}
 
-	if err := wCtx.Save(); err != nil {
+	if err := wd.Save(); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
 
-	if err := wCtx.Sync(ctx, maxWorkers, tags); err != nil {
+	if err := wd.Sync(ctx, maxWorkers, tags); err != nil {
 		return fmt.Errorf("sync: %w", err)
 	}
 
-	if err := wCtx.Save(); err != nil {
+	if err := wd.Save(); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
 
