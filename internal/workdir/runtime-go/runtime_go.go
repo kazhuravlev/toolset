@@ -31,14 +31,18 @@ func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
 		return "", errors.New("program name not provided")
 	}
 
-	goModule, err := fetch(ctx, str)
+	mod, err := parse(str)
+	if err != nil {
+		return "", fmt.Errorf("parse program: %w", err)
+	}
+
+	goModule, err := fetch(ctx, mod.Canonical)
 	if err != nil {
 		return "", fmt.Errorf("get go module version: %w", err)
 	}
 
-	goBinaryWoVersion := strings.Split(str, at)[0]
-	if strings.Contains(str, "@latest") || !strings.Contains(str, at) {
-		str = fmt.Sprintf("%s%s%s", goBinaryWoVersion, at, goModule.Version)
+	if mod.Version == "latest" {
+		return fmt.Sprintf("%s%s%s", mod.Module, at, goModule.Version), nil
 	}
 
 	return str, nil
@@ -55,8 +59,8 @@ func (r *Runtime) GetModule(_ context.Context, module string) (*structs.ModuleIn
 
 	return &structs.ModuleInfo{
 		Name:        mod.Program,
-		BinaryDir:   programDir,
-		BinaryPath:  programBinary,
+		BinDir:      programDir,
+		BinPath:     programBinary,
 		IsInstalled: isExists(programBinary),
 	}, nil
 }
@@ -69,12 +73,12 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 		return fmt.Errorf("get go module (%s): %w", program, err)
 	}
 
-	if err := os.MkdirAll(mod.BinaryDir, 0o755); err != nil {
-		return fmt.Errorf("create mod dir (%s): %w", mod.BinaryDir, err)
+	if err := os.MkdirAll(mod.BinDir, 0o755); err != nil {
+		return fmt.Errorf("create mod dir (%s): %w", mod.BinDir, err)
 	}
 
 	cmd := exec.CommandContext(ctx, golang, "install", program)
-	cmd.Env = append(os.Environ(), "GOBIN="+mod.BinaryDir)
+	cmd.Env = append(os.Environ(), "GOBIN="+mod.BinDir)
 
 	lp, _ := exec.LookPath(golang)
 	if lp != "" {
@@ -100,7 +104,7 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 		return fmt.Errorf("get go module (%s): %w", program, err)
 	}
 
-	programBinary := mod.BinaryPath
+	programBinary := mod.BinPath
 	cmd := exec.CommandContext(ctx, programBinary, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
