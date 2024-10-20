@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/kazhuravlev/optional"
 	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
+	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"golang.org/x/sync/semaphore"
 	"os"
 	"path/filepath"
@@ -191,7 +192,7 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 		return false, "", fmt.Errorf("parse program: %w", err)
 	}
 
-	tool := Tool{
+	tool := structs.Tool{
 		Runtime: runtime,
 		Module:  program,
 		Alias:   alias,
@@ -205,7 +206,7 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 	return wasAdded, program, nil
 }
 
-func (c *Workdir) FindTool(str string) (*Tool, error) {
+func (c *Workdir) FindTool(str string) (*structs.Tool, error) {
 	for _, tool := range c.lock.Tools {
 		rt, ok := c.runtimes[tool.Runtime]
 		if !ok {
@@ -261,7 +262,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 	fmt.Println("Target dir:", toolsDir)
 
 	{
-		c.lock.Tools = make(Tools, 0)
+		c.lock.Tools = make(structs.Tools, 0)
 		for _, tool := range c.spec.Tools {
 			c.lock.Tools.Add(tool)
 		}
@@ -428,7 +429,7 @@ func Init(dir string) (string, error) {
 	case os.IsNotExist(err):
 		spec := Spec{
 			Dir:      defaultToolsDir,
-			Tools:    make([]Tool, 0),
+			Tools:    make(structs.Tools, 0),
 			Includes: make([]Include, 0),
 		}
 		if err := writeJson(spec, targetSpecFile); err != nil {
@@ -436,7 +437,7 @@ func Init(dir string) (string, error) {
 		}
 
 		lock := Lock{
-			Tools:   make([]Tool, 0),
+			Tools:   make(structs.Tools, 0),
 			Remotes: make([]RemoteSpec, 0),
 		}
 		if err := writeJson(lock, targetLockFile); err != nil {
