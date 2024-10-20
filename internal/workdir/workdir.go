@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	runtimeGo       = "go"
 	specFilename    = ".toolset.json"
 	lockFilename    = ".toolset.lock.json"
 	defaultToolsDir = "./bin/tools"
@@ -27,6 +26,7 @@ type IRuntime interface {
 	Parse(ctx context.Context, program string) (string, error)
 	GetProgramDir(program string) string
 	GetProgramName(program string) string
+	IsInstalled(program string) bool
 }
 
 type Workdir struct {
@@ -124,7 +124,7 @@ func New() (*Workdir, error) {
 		spec: spec,
 		lock: &lockFile,
 		runtimes: map[string]IRuntime{
-			"go": runtimego.New(),
+			"go": runtimego.New(filepath.Join(baseDir, spec.Dir)),
 		},
 	}, nil
 }
@@ -240,15 +240,6 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 	return nil
 }
 
-func (c *Workdir) getToolDir(tool Tool) string {
-	rt, ok := c.runtimes[tool.Runtime]
-	if !ok {
-		panic("unknown runtime:" + tool.Runtime)
-	}
-
-	return filepath.Join(c.getToolsDir(), rt.GetProgramDir(tool.Module))
-}
-
 // Sync will read the locked tools and try to install the desired version. It will skip the installation in
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
@@ -282,12 +273,13 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 	for _, tool := range c.lock.Tools.Filter(tags) {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
 
-		if !strings.Contains(tool.Module, runtimego.At) {
-			return fmt.Errorf("go tool (%s) must have a version, at least `latest`", tool.Module)
+		rt, ok := c.runtimes[tool.Runtime]
+		if !ok {
+			return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
 		}
 
 		// NOTE(zhuravlev): do not install tool in case it's directory is exists.
-		if isExists(c.getToolDir(tool)) {
+		if rt.IsInstalled(tool.Module) {
 			continue
 		}
 

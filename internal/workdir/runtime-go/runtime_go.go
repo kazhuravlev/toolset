@@ -176,14 +176,15 @@ type GoModule struct {
 }
 
 type Runtime struct {
+	baseDir string
 }
 
 func (r *Runtime) GetProgramName(program string) string {
 	return getProgramName(program)
 }
 
-func New() *Runtime {
-	return &Runtime{}
+func New(baseDir string) *Runtime {
+	return &Runtime{baseDir: baseDir}
 }
 
 // Parse will parse string to normal version.
@@ -212,10 +213,16 @@ func (r *Runtime) GetProgramDir(program string) string {
 	return getGoModDir(program)
 }
 
-//func (r *Runtime) Sync(ctx context.Context, baseDir string, tool workdir.Tool) error {
-//	return nil
-//}
-//
-//func (r *Runtime) GetLatestVersion(ctx context.Context, tool workdir.Tool) (*workdir.Tool, error) {
-//	return &tool, nil
-//}
+func (r *Runtime) IsInstalled(program string) bool {
+	programDir := filepath.Join(r.baseDir, r.GetProgramDir(program))
+
+	return isExists(programDir)
+}
+
+func isExists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+
+	return true
+}
