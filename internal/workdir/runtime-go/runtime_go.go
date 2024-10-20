@@ -79,7 +79,7 @@ func GetGoModule(ctx context.Context, link string) (string, *GoModule, error) {
 
 func GetGoInstalledBinary(baseDir, goBinDir, mod string) string {
 	modDir := filepath.Join(baseDir, goBinDir, GetGoModDir(mod))
-	return filepath.Join(modDir, GetGoBinFromMod(mod))
+	return filepath.Join(modDir, GetProgramName(mod))
 }
 
 func GoInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error {
@@ -131,15 +131,15 @@ func GoInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error 
 	return nil
 }
 
-// GetGoBinFromMod returns a binary name that installed by `go install`
+// GetProgramName returns a binary name that installed by `go install`
 // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2 ==> golangci-lint
-func GetGoBinFromMod(mod string) string {
+func GetProgramName(mod string) string {
 	// github.com/user/repo@v1.0.0 => github.com/user/repo
 	if strings.Contains(mod, At) {
 		mod = strings.Split(mod, At)[0]
 	}
 
-	// github.com/user/repo/cmd/some/program => program
+	// github.com/user/repo/cmd/program => program
 	if strings.Contains(mod, "/cmd/") {
 		mod = strings.Split(mod, "/cmd/")[1]
 		return filepath.Base(mod)
@@ -157,7 +157,7 @@ func GetGoBinFromMod(mod string) string {
 
 // GetGoModDir returns a dir that will keep all mod-related stuff for specific version.
 func GetGoModDir(mod string) string {
-	binName := GetGoBinFromMod(mod)
+	binName := GetProgramName(mod)
 	parts := strings.Split(mod, At)
 	version := parts[1]
 
@@ -176,6 +176,10 @@ type GoModule struct {
 }
 
 type Runtime struct {
+}
+
+func (r *Runtime) GetProgramName(program string) string {
+	return GetProgramName(program)
 }
 
 func New() *Runtime {
@@ -208,3 +212,10 @@ func (r *Runtime) GetProgramDir(program string) string {
 	return GetGoModDir(program)
 }
 
+//func (r *Runtime) Sync(ctx context.Context, baseDir string, tool workdir.Tool) error {
+//	return nil
+//}
+//
+//func (r *Runtime) GetLatestVersion(ctx context.Context, tool workdir.Tool) (*workdir.Tool, error) {
+//	return &tool, nil
+//}

@@ -24,6 +24,7 @@ const (
 type IRuntime interface {
 	Parse(ctx context.Context, program string) (string, error)
 	GetProgramDir(program string) string
+	GetProgramName(program string) string
 }
 
 type Workdir struct {
@@ -203,13 +204,12 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 
 func (c *Workdir) FindTool(str string) (*Tool, error) {
 	for _, tool := range c.lock.Tools {
-		// TODO(zhuravlev): do a validation before any actions
-		if !strings.Contains(tool.Module, runtimego.At) {
-			return nil, fmt.Errorf("go tool (%s) must have a version, at least `latest`", tool.Module)
+		rt, ok := c.runtimes[tool.Runtime]
+		if !ok {
+			return nil, fmt.Errorf("unsupported runtime: %s", tool.Runtime)
 		}
 
-		binName := runtimego.GetGoBinFromMod(tool.Module)
-		if binName != str {
+		if rt.GetProgramName(tool.Module) != str {
 			continue
 		}
 
