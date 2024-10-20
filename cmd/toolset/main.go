@@ -164,7 +164,7 @@ func cmdAdd(c *cli.Context) error {
 	runtime := c.Args().First()
 	module := c.Args().Get(1)
 
-	wasAdded, goBinaryWoVersion, err := wCtx.Add(c.Context, runtime, module, optional.Empty[string](), tags)
+	wasAdded, mod, err := wCtx.Add(c.Context, runtime, module, optional.Empty[string](), tags)
 	if err != nil {
 		return fmt.Errorf("add module: %w", err)
 	}
@@ -174,9 +174,9 @@ func cmdAdd(c *cli.Context) error {
 	}
 
 	if !wasAdded {
-		fmt.Printf("tool already exists in toolset: %s\n", goBinaryWoVersion)
+		fmt.Printf("tool already exists in toolset: %s\n", mod)
 	} else {
-		fmt.Printf("tool added to toolset: %s\n", goBinaryWoVersion)
+		fmt.Printf("tool added to toolset: %s\n", mod)
 	}
 
 	return nil
