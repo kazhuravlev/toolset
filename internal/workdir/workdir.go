@@ -203,10 +203,6 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 
 func (c *Workdir) FindTool(str string) (*Tool, error) {
 	for _, tool := range c.lock.Tools {
-		if tool.Runtime != runtimeGo {
-			continue
-		}
-
 		// TODO(zhuravlev): do a validation before any actions
 		if !strings.Contains(tool.Module, runtimego.At) {
 			return nil, fmt.Errorf("go tool (%s) must have a version, at least `latest`", tool.Module)
@@ -283,9 +279,6 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 	sem := semaphore.NewWeighted(int64(maxWorkers))
 	for _, tool := range c.lock.Tools.Filter(tags) {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
-		if tool.Runtime != runtimeGo {
-			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
-		}
 
 		if !strings.Contains(tool.Module, runtimego.At) {
 			return fmt.Errorf("go tool (%s) must have a version, at least `latest`", tool.Module)
@@ -332,10 +325,6 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 // Upgrade will upgrade only spec tools. and re-fetch latest versions of includes.
 func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 	for _, tool := range c.spec.Tools.Filter(tags) {
-		if tool.Runtime != runtimeGo {
-			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
-		}
-
 		_, goModule, err := runtimego.GetGoModule(ctx, tool.Module)
 		if err != nil {
 			return fmt.Errorf("get go module version: %w", err)

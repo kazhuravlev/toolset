@@ -43,10 +43,6 @@ type Tool struct {
 }
 
 func (t Tool) IsSame(tool Tool) bool {
-	if t.Runtime != runtimeGo {
-		panic("not implemented")
-	}
-
 	if t.Runtime != tool.Runtime {
 		return false
 	}
