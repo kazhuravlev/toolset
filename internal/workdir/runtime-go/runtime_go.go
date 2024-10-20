@@ -17,7 +17,7 @@ import (
 
 const At = "@"
 
-func GetGoModuleName(link string) (string, error) {
+func getGoModuleName(link string) (string, error) {
 	link = strings.Split(link, At)[0]
 
 	for {
@@ -46,7 +46,8 @@ func GetGoModuleName(link string) (string, error) {
 }
 
 func GetGoModule(ctx context.Context, link string) (string, *GoModule, error) {
-	module, err := GetGoModuleName(link)
+	// FIXME: duplicated http request
+	module, err := getGoModuleName(link)
 	if err != nil {
 		return "", nil, fmt.Errorf("get go module name: %w", err)
 	}
