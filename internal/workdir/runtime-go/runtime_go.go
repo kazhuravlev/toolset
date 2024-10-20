@@ -197,6 +197,19 @@ func (r *Runtime) GetBinaryPath(program string) string {
 	return filepath.Join(r.GetProgramDir(program), r.GetProgramName(program))
 }
 
+func (r *Runtime) Run(ctx context.Context, program string, args ...string) error {
+	programBinary := r.GetBinaryPath(program)
+	cmd := exec.CommandContext(ctx, programBinary, args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("run (%s): %w", program, err)
+	}
+
+	return nil
+}
+
 func isExists(path string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false

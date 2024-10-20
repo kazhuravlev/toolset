@@ -9,7 +9,6 @@ import (
 	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
 	"golang.org/x/sync/semaphore"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -27,6 +26,7 @@ type IRuntime interface {
 	GetBinaryPath(program string) string
 	IsInstalled(program string) bool
 	Install(ctx context.Context, program string) error
+	Run(ctx context.Context, program string, args ...string) error
 }
 
 type Workdir struct {
@@ -239,12 +239,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
 	}
 
-	programBinary := rt.GetBinaryPath(tool.Module)
-	cmd := exec.CommandContext(ctx, programBinary, args...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err := rt.Run(ctx, tool.Module, args...); err != nil {
 		return fmt.Errorf("run tool: %w", err)
 	}
 
