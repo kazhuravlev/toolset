@@ -21,22 +21,6 @@ func New(baseDir string) *Runtime {
 	return &Runtime{baseDir: baseDir}
 }
 
-func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, error) {
-	goModule, err := getGoModule(ctx, module)
-	if err != nil {
-		return "", false, fmt.Errorf("get go module: %w", err)
-	}
-
-	goBinaryWoVersion := strings.Split(module, at)[0]
-	latestModule := fmt.Sprintf("%s%s%s", goBinaryWoVersion, at, goModule.Version)
-
-	if module == latestModule {
-		return module, false, nil
-	}
-
-	return latestModule, true, nil
-}
-
 func (r *Runtime) GetProgramName(program string) string {
 	return getProgramName(program)
 }
@@ -118,3 +102,20 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 
 	return nil
 }
+
+func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, error) {
+	goModule, err := getGoModule(ctx, module)
+	if err != nil {
+		return "", false, fmt.Errorf("get go module: %w", err)
+	}
+
+	goBinaryWoVersion := strings.Split(module, at)[0]
+	latestModule := fmt.Sprintf("%s%s%s", goBinaryWoVersion, at, goModule.Version)
+
+	if module == latestModule {
+		return module, false, nil
+	}
+
+	return latestModule, true, nil
+}
+
