@@ -74,3 +74,10 @@ func (tools *Tools) Filter(tags []string) Tools {
 
 	return res
 }
+
+type ModuleInfo struct {
+	Name        string
+	BinaryPath  string
+	IsInstalled bool
+}
+
