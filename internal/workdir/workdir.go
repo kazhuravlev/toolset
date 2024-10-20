@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kazhuravlev/optional"
+	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
 	"golang.org/x/sync/semaphore"
 	"os"
 	"os/exec"
@@ -175,14 +176,14 @@ func (c *Workdir) Add(ctx context.Context, runtime, goBinary string, alias optio
 		return false, "", errors.New("golang binary not provided")
 	}
 
-	goBinaryWoVersion := strings.Split(goBinary, at)[0]
+	goBinaryWoVersion := strings.Split(goBinary, runtimego.At)[0]
 
-	_, goModule, err := getGoModule(ctx, goBinary)
+	_, goModule, err := runtimego.GetGoModule(ctx, goBinary)
 	if err != nil {
 		return false, "", fmt.Errorf("get go module version: %w", err)
 	}
 
-	if strings.Contains(goBinary, "@latest") || !strings.Contains(goBinary, at) {
+	if strings.Contains(goBinary, "@latest") || !strings.Contains(goBinary, runtimego.At) {
 		goBinary = fmt.Sprintf("%s@%s", goBinaryWoVersion, goModule.Version)
 	}
 
@@ -207,11 +208,11 @@ func (c *Workdir) FindTool(str string) (*Tool, error) {
 		}
 
 		// TODO(zhuravlev): do a validation before any actions
-		if !strings.Contains(tool.Module, at) {
+		if !strings.Contains(tool.Module, runtimego.At) {
 			return nil, fmt.Errorf("go tool (%s) must have a version, at least `latest`", tool.Module)
 		}
 
-		binName := getGoBinFromMod(tool.Module)
+		binName := runtimego.GetGoBinFromMod(tool.Module)
 		if binName != str {
 			continue
 		}
@@ -229,7 +230,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return err
 	}
 
-	goBinary := getGoInstalledBinary(c.dir, c.spec.Dir, tool.Module)
+	goBinary := runtimego.GetGoInstalledBinary(c.dir, c.spec.Dir, tool.Module)
 	cmd := exec.CommandContext(ctx, goBinary, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -246,7 +247,7 @@ func (c *Workdir) getToolDir(tool Tool) string {
 	default:
 		panic("unknown runtime")
 	case runtimeGo:
-		return filepath.Join(c.GetToolsDir(), getGoModDir(tool.Module))
+		return filepath.Join(c.GetToolsDir(), runtimego.GetGoModDir(tool.Module))
 	}
 }
 
@@ -286,7 +287,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
 		}
 
-		if !strings.Contains(tool.Module, at) {
+		if !strings.Contains(tool.Module, runtimego.At) {
 			return fmt.Errorf("go tool (%s) must have a version, at least `latest`", tool.Module)
 		}
 
@@ -302,7 +303,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 		go func() {
 			defer sem.Release(1)
 
-			if err := goInstall(c.dir, tool.Module, c.spec.Dir, tool.Alias); err != nil {
+			if err := runtimego.GoInstall(c.dir, tool.Module, c.spec.Dir, tool.Alias); err != nil {
 				errs <- fmt.Errorf("install tool (%s): %w", tool.Module, err)
 			}
 		}()
@@ -335,12 +336,12 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
 		}
 
-		_, goModule, err := getGoModule(ctx, tool.Module)
+		_, goModule, err := runtimego.GetGoModule(ctx, tool.Module)
 		if err != nil {
 			return fmt.Errorf("get go module version: %w", err)
 		}
 
-		goBinaryWoVersion := strings.Split(tool.Module, at)[0]
+		goBinaryWoVersion := strings.Split(tool.Module, runtimego.At)[0]
 		latestModule := fmt.Sprintf("%s@%s", goBinaryWoVersion, goModule.Version)
 
 		if tool.Module == latestModule {

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/optional"
 	"io"
 	"net/http"
 	"net/url"
@@ -16,8 +15,6 @@ import (
 	"slices"
 	"strings"
 )
-
-const at = "@"
 
 func isExists(path string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -59,152 +56,6 @@ func writeJson(in any, path string) error {
 	}
 
 	return nil
-}
-
-func getGoModuleName(link string) (string, error) {
-	link = strings.Split(link, "@")[0]
-
-	for {
-		// TODO: use a local proxy if configured.
-		resp, err := http.Get(fmt.Sprintf("https://proxy.golang.org/%s/@latest", link))
-		if err != nil {
-			return "", fmt.Errorf("do request to golang proxy: %w", err)
-		}
-		resp.Body.Close()
-
-		if resp.StatusCode == http.StatusOK {
-			return link, nil
-		}
-
-		if resp.StatusCode == http.StatusNotFound {
-			parts := strings.Split(link, "/")
-			if len(parts) == 1 {
-				break
-			}
-
-			link = strings.Join(parts[:len(parts)-1], "/")
-		}
-	}
-
-	return "", errors.New("unknown module")
-}
-
-func getGoModule(ctx context.Context, link string) (string, *GoModule, error) {
-	module, err := getGoModuleName(link)
-	if err != nil {
-		return "", nil, fmt.Errorf("get go module name: %w", err)
-	}
-
-	// TODO: use a proxy from env
-	// Get the latest version
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://proxy.golang.org/%s/@latest", module), nil)
-	if err != nil {
-		return "", nil, fmt.Errorf("create request: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", nil, fmt.Errorf("get go module: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", nil, fmt.Errorf("unable to get module: %s", resp.Status)
-	}
-
-	var mod GoModule
-	if err := json.NewDecoder(resp.Body).Decode(&mod); err != nil {
-		return "", nil, fmt.Errorf("unable to decode module: %w", err)
-	}
-
-	return module, &mod, nil
-}
-
-func getGoInstalledBinary(baseDir, goBinDir, mod string) string {
-	modDir := filepath.Join(baseDir, goBinDir, getGoModDir(mod))
-	return filepath.Join(modDir, getGoBinFromMod(mod))
-}
-
-func goInstall(baseDir, mod, goBinDir string, alias optional.Val[string]) error {
-	const golang = "go"
-
-	installedPath := getGoInstalledBinary(baseDir, goBinDir, mod)
-
-	modDir := filepath.Join(baseDir, goBinDir, getGoModDir(mod))
-	if err := os.MkdirAll(modDir, 0o755); err != nil {
-		return fmt.Errorf("create mod dir (%s): %w", modDir, err)
-	}
-
-	cmd := &exec.Cmd{
-		Path: golang,
-		Args: []string{golang, "install", mod},
-		Env: append(os.Environ(),
-			"GOBIN="+modDir,
-		),
-	}
-
-	lp, _ := exec.LookPath(golang)
-	if lp != "" {
-		// Update cmd.Path even if err is non-nil.
-		// If err is ErrDot (especially on Windows), lp may include a resolved
-		// extension (like .exe or .bat) that should be preserved.
-		cmd.Path = lp
-	}
-
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("run go install (%s): %w", cmd.String(), err)
-	}
-
-	if alias, ok := alias.Get(); ok {
-		targetPath := filepath.Join(baseDir, goBinDir, alias)
-		if _, err := os.Stat(targetPath); err == nil {
-			if err := os.Remove(targetPath); err != nil {
-				return fmt.Errorf("remove alias (%s): %w", targetPath, err)
-			}
-		}
-
-		if err := os.Symlink(installedPath, targetPath); err != nil {
-			return fmt.Errorf("symlink %s to %s: %w", installedPath, targetPath, err)
-		}
-	}
-
-	return nil
-}
-
-// getGoBinFromMod returns a binary name that installed by `go install`
-// github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2 ==> golangci-lint
-func getGoBinFromMod(mod string) string {
-	// github.com/user/repo@v1.0.0 => github.com/user/repo
-	if strings.Contains(mod, at) {
-		mod = strings.Split(mod, at)[0]
-	}
-
-	// github.com/user/repo/cmd/some/program => program
-	if strings.Contains(mod, "/cmd/") {
-		mod = strings.Split(mod, "/cmd/")[1]
-		return filepath.Base(mod)
-	}
-
-	parts := strings.Split(mod, "/")
-	// github.com/user/repo/v3 => repo
-	if strings.HasPrefix(parts[len(parts)-1], "v") {
-		prevPart := parts[len(parts)-2]
-		return prevPart
-	}
-
-	return filepath.Base(mod)
-}
-
-// getGoModDir returns a dir that will keep all mod-related stuff for specific version.
-func getGoModDir(mod string) string {
-	binName := getGoBinFromMod(mod)
-	parts := strings.Split(mod, at)
-	version := parts[1]
-
-	return fmt.Sprintf(".%s___%s", binName, version)
 }
 
 func parseSourceURI(uri string) (SourceUri, error) {

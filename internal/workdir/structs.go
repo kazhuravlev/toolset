@@ -7,7 +7,6 @@ import (
 	"github.com/kazhuravlev/optional"
 	"slices"
 	"strings"
-	"time"
 )
 
 type SourceUri interface {
@@ -32,17 +31,6 @@ type SourceUriGit struct {
 }
 
 func (SourceUriGit) isSourceUri() {}
-
-type GoModule struct {
-	Version string    `json:"Version"`
-	Time    time.Time `json:"Time"`
-	Origin  struct {
-		VCS  string `json:"VCS"`
-		URL  string `json:"URL"`
-		Hash string `json:"Hash"`
-		Ref  string `json:"Ref"`
-	} `json:"Origin"`
-}
 
 type Tool struct {
 	// Name of runtime
