@@ -21,11 +21,10 @@ const (
 )
 
 type IRuntime interface {
-	// Sync(ctx context.Context, baseDir string, tool Tool) error
-	// GetLatestVersion(ctx context.Context, tool Tool) (*Tool, error)
 	Parse(ctx context.Context, program string) (string, error)
 	GetProgramDir(program string) string
 	GetProgramName(program string) string
+	GetBinaryPath(program string) string
 	IsInstalled(program string) bool
 	Install(ctx context.Context, program string) error
 }
@@ -235,8 +234,13 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return err
 	}
 
-	goBinary := runtimego.GetGoInstalledBinary(c.getToolsDir(), tool.Module)
-	cmd := exec.CommandContext(ctx, goBinary, args...)
+	rt, ok := c.runtimes[tool.Runtime]
+	if !ok {
+		return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+	}
+
+	programBinary := rt.GetBinaryPath(tool.Module)
+	cmd := exec.CommandContext(ctx, programBinary, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -311,8 +315,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 					}
 				}
 
-				// TODO: move it into runtime
-				installedPath := filepath.Join(rt.GetProgramDir(tool.Module), rt.GetProgramName(tool.Module))
+				installedPath := rt.GetBinaryPath(tool.Module)
 				if err := os.Symlink(installedPath, targetPath); err != nil {
 					errs <- fmt.Errorf("symlink %s to %s: %w", installedPath, targetPath, err)
 					return

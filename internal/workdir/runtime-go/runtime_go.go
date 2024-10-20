@@ -76,11 +76,6 @@ func GetGoModule(ctx context.Context, link string) (string, *GoModule, error) {
 	return module, &mod, nil
 }
 
-func GetGoInstalledBinary(toolsDir, mod string) string {
-	modDir := filepath.Join(toolsDir, getGoModDir(mod))
-	return filepath.Join(modDir, getProgramName(mod))
-}
-
 // getProgramName returns a binary name that installed by `go install`
 // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2 ==> golangci-lint
 func getProgramName(mod string) string {
@@ -196,6 +191,10 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 	}
 
 	return nil
+}
+
+func (r *Runtime) GetBinaryPath(program string) string {
+	return filepath.Join(r.GetProgramDir(program), r.GetProgramName(program))
 }
 
 func isExists(path string) bool {
