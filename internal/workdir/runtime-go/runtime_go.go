@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/optional"
 	"net/http"
 	"os"
 	"os/exec"
@@ -80,55 +79,6 @@ func GetGoModule(ctx context.Context, link string) (string, *GoModule, error) {
 func GetGoInstalledBinary(toolsDir, mod string) string {
 	modDir := filepath.Join(toolsDir, getGoModDir(mod))
 	return filepath.Join(modDir, getProgramName(mod))
-}
-
-func GoInstall(toolsDir, mod string, alias optional.Val[string]) error {
-	const golang = "go"
-
-	installedPath := GetGoInstalledBinary(toolsDir, mod)
-
-	modDir := filepath.Join(toolsDir, getGoModDir(mod))
-	if err := os.MkdirAll(modDir, 0o755); err != nil {
-		return fmt.Errorf("create mod dir (%s): %w", modDir, err)
-	}
-
-	cmd := &exec.Cmd{
-		Path: golang,
-		Args: []string{golang, "install", mod},
-		Env: append(os.Environ(),
-			"GOBIN="+modDir,
-		),
-	}
-
-	lp, _ := exec.LookPath(golang)
-	if lp != "" {
-		// Update cmd.Path even if err is non-nil.
-		// If err is ErrDot (especially on Windows), lp may include a resolved
-		// extension (like .exe or .bat) that should be preserved.
-		cmd.Path = lp
-	}
-
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("run go install (%s): %w", cmd.String(), err)
-	}
-
-	if alias, ok := alias.Get(); ok {
-		targetPath := filepath.Join(toolsDir, alias)
-		if _, err := os.Stat(targetPath); err == nil {
-			if err := os.Remove(targetPath); err != nil {
-				return fmt.Errorf("remove alias (%s): %w", targetPath, err)
-			}
-		}
-
-		if err := os.Symlink(installedPath, targetPath); err != nil {
-			return fmt.Errorf("symlink %s to %s: %w", installedPath, targetPath, err)
-		}
-	}
-
-	return nil
 }
 
 // getProgramName returns a binary name that installed by `go install`
@@ -210,13 +160,42 @@ func (r *Runtime) Parse(ctx context.Context, program string) (string, error) {
 }
 
 func (r *Runtime) GetProgramDir(program string) string {
-	return getGoModDir(program)
+	return filepath.Join(r.baseDir, getGoModDir(program))
 }
 
 func (r *Runtime) IsInstalled(program string) bool {
 	programDir := filepath.Join(r.baseDir, r.GetProgramDir(program))
 
 	return isExists(programDir)
+}
+
+func (r *Runtime) Install(ctx context.Context, program string) error {
+	const golang = "go"
+
+	goBinDir := filepath.Join(r.baseDir, getGoModDir(program))
+	if err := os.MkdirAll(goBinDir, 0o755); err != nil {
+		return fmt.Errorf("create mod dir (%s): %w", goBinDir, err)
+	}
+
+	cmd := exec.CommandContext(ctx, golang, "install", program)
+	cmd.Env = append(os.Environ(), "GOBIN="+goBinDir)
+
+	lp, _ := exec.LookPath(golang)
+	if lp != "" {
+		// Update cmd.Path even if err is non-nil.
+		// If err is ErrDot (especially on Windows), lp may include a resolved
+		// extension (like .exe or .bat) that should be preserved.
+		cmd.Path = lp
+	}
+
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("run go install (%s): %w", cmd.String(), err)
+	}
+
+	return nil
 }
 
 func isExists(path string) bool {

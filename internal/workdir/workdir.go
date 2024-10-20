@@ -27,6 +27,7 @@ type IRuntime interface {
 	GetProgramDir(program string) string
 	GetProgramName(program string) string
 	IsInstalled(program string) bool
+	Install(ctx context.Context, program string) error
 }
 
 type Workdir struct {
@@ -290,8 +291,26 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 		go func() {
 			defer sem.Release(1)
 
-			if err := runtimego.GoInstall(c.getToolsDir(), tool.Module, tool.Alias); err != nil {
+			if err := rt.Install(ctx, tool.Module); err != nil {
 				errs <- fmt.Errorf("install tool (%s): %w", tool.Module, err)
+				return
+			}
+
+			if alias, ok := tool.Alias.Get(); ok {
+				targetPath := filepath.Join(toolsDir, alias)
+				if isExists(targetPath) {
+					if err := os.Remove(targetPath); err != nil {
+						errs <- fmt.Errorf("remove alias (%s): %w", targetPath, err)
+						return
+					}
+				}
+
+				// TODO: move it into runtime
+				installedPath := filepath.Join(rt.GetProgramDir(tool.Module), rt.GetProgramName(tool.Module))
+				if err := os.Symlink(installedPath, targetPath); err != nil {
+					errs <- fmt.Errorf("symlink %s to %s: %w", installedPath, targetPath, err)
+					return
+				}
 			}
 		}()
 	}
