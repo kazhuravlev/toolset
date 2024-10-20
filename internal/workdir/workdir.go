@@ -21,6 +21,11 @@ const (
 	defaultToolsDir = "./bin/tools"
 )
 
+type IRuntime interface {
+	Parse(ctx context.Context, program string) (string, error)
+	GetProgramDir(program string) string
+}
+
 type Workdir struct {
 	dir  string
 	spec *Spec
