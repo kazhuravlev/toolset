@@ -59,6 +59,7 @@ func (r *Runtime) GetModule(_ context.Context, module string) (*structs.ModuleIn
 
 	return &structs.ModuleInfo{
 		Name:        mod.Program,
+		Version:     mod.Version,
 		BinDir:      programDir,
 		BinPath:     programBinary,
 		IsInstalled: isExists(programBinary),

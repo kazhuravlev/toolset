@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir"
 	cli "github.com/urfave/cli/v2"
 	"os"
+	"strings"
 )
 
 const (
@@ -97,6 +99,11 @@ func main() {
 					},
 				},
 				Args: true,
+			},
+			{
+				Name:   "list",
+				Usage:  "list of project tools",
+				Action: cmdList,
 			},
 		},
 	}
@@ -248,6 +255,51 @@ func cmdUpgrade(c *cli.Context) error {
 	if err := wd.Save(); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
+
+	return nil
+}
+
+func cmdList(c *cli.Context) error {
+	ctx := c.Context
+
+	wd, err := workdir.New()
+	if err != nil {
+		return fmt.Errorf("new workdir: %w", err)
+	}
+
+	tools, err := wd.GetTools(ctx)
+	if err != nil {
+		return fmt.Errorf("get tools: %w", err)
+	}
+
+	rows := make([]table.Row, len(tools))
+	for i, tool := range tools {
+		rows[i] = table.Row{
+			tool.Runtime,
+			tool.Module.Name,
+			tool.Module.Version,
+			tool.Module.IsInstalled,
+			tool.Alias.ValDefault("---"),
+			strings.Join(tool.Tags, ","),
+			tool.OriginModule,
+		}
+	}
+
+	t := table.NewWriter()
+	t.AppendHeader(table.Row{
+		"Runtime",
+		"Name",
+		"Version",
+		"Installed",
+		"Alias",
+		"Tags",
+		"Module",
+	})
+
+	t.AppendRows(rows)
+
+	res := t.Render()
+	fmt.Println(res)
 
 	return nil
 }

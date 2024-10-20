@@ -96,23 +96,24 @@ func New() (*Workdir, error) {
 						return nil, fmt.Errorf("re-init toolset: %w", err)
 					}
 
-					wCtx, err := New()
+					wd, err := New()
 					if err != nil {
 						return nil, fmt.Errorf("new context in re-created workdir: %w", err)
 					}
 
 					for _, tool := range spec.Tools {
-						wCtx.spec.Tools.Add(tool)
-						wCtx.lock.Tools.Add(tool)
+						wd.spec.Tools.Add(tool)
 					}
 
-					if err := wCtx.Save(); err != nil {
+					wd.lock.FromSpec(spec)
+
+					if err := wd.Save(); err != nil {
 						return nil, fmt.Errorf("save lock-based workdir: %w", err)
 					}
 
 					os.Remove(toolsetFilenameBak)
 
-					return wCtx, nil
+					return wd, nil
 				}
 			}
 
@@ -172,13 +173,11 @@ func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) 
 
 	c.lock.Remotes = append(c.lock.Remotes, remotes...)
 
+	c.lock.FromSpec(c.spec)
+
 	var count int
 	for _, remote := range remotes {
-		for _, tool := range remote.Spec.Tools {
-			tool.Tags = append(tool.Tags, remote.Tags...)
-			c.lock.Tools.Add(tool)
-			count++
-		}
+		count += len(remote.Spec.Tools)
 	}
 
 	return count, nil
@@ -203,7 +202,7 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 	}
 	wasAdded := c.spec.Tools.Add(tool)
 	if wasAdded {
-		c.lock.Tools.Add(tool)
+		c.lock.FromSpec(c.spec)
 	}
 
 	return wasAdded, program, nil
@@ -211,9 +210,9 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 
 func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
 	for _, tool := range c.lock.Tools {
-		rt, ok := c.runtimes[tool.Runtime]
-		if !ok {
-			return nil, fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+		mod, err := c.getModuleInfo(context.TODO(), tool)
+		if err != nil {
+			return nil, fmt.Errorf("get module (%s) info: %w", tool.Module, err)
 		}
 
 		// ...by alias
@@ -222,11 +221,6 @@ func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
 		}
 
 		// ...by canonical binary from module
-		mod, err := rt.GetModule(context.TODO(), tool.Module)
-		if err != nil {
-			return nil, fmt.Errorf("get module (%s) info: %w", tool.Module, err)
-		}
-
 		if mod.Name != name {
 			continue
 		}
@@ -259,29 +253,14 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 // Sync will read the locked tools and try to install the desired version. It will skip the installation in
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
-	toolsDir := c.getToolsDir()
-	if !isExists(toolsDir) {
+	if toolsDir := c.getToolsDir(); !isExists(toolsDir) {
 		fmt.Println("Target dir not exists. Creating...", toolsDir)
 		if err := os.MkdirAll(toolsDir, 0o755); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
 	}
 
-	fmt.Println("Target dir:", toolsDir)
-
-	{
-		c.lock.Tools = make(structs.Tools, 0)
-		for _, tool := range c.spec.Tools {
-			c.lock.Tools.Add(tool)
-		}
-
-		for _, remote := range c.lock.Remotes {
-			for _, tool := range remote.Spec.Tools {
-				tool.Tags = append(tool.Tags, remote.Tags...)
-				c.lock.Tools.Add(tool)
-			}
-		}
-	}
+	c.lock.FromSpec(c.spec)
 
 	errs := make(chan error, len(c.spec.Tools))
 
@@ -316,7 +295,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 			}
 
 			if alias, ok := tool.Alias.Get(); ok {
-				targetPath := filepath.Join(toolsDir, alias)
+				targetPath := filepath.Join(c.getToolsDir(), alias)
 				if isExists(targetPath) {
 					if err := os.Remove(targetPath); err != nil {
 						errs <- fmt.Errorf("remove alias (%s): %w", targetPath, err)
@@ -420,13 +399,57 @@ func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) 
 			tool.Tags = append(tool.Tags, tags...)
 			// TODO(zhuravlev): should we use an official way to add a tool (like `c.Add()`)?
 			if c.spec.Tools.Add(tool) {
-				c.lock.Tools.Add(tool)
 				count++
 			}
 		}
 	}
 
+	c.lock.FromSpec(c.spec)
+
 	return count, nil
+}
+
+// ToolState describe a state of this tool.
+type ToolState struct {
+	Runtime      string
+	OriginModule string
+	Module       structs.ModuleInfo
+	Alias        optional.Val[string]
+	Tags         []string
+}
+
+func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
+	res := make([]ToolState, 0, len(c.lock.Tools))
+	for _, tool := range c.lock.Tools {
+		mod, err := c.getModuleInfo(ctx, tool)
+		if err != nil {
+			return nil, fmt.Errorf("get module info: %w", err)
+		}
+
+		res = append(res, ToolState{
+			Runtime:      tool.Runtime,
+			OriginModule: tool.Module,
+			Module:       *mod,
+			Alias:        tool.Alias,
+			Tags:         tool.Tags,
+		})
+	}
+
+	return res, nil
+}
+
+func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*structs.ModuleInfo, error) {
+	rt, ok := c.runtimes[tool.Runtime]
+	if !ok {
+		return nil, fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+	}
+
+	mod, err := rt.GetModule(ctx, tool.Module)
+	if err != nil {
+		return nil, fmt.Errorf("get module (%s): %w", tool.Module, err)
+	}
+
+	return mod, nil
 }
 
 // Init will initialize context in specified directory.
