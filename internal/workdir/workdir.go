@@ -21,9 +21,9 @@ const (
 )
 
 type Workdir struct {
-	Workdir string
-	Spec    *Spec
-	Lock    *Lock
+	dir  string
+	spec *Spec
+	lock *Lock
 }
 
 func New() (*Workdir, error) {
@@ -87,8 +87,8 @@ func New() (*Workdir, error) {
 					}
 
 					for _, tool := range spec.Tools {
-						wCtx.Spec.Tools.Add(tool)
-						wCtx.Lock.Tools.Add(tool)
+						wCtx.spec.Tools.Add(tool)
+						wCtx.lock.Tools.Add(tool)
 					}
 
 					if err := wCtx.Save(); err != nil {
@@ -110,30 +110,30 @@ func New() (*Workdir, error) {
 	}
 
 	return &Workdir{
-		Workdir: baseDir,
-		Spec:    spec,
-		Lock:    &lockFile,
+		dir:  baseDir,
+		spec: spec,
+		lock: &lockFile,
 	}, nil
 }
 
 func (c *Workdir) GetToolsDir() string {
-	return filepath.Join(c.Workdir, c.Spec.Dir)
+	return filepath.Join(c.dir, c.spec.Dir)
 }
 
 func (c *Workdir) SpecFilename() string {
-	return filepath.Join(c.Workdir, specFilename)
+	return filepath.Join(c.dir, specFilename)
 }
 
 func (c *Workdir) LockFilename() string {
-	return filepath.Join(c.Workdir, lockFilename)
+	return filepath.Join(c.dir, lockFilename)
 }
 
 func (c *Workdir) Save() error {
-	if err := writeJson(*c.Spec, c.SpecFilename()); err != nil {
+	if err := writeJson(*c.spec, c.SpecFilename()); err != nil {
 		return fmt.Errorf("write spec: %w", err)
 	}
 
-	if err := writeJson(*c.Lock, c.LockFilename()); err != nil {
+	if err := writeJson(*c.lock, c.LockFilename()); err != nil {
 		return fmt.Errorf("write lock: %w", err)
 	}
 
@@ -147,18 +147,18 @@ func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) 
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
 
-	wasAdded := c.Spec.AddInclude(Include{Src: source, Tags: tags})
+	wasAdded := c.spec.AddInclude(Include{Src: source, Tags: tags})
 	if !wasAdded {
 		return 0, nil
 	}
 
-	c.Lock.Remotes = append(c.Lock.Remotes, remotes...)
+	c.lock.Remotes = append(c.lock.Remotes, remotes...)
 
 	var count int
 	for _, remote := range remotes {
 		for _, tool := range remote.Spec.Tools {
 			tool.Tags = append(tool.Tags, remote.Tags...)
-			c.Lock.Tools.Add(tool)
+			c.lock.Tools.Add(tool)
 			count++
 		}
 	}
@@ -192,16 +192,16 @@ func (c *Workdir) Add(ctx context.Context, runtime, goBinary string, alias optio
 		Alias:   alias,
 		Tags:    tags,
 	}
-	wasAdded := c.Spec.Tools.Add(tool)
+	wasAdded := c.spec.Tools.Add(tool)
 	if wasAdded {
-		c.Lock.Tools.Add(tool)
+		c.lock.Tools.Add(tool)
 	}
 
 	return wasAdded, goBinaryWoVersion, nil
 }
 
 func (c *Workdir) FindTool(str string) (*Tool, error) {
-	for _, tool := range c.Lock.Tools {
+	for _, tool := range c.lock.Tools {
 		if tool.Runtime != runtimeGo {
 			continue
 		}
@@ -229,7 +229,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return err
 	}
 
-	goBinary := getGoInstalledBinary(c.Workdir, c.Spec.Dir, tool.Module)
+	goBinary := getGoInstalledBinary(c.dir, c.spec.Dir, tool.Module)
 	cmd := exec.CommandContext(ctx, goBinary, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -264,23 +264,23 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 	fmt.Println("Target dir:", toolsDir)
 
 	{
-		c.Lock.Tools = make(Tools, 0)
-		for _, tool := range c.Spec.Tools {
-			c.Lock.Tools.Add(tool)
+		c.lock.Tools = make(Tools, 0)
+		for _, tool := range c.spec.Tools {
+			c.lock.Tools.Add(tool)
 		}
 
-		for _, remote := range c.Lock.Remotes {
+		for _, remote := range c.lock.Remotes {
 			for _, tool := range remote.Spec.Tools {
 				tool.Tags = append(tool.Tags, remote.Tags...)
-				c.Lock.Tools.Add(tool)
+				c.lock.Tools.Add(tool)
 			}
 		}
 	}
 
-	errs := make(chan error, len(c.Spec.Tools))
+	errs := make(chan error, len(c.spec.Tools))
 
 	sem := semaphore.NewWeighted(int64(maxWorkers))
-	for _, tool := range c.Lock.Tools.Filter(tags) {
+	for _, tool := range c.lock.Tools.Filter(tags) {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
 		if tool.Runtime != runtimeGo {
 			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
@@ -302,7 +302,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 		go func() {
 			defer sem.Release(1)
 
-			if err := goInstall(c.Workdir, tool.Module, c.Spec.Dir, tool.Alias); err != nil {
+			if err := goInstall(c.dir, tool.Module, c.spec.Dir, tool.Alias); err != nil {
 				errs <- fmt.Errorf("install tool (%s): %w", tool.Module, err)
 			}
 		}()
@@ -330,7 +330,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 
 // Upgrade will upgrade only spec tools. and re-fetch latest versions of includes.
 func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
-	for _, tool := range c.Spec.Tools.Filter(tags) {
+	for _, tool := range c.spec.Tools.Filter(tags) {
 		if tool.Runtime != runtimeGo {
 			return fmt.Errorf("unsupported runtime (%s) for tool (%s)", tool.Runtime, tool.Module)
 		}
@@ -351,12 +351,12 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 
 		tool.Module = latestModule
 
-		c.Spec.Tools.AddOrUpdateTool(tool)
-		c.Lock.Tools.AddOrUpdateTool(tool)
+		c.spec.Tools.AddOrUpdateTool(tool)
+		c.lock.Tools.AddOrUpdateTool(tool)
 	}
 
 	var resRemotes []RemoteSpec
-	for _, inc := range c.Spec.Includes {
+	for _, inc := range c.spec.Includes {
 		remotes, err := fetchRemoteSpec(ctx, inc.Src, inc.Tags, nil)
 		if err != nil {
 			return fmt.Errorf("fetch remotes: %w", err)
@@ -366,12 +366,12 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 		for _, remote := range remotes {
 			for _, tool := range remote.Spec.Tools {
 				tool.Tags = append(tool.Tags, remote.Tags...)
-				c.Lock.Tools.Add(tool)
+				c.lock.Tools.Add(tool)
 			}
 		}
 	}
 
-	c.Lock.Remotes = resRemotes
+	c.lock.Remotes = resRemotes
 
 	return nil
 }
@@ -388,8 +388,8 @@ func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) 
 	for _, spec := range specs {
 		for _, tool := range spec.Spec.Tools {
 			tool.Tags = append(tool.Tags, tags...)
-			if c.Spec.Tools.Add(tool) {
-				c.Lock.Tools.Add(tool)
+			if c.spec.Tools.Add(tool) {
+				c.lock.Tools.Add(tool)
 				count++
 			}
 		}
