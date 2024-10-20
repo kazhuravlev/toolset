@@ -167,29 +167,29 @@ func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) 
 	return count, nil
 }
 
-func (c *Workdir) Add(ctx context.Context, runtime, goBinary string, alias optional.Val[string], tags []string) (bool, string, error) {
 	if runtime != runtimeGo {
+func (c *Workdir) Add(ctx context.Context, runtime, program string, alias optional.Val[string], tags []string) (bool, string, error) {
 		return false, "", fmt.Errorf("unsupported runtime: %s", runtime)
 	}
 
-	if goBinary == "" {
-		return false, "", errors.New("golang binary not provided")
+	if program == "" {
+		return false, "", errors.New("program name not provided")
 	}
 
-	goBinaryWoVersion := strings.Split(goBinary, runtimego.At)[0]
+	goBinaryWoVersion := strings.Split(program, runtimego.At)[0]
 
-	_, goModule, err := runtimego.GetGoModule(ctx, goBinary)
+	_, goModule, err := runtimego.GetGoModule(ctx, program)
 	if err != nil {
 		return false, "", fmt.Errorf("get go module version: %w", err)
 	}
 
-	if strings.Contains(goBinary, "@latest") || !strings.Contains(goBinary, runtimego.At) {
-		goBinary = fmt.Sprintf("%s@%s", goBinaryWoVersion, goModule.Version)
+	if strings.Contains(program, "@latest") || !strings.Contains(program, runtimego.At) {
+		program = fmt.Sprintf("%s@%s", goBinaryWoVersion, goModule.Version)
 	}
 
 	tool := Tool{
 		Runtime: runtimeGo,
-		Module:  goBinary,
+		Module:  program,
 		Alias:   alias,
 		Tags:    tags,
 	}
