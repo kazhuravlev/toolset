@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func getGoModuleName(ctx context.Context, link string) (*goModule, error) {
+func getGoModule(ctx context.Context, link string) (*goModule, error) {
 	link = strings.Split(link, at)[0]
 
 	for {
