@@ -330,7 +330,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 					return
 				}
 
-				installedPath := mod.BinaryPath
+				installedPath := mod.BinPath
 				if err := os.Symlink(installedPath, targetPath); err != nil {
 					errs <- fmt.Errorf("symlink %s to %s: %w", installedPath, targetPath, err)
 					return

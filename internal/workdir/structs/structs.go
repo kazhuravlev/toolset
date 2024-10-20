@@ -76,8 +76,8 @@ func (tools *Tools) Filter(tags []string) Tools {
 }
 
 type ModuleInfo struct {
-	Name        string
-	BinaryPath  string
+	Name        string // golangci-lint
+	BinDir      string // /home/user/bin/tools/.golangci-lint__v1.1.1
+	BinPath     string // /home/user/bin/tools/.golangci-lint__v1.1.1/golangci-lint
 	IsInstalled bool
 }
-
