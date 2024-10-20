@@ -176,28 +176,19 @@ func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) 
 	return count, nil
 }
 
-	if runtime != runtimeGo {
 func (c *Workdir) Add(ctx context.Context, runtime, program string, alias optional.Val[string], tags []string) (bool, string, error) {
+	rt, ok := c.runtimes[runtime]
+	if !ok {
 		return false, "", fmt.Errorf("unsupported runtime: %s", runtime)
 	}
 
-	if program == "" {
-		return false, "", errors.New("program name not provided")
-	}
-
-	goBinaryWoVersion := strings.Split(program, runtimego.At)[0]
-
-	_, goModule, err := runtimego.GetGoModule(ctx, program)
+	program, err := rt.Parse(ctx, program)
 	if err != nil {
-		return false, "", fmt.Errorf("get go module version: %w", err)
-	}
-
-	if strings.Contains(program, "@latest") || !strings.Contains(program, runtimego.At) {
-		program = fmt.Sprintf("%s@%s", goBinaryWoVersion, goModule.Version)
+		return false, "", fmt.Errorf("parse program: %w", err)
 	}
 
 	tool := Tool{
-		Runtime: runtimeGo,
+		Runtime: runtime,
 		Module:  program,
 		Alias:   alias,
 		Tags:    tags,
@@ -207,7 +198,7 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 		c.lock.Tools.Add(tool)
 	}
 
-	return wasAdded, goBinaryWoVersion, nil
+	return wasAdded, program, nil
 }
 
 func (c *Workdir) FindTool(str string) (*Tool, error) {
@@ -248,12 +239,12 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 }
 
 func (c *Workdir) getToolDir(tool Tool) string {
-	switch tool.Runtime {
-	default:
-		panic("unknown runtime")
-	case runtimeGo:
-		return filepath.Join(c.getToolsDir(), runtimego.GetGoModDir(tool.Module))
+	rt, ok := c.runtimes[tool.Runtime]
+	if !ok {
+		panic("unknown runtime:" + tool.Runtime)
 	}
+
+	return filepath.Join(c.getToolsDir(), rt.GetProgramDir(tool.Module))
 }
 
 // Sync will read the locked tools and try to install the desired version. It will skip the installation in
