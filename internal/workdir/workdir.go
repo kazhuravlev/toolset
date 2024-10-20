@@ -27,9 +27,10 @@ type IRuntime interface {
 }
 
 type Workdir struct {
-	dir  string
-	spec *Spec
-	lock *Lock
+	dir      string
+	spec     *Spec
+	lock     *Lock
+	runtimes map[string]IRuntime
 }
 
 func New() (*Workdir, error) {
@@ -119,6 +120,9 @@ func New() (*Workdir, error) {
 		dir:  baseDir,
 		spec: spec,
 		lock: &lockFile,
+		runtimes: map[string]IRuntime{
+			"go": runtimego.New(),
+		},
 	}, nil
 }
 
