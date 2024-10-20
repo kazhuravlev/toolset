@@ -44,7 +44,7 @@ func getGoModuleName(link string) (string, error) {
 	return "", errors.New("unknown module")
 }
 
-func getGoModule(ctx context.Context, link string) (string, *GoModule, error) {
+func getGoModule(ctx context.Context, link string) (string, *goModule, error) {
 	// FIXME: duplicated http request
 	module, err := getGoModuleName(link)
 	if err != nil {
@@ -68,7 +68,7 @@ func getGoModule(ctx context.Context, link string) (string, *GoModule, error) {
 		return "", nil, fmt.Errorf("unable to get module: %s", resp.Status)
 	}
 
-	var mod GoModule
+	var mod goModule
 	if err := json.NewDecoder(resp.Body).Decode(&mod); err != nil {
 		return "", nil, fmt.Errorf("unable to decode module: %w", err)
 	}
@@ -109,7 +109,7 @@ func getGoModDir(mod string) string {
 	return fmt.Sprintf(".%s___%s", binName, version)
 }
 
-type GoModule struct {
+type goModule struct {
 	Version string    `json:"Version"`
 	Time    time.Time `json:"Time"`
 	Origin  struct {
