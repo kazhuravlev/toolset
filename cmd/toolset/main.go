@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir"
 	cli "github.com/urfave/cli/v2"
 	"os"
+	"strings"
 )
 
 const (
@@ -98,6 +100,11 @@ func main() {
 				},
 				Args: true,
 			},
+			{
+				Name:   "list",
+				Usage:  "list of project tools",
+				Action: cmdList,
+			},
 		},
 	}
 
@@ -126,18 +133,18 @@ func cmdInit(c *cli.Context) error {
 func cmdAdd(c *cli.Context) error {
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.New()
+	wd, err := workdir.New()
 	if err != nil {
-		return fmt.Errorf("new context: %w", err)
+		return fmt.Errorf("new workdir: %w", err)
 	}
 
 	if val := c.String(keyCopyFrom); val != "" {
-		count, err := wCtx.CopySource(c.Context, val, tags)
+		count, err := wd.CopySource(c.Context, val, tags)
 		if err != nil {
 			return fmt.Errorf("copy: %w", err)
 		}
 
-		if err := wCtx.Save(); err != nil {
+		if err := wd.Save(); err != nil {
 			return fmt.Errorf("save workdir: %w", err)
 		}
 
@@ -147,12 +154,12 @@ func cmdAdd(c *cli.Context) error {
 	}
 
 	if val := c.String(keyInclude); val != "" {
-		count, err := wCtx.AddInclude(c.Context, val, tags)
+		count, err := wd.AddInclude(c.Context, val, tags)
 		if err != nil {
 			return fmt.Errorf("include: %w", err)
 		}
 
-		if err := wCtx.Save(); err != nil {
+		if err := wd.Save(); err != nil {
 			return fmt.Errorf("save workdir: %w", err)
 		}
 
@@ -164,12 +171,12 @@ func cmdAdd(c *cli.Context) error {
 	runtime := c.Args().First()
 	module := c.Args().Get(1)
 
-	wasAdded, mod, err := wCtx.Add(c.Context, runtime, module, optional.Empty[string](), tags)
+	wasAdded, mod, err := wd.Add(c.Context, runtime, module, optional.Empty[string](), tags)
 	if err != nil {
 		return fmt.Errorf("add module: %w", err)
 	}
 
-	if err := wCtx.Save(); err != nil {
+	if err := wd.Save(); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
 
@@ -188,12 +195,12 @@ func cmdRun(c *cli.Context) error {
 		return fmt.Errorf("target is required")
 	}
 
-	wCtx, err := workdir.New()
+	wd, err := workdir.New()
 	if err != nil {
-		return fmt.Errorf("new context: %w", err)
+		return fmt.Errorf("new workdir: %w", err)
 	}
 
-	if err := wCtx.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
+	if err := wd.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
 		return fmt.Errorf("run tool: %w", err)
 	}
 
@@ -206,16 +213,16 @@ func cmdSync(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.New()
+	wd, err := workdir.New()
 	if err != nil {
-		return fmt.Errorf("new context: %w", err)
+		return fmt.Errorf("new workdir: %w", err)
 	}
 
-	if err := wCtx.Sync(ctx, maxWorkers, tags); err != nil {
+	if err := wd.Sync(ctx, maxWorkers, tags); err != nil {
 		return fmt.Errorf("sync: %w", err)
 	}
 
-	if err := wCtx.Save(); err != nil {
+	if err := wd.Save(); err != nil {
 		return fmt.Errorf("save: %w", err)
 	}
 
@@ -228,26 +235,71 @@ func cmdUpgrade(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wCtx, err := workdir.New()
+	wd, err := workdir.New()
 	if err != nil {
-		return fmt.Errorf("new context: %w", err)
+		return fmt.Errorf("new workdir: %w", err)
 	}
 
-	if err := wCtx.Upgrade(c.Context, tags); err != nil {
+	if err := wd.Upgrade(c.Context, tags); err != nil {
 		return fmt.Errorf("upgrade: %w", err)
 	}
 
-	if err := wCtx.Save(); err != nil {
+	if err := wd.Save(); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
 
-	if err := wCtx.Sync(ctx, maxWorkers, tags); err != nil {
+	if err := wd.Sync(ctx, maxWorkers, tags); err != nil {
 		return fmt.Errorf("sync: %w", err)
 	}
 
-	if err := wCtx.Save(); err != nil {
+	if err := wd.Save(); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
+
+	return nil
+}
+
+func cmdList(c *cli.Context) error {
+	ctx := c.Context
+
+	wd, err := workdir.New()
+	if err != nil {
+		return fmt.Errorf("new workdir: %w", err)
+	}
+
+	tools, err := wd.GetTools(ctx)
+	if err != nil {
+		return fmt.Errorf("get tools: %w", err)
+	}
+
+	rows := make([]table.Row, len(tools))
+	for i, tool := range tools {
+		rows[i] = table.Row{
+			tool.Runtime,
+			tool.Module.Name,
+			tool.Module.Version,
+			tool.Module.IsInstalled,
+			tool.Alias.ValDefault("---"),
+			strings.Join(tool.Tags, ","),
+			tool.OriginModule,
+		}
+	}
+
+	t := table.NewWriter()
+	t.AppendHeader(table.Row{
+		"Runtime",
+		"Name",
+		"Version",
+		"Installed",
+		"Alias",
+		"Tags",
+		"Module",
+	})
+
+	t.AppendRows(rows)
+
+	res := t.Render()
+	fmt.Println(res)
 
 	return nil
 }
