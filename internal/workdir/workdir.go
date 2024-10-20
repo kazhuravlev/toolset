@@ -21,11 +21,14 @@ const (
 )
 
 type IRuntime interface {
-	Parse(ctx context.Context, program string) (string, error)
-	GetProgramDir(program string) string
-	GetProgramName(program string) string
-	GetBinaryPath(program string) string
-	IsInstalled(program string) bool
+	// Parse will parse string with module name. It is used only on `toolset add` step.
+	// Parse should:
+	//	1) ensure that this program is valid, exists, and can be installed.
+	//	2) normalize program name and return a canonical name.
+	Parse(ctx context.Context, str string) (string, error)
+	// GetModule returns an information about module (parsed module).
+	GetModule(ctx context.Context, program string) (*structs.ModuleInfo, error)
+	// Install will install the program.
 	Install(ctx context.Context, program string) error
 	Run(ctx context.Context, program string, args ...string) error
 	GetLatest(ctx context.Context, module string) (string, bool, error)
@@ -206,7 +209,7 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 	return wasAdded, program, nil
 }
 
-func (c *Workdir) FindTool(str string) (*structs.Tool, error) {
+func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
 	for _, tool := range c.lock.Tools {
 		rt, ok := c.runtimes[tool.Runtime]
 		if !ok {
@@ -214,19 +217,24 @@ func (c *Workdir) FindTool(str string) (*structs.Tool, error) {
 		}
 
 		// ...by alias
-		if tool.Alias.HasVal() && tool.Alias.Val() == str {
+		if tool.Alias.HasVal() && tool.Alias.Val() == name {
 			return &tool, nil
 		}
 
 		// ...by canonical binary from module
-		if rt.GetProgramName(tool.Module) != str {
+		mod, err := rt.GetModule(context.TODO(), tool.Module)
+		if err != nil {
+			return nil, fmt.Errorf("get module (%s) info: %w", tool.Module, err)
+		}
+
+		if mod.Name != name {
 			continue
 		}
 
 		return &tool, nil
 	}
 
-	return nil, fmt.Errorf("tool (%s) not found", str)
+	return nil, fmt.Errorf("tool (%s) not found", name)
 }
 
 // RunTool will run a tool by its name and args.
@@ -286,8 +294,12 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 			return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
 		}
 
-		// NOTE(zhuravlev): do not install tool in case it's directory is exists.
-		if rt.IsInstalled(tool.Module) {
+		mod, err := rt.GetModule(ctx, tool.Module)
+		if err != nil {
+			return fmt.Errorf("get module (%s) info: %w", tool.Module, err)
+		}
+
+		if mod.IsInstalled {
 			continue
 		}
 
@@ -312,7 +324,13 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 					}
 				}
 
-				installedPath := rt.GetBinaryPath(tool.Module)
+				mod, err := rt.GetModule(ctx, tool.Module)
+				if err != nil {
+					errs <- fmt.Errorf("get module (%s) info: %w", tool.Module, err)
+					return
+				}
+
+				installedPath := mod.BinaryPath
 				if err := os.Symlink(installedPath, targetPath); err != nil {
 					errs <- fmt.Errorf("symlink %s to %s: %w", installedPath, targetPath, err)
 					return
