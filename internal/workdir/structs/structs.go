@@ -3,8 +3,15 @@ package structs
 import (
 	"github.com/kazhuravlev/optional"
 	"slices"
+	"strconv"
 	"strings"
 )
+
+type RunError struct {
+	ExitCode int
+}
+
+func (e *RunError) Error() string { return strconv.Itoa(e.ExitCode) }
 
 type Tool struct {
 	// Name of runtime

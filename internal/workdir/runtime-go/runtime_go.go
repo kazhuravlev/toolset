@@ -111,6 +111,11 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return fmt.Errorf("exit not ok (%s): %w", program, errors.Join(&structs.RunError{ExitCode: exitErr.ExitCode()}, err))
+		}
+
 		return fmt.Errorf("run (%s): %w", program, err)
 	}
 
