@@ -244,6 +244,11 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 	}
 
 	if err := rt.Run(ctx, tool.Module, args...); err != nil {
+		var errRun *structs.RunError
+		if errors.As(err, &errRun) {
+			return fmt.Errorf("exit not zero: %w", err)
+		}
+
 		return fmt.Errorf("run tool: %w", err)
 	}
 

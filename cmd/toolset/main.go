@@ -1,10 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir"
+	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	cli "github.com/urfave/cli/v2"
 	"os"
 	"strings"
@@ -201,6 +203,12 @@ func cmdRun(c *cli.Context) error {
 	}
 
 	if err := wd.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
+		var errRun *structs.RunError
+		if errors.As(err, &errRun) {
+			os.Exit(errRun.ExitCode)
+			return nil
+		}
+
 		return fmt.Errorf("run tool: %w", err)
 	}
 
