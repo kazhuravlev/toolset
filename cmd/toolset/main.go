@@ -47,8 +47,16 @@ func main() {
 				Args:   true,
 			},
 			{
-				Name:   "add",
-				Usage:  "add tool",
+				Name:  "add",
+				Usage: "add tool to .toolset.json",
+				Description: `Add tools to local configuration to fix the using version. 
+
+	$ toolset add <RUNTIME> <TOOL>
+	$ toolset add go 				github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0 
+
+At this point tool will not be installed. In order to install added tool please run
+
+	$ toolset sync`,
 				Action: cmdAdd,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
