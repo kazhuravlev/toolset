@@ -47,8 +47,16 @@ func main() {
 				Args:   true,
 			},
 			{
-				Name:   "add",
-				Usage:  "add tool",
+				Name:  "add",
+				Usage: "add tool to .toolset.json",
+				Description: `Add tools to local configuration to fix the using version. 
+
+	$ toolset add <RUNTIME> <TOOL>
+	$ toolset add go 				github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0 
+
+At this point tool will not be installed. In order to install added tool please run
+
+	$ toolset sync`,
 				Action: cmdAdd,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -203,6 +211,18 @@ func cmdRun(c *cli.Context) error {
 	}
 
 	if err := wd.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
+		if errors.Is(err, workdir.ErrToolNotFoundInSpec) {
+			fmt.Println("tool not added. Run `toolset add --help` to add this tool")
+			os.Exit(1)
+			return nil
+		}
+
+		if errors.Is(err, workdir.ErrToolNotInstalled) {
+			fmt.Println("tool not installed. Run `toolset sync --help` to install tool before run")
+			os.Exit(1)
+			return nil
+		}
+
 		var errRun *structs.RunError
 		if errors.As(err, &errRun) {
 			os.Exit(errRun.ExitCode)

@@ -20,6 +20,9 @@ const (
 	defaultToolsDir = "./bin/tools"
 )
 
+var ErrToolNotFoundInSpec = errors.New("tool not found in spec")
+var ErrToolNotInstalled = errors.New("tool not installed")
+
 type IRuntime interface {
 	// Parse will parse string with module name. It is used only on `toolset add` step.
 	// Parse should:
@@ -228,7 +231,7 @@ func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
 		return &tool, nil
 	}
 
-	return nil, fmt.Errorf("tool (%s) not found", name)
+	return nil, fmt.Errorf("tool (%s) not found: %w", name, ErrToolNotFoundInSpec)
 }
 
 // RunTool will run a tool by its name and args.
@@ -244,6 +247,10 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 	}
 
 	if err := rt.Run(ctx, tool.Module, args...); err != nil {
+		if errors.Is(err, structs.ErrToolNotInstalled) {
+			return fmt.Errorf("run tool: %w", errors.Join(err, ErrToolNotInstalled))
+		}
+
 		var errRun *structs.RunError
 		if errors.As(err, &errRun) {
 			return fmt.Errorf("exit not zero: %w", err)
