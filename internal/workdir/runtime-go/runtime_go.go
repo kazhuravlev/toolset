@@ -105,6 +105,10 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 		return fmt.Errorf("get go module (%s): %w", program, err)
 	}
 
+	if !mod.IsInstalled {
+		return fmt.Errorf("program (%s) is not installed: %w", program, structs.ErrToolNotInstalled)
+	}
+
 	programBinary := mod.BinPath
 	cmd := exec.CommandContext(ctx, programBinary, args...)
 	cmd.Stdin = os.Stdin

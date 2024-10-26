@@ -211,8 +211,14 @@ func cmdRun(c *cli.Context) error {
 	}
 
 	if err := wd.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
-		if errors.Is(err, workdir.ErrToolNotFound) {
-			fmt.Println("tool not found. Run `toolset add --help` to add this tool")
+		if errors.Is(err, workdir.ErrToolNotFoundInSpec) {
+			fmt.Println("tool not added. Run `toolset add --help` to add this tool")
+			os.Exit(1)
+			return nil
+		}
+
+		if errors.Is(err, workdir.ErrToolNotInstalled) {
+			fmt.Println("tool not installed. Run `toolset sync --help` to install tool before run")
 			os.Exit(1)
 			return nil
 		}
