@@ -203,6 +203,12 @@ func cmdRun(c *cli.Context) error {
 	}
 
 	if err := wd.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
+		if errors.Is(err, workdir.ErrToolNotFound) {
+			fmt.Println("tool not found. Run `toolset add --help` to add this tool")
+			os.Exit(1)
+			return nil
+		}
+
 		var errRun *structs.RunError
 		if errors.As(err, &errRun) {
 			os.Exit(errRun.ExitCode)
