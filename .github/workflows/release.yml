@@ -16,19 +16,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Fetch sources
         run: git fetch --force --tags
+
       - name: Setup golang
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: '>=1.23'
           cache: true
+
       - name: Release and Publish
-        uses: goreleaser/goreleaser-action@v5
+        uses: goreleaser/goreleaser-action@v6
         with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean
+          distribution: 'goreleaser'
+          version: '~> v2'
+          args: 'release --clean'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
