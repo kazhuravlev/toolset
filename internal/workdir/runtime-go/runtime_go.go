@@ -12,6 +12,7 @@ import (
 	"strings"
 )
 
+const golang = "go"
 const at = "@"
 
 type Runtime struct {
@@ -67,8 +68,6 @@ func (r *Runtime) GetModule(_ context.Context, module string) (*structs.ModuleIn
 }
 
 func (r *Runtime) Install(ctx context.Context, program string) error {
-	const golang = "go"
-
 	mod, err := r.GetModule(ctx, program)
 	if err != nil {
 		return fmt.Errorf("get go module (%s): %w", program, err)
