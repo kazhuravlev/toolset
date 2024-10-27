@@ -91,4 +91,5 @@ type ModuleInfo struct {
 	BinDir      string // /home/user/bin/tools/.golangci-lint__v1.1.1
 	BinPath     string // /home/user/bin/tools/.golangci-lint__v1.1.1/golangci-lint
 	IsInstalled bool
+	IsPrivate   bool
 }
