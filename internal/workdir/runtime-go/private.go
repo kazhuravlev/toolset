@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-type parsedMod struct {
+type moduleInfo struct {
 	Canonical string // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
 	Module    string // github.com/golangci/golangci-lint/cmd/golangci-lint
 	Version   string // v1.55.2
@@ -21,7 +21,7 @@ type parsedMod struct {
 }
 
 // parse will parse source string and try to extract all details about mentioned golang program.
-func parse(str string) (*parsedMod, error) {
+func parse(str string) (*moduleInfo, error) {
 	var canonical, mod, version, program string
 
 	{
@@ -54,7 +54,7 @@ func parse(str string) (*parsedMod, error) {
 
 	}
 
-	return &parsedMod{
+	return &moduleInfo{
 		Canonical: canonical,
 		Module:    mod,
 		Version:   version,
@@ -67,7 +67,7 @@ type fetchedMod struct {
 	Version string `json:"Version"`
 }
 
-func fetchLatest(ctx context.Context, link string) (*parsedMod, error) {
+func fetchLatest(ctx context.Context, link string) (*moduleInfo, error) {
 	mod, err := parse(link)
 	if err != nil {
 		return nil, fmt.Errorf("parse module (%s) string: %w", link, err)
