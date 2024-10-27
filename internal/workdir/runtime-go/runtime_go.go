@@ -54,6 +54,7 @@ func (r *Runtime) GetModule(_ context.Context, module string) (*structs.ModuleIn
 		BinDir:      programDir,
 		BinPath:     programBinary,
 		IsInstalled: isExists(programBinary),
+		IsPrivate:   mod.IsPrivate,
 	}, nil
 }
 
