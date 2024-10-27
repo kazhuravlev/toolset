@@ -67,8 +67,17 @@ type fetchedMod struct {
 	Version string `json:"Version"`
 }
 
-func fetch(ctx context.Context, link string) (*fetchedMod, error) {
-	link = strings.Split(link, at)[0]
+func fetchLatest(ctx context.Context, link string) (*parsedMod, error) {
+	mod, err := parse(link)
+	if err != nil {
+		return nil, fmt.Errorf("parse module (%s) string: %w", link, err)
+	}
+
+	if mod.IsPrivate {
+		return nil, errors.New("private module is not yet supported")
+	}
+
+	link = mod.Module
 
 	for {
 		// TODO: use a local proxy if configured.
@@ -98,12 +107,17 @@ func fetch(ctx context.Context, link string) (*fetchedMod, error) {
 			return nil, fmt.Errorf("unable to get module: %s", resp.Status)
 		}
 
-		var mod fetchedMod
-		if err := json.NewDecoder(resp.Body).Decode(&mod); err != nil {
+		var fMod fetchedMod
+		if err := json.NewDecoder(resp.Body).Decode(&fMod); err != nil {
 			return nil, fmt.Errorf("unable to decode module: %w", err)
 		}
 
-		return &mod, nil
+		mod2, err := parse(mod.Module + at + fMod.Version)
+		if err != nil {
+			return nil, fmt.Errorf("parse fetched module: %w", err)
+		}
+
+		return mod2, nil
 	}
 
 	return nil, errors.New("unknown module")

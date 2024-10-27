@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 const golang = "go"
@@ -32,21 +31,12 @@ func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
 		return "", errors.New("program name not provided")
 	}
 
-	mod, err := parse(str)
-	if err != nil {
-		return "", fmt.Errorf("parse program: %w", err)
-	}
-
-	goModule, err := fetch(ctx, mod.Canonical)
+	goModule, err := fetchLatest(ctx, str)
 	if err != nil {
 		return "", fmt.Errorf("get go module version: %w", err)
 	}
 
-	if mod.Version == "latest" {
-		return fmt.Sprintf("%s%s%s", mod.Module, at, goModule.Version), nil
-	}
-
-	return str, nil
+	return goModule.Canonical, nil
 }
 
 func (r *Runtime) GetModule(_ context.Context, module string) (*structs.ModuleInfo, error) {
@@ -126,17 +116,14 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 }
 
 func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, error) {
-	goModule, err := fetch(ctx, module)
+	latestMod, err := fetchLatest(ctx, module)
 	if err != nil {
 		return "", false, fmt.Errorf("get go module: %w", err)
 	}
 
-	goBinaryWoVersion := strings.Split(module, at)[0]
-	latestModule := fmt.Sprintf("%s%s%s", goBinaryWoVersion, at, goModule.Version)
-
-	if module == latestModule {
+	if module == latestMod.Canonical {
 		return module, false, nil
 	}
 
-	return latestModule, true, nil
+	return latestMod.Canonical, true, nil
 }
