@@ -130,3 +130,60 @@ func isExists(path string) bool {
 
 	return true
 }
+
+// fetchLatestPrivate is a hack around golang tooling. This function do next steps:
+// - Creates a temp dir
+// - Init module in this dir
+// - Add dependency
+// - Get dep indo
+// - Remove temp dir
+func fetchLatestPrivate(ctx context.Context, mod moduleInfo) (*moduleInfo, error) {
+	tmpDir, err := os.MkdirTemp("", "gomodtemp")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	{
+		cmd := exec.CommandContext(ctx, "go", "mod", "init", "sample")
+		cmd.Dir = tmpDir
+		cmd.Stdout = io.Discard
+		cmd.Stderr = io.Discard
+		if err := cmd.Run(); err != nil {
+			return nil, fmt.Errorf("go mod init: %w", err)
+		}
+	}
+
+	{
+		cmd := exec.CommandContext(ctx, "go", "get", mod.Module)
+		cmd.Dir = tmpDir
+		cmd.Stdout = io.Discard
+		cmd.Stderr = io.Discard
+		if err := cmd.Run(); err != nil {
+			return nil, fmt.Errorf("go get: %w", err)
+		}
+	}
+
+	goModFilename := filepath.Join(tmpDir, "go.mod")
+	bb, err := os.ReadFile(goModFilename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read go.mod: %w", err)
+	}
+
+	modFile, err := modfile.Parse(goModFilename, bb, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse go.mod: %w", err)
+	}
+
+	for _, require := range modFile.Require {
+		if strings.HasPrefix(mod.Module, require.Mod.Path) {
+			return parse(mod.Module + at + require.Mod.Version)
+		}
+	}
+
+	return nil, errors.New("sky was falling")
+}
+
+func Fetch(ctx context.Context, link string) (*moduleInfo, error) {
+	return fetchLatest(ctx, link)
+}
