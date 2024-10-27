@@ -6,6 +6,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/kazhuravlev/optional v0.2.1
 	github.com/urfave/cli/v2 v2.27.4
+	golang.org/x/mod v0.21.0
 	golang.org/x/sync v0.8.0
 )
 
