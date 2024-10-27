@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
+	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -51,7 +54,6 @@ func parse(str string) (*moduleInfo, error) {
 				program = lastPart
 			}
 		}
-
 	}
 
 	return &moduleInfo{
@@ -74,11 +76,15 @@ func fetchLatest(ctx context.Context, link string) (*moduleInfo, error) {
 	}
 
 	if mod.IsPrivate {
-		return nil, errors.New("private module is not yet supported")
+		privateMod, err := fetchLatestPrivate(ctx, *mod)
+		if err != nil {
+			return nil, fmt.Errorf("fetch private module: %w", err)
+		}
+
+		return parse(mod.Module + at + privateMod.Version)
 	}
 
 	link = mod.Module
-
 	for {
 		// TODO: use a local proxy if configured.
 		// Get the latest version
