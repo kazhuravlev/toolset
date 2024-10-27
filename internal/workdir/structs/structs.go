@@ -1,10 +1,20 @@
 package structs
 
 import (
+	"errors"
 	"github.com/kazhuravlev/optional"
 	"slices"
+	"strconv"
 	"strings"
 )
+
+var ErrToolNotInstalled = errors.New("tool not installed")
+
+type RunError struct {
+	ExitCode int
+}
+
+func (e *RunError) Error() string { return strconv.Itoa(e.ExitCode) }
 
 type Tool struct {
 	// Name of runtime

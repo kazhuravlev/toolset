@@ -9,9 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
+const golang = "go"
 const at = "@"
 
 type Runtime struct {
@@ -31,21 +31,12 @@ func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
 		return "", errors.New("program name not provided")
 	}
 
-	mod, err := parse(str)
-	if err != nil {
-		return "", fmt.Errorf("parse program: %w", err)
-	}
-
-	goModule, err := fetch(ctx, mod.Canonical)
+	goModule, err := fetchLatest(ctx, str)
 	if err != nil {
 		return "", fmt.Errorf("get go module version: %w", err)
 	}
 
-	if mod.Version == "latest" {
-		return fmt.Sprintf("%s%s%s", mod.Module, at, goModule.Version), nil
-	}
-
-	return str, nil
+	return goModule.Canonical, nil
 }
 
 func (r *Runtime) GetModule(_ context.Context, module string) (*structs.ModuleInfo, error) {
@@ -67,8 +58,6 @@ func (r *Runtime) GetModule(_ context.Context, module string) (*structs.ModuleIn
 }
 
 func (r *Runtime) Install(ctx context.Context, program string) error {
-	const golang = "go"
-
 	mod, err := r.GetModule(ctx, program)
 	if err != nil {
 		return fmt.Errorf("get go module (%s): %w", program, err)
@@ -105,12 +94,21 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 		return fmt.Errorf("get go module (%s): %w", program, err)
 	}
 
+	if !mod.IsInstalled {
+		return fmt.Errorf("program (%s) is not installed: %w", program, structs.ErrToolNotInstalled)
+	}
+
 	programBinary := mod.BinPath
 	cmd := exec.CommandContext(ctx, programBinary, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return fmt.Errorf("exit not ok (%s): %w", program, errors.Join(&structs.RunError{ExitCode: exitErr.ExitCode()}, err))
+		}
+
 		return fmt.Errorf("run (%s): %w", program, err)
 	}
 
@@ -118,17 +116,14 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 }
 
 func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, error) {
-	goModule, err := fetch(ctx, module)
+	latestMod, err := fetchLatest(ctx, module)
 	if err != nil {
 		return "", false, fmt.Errorf("get go module: %w", err)
 	}
 
-	goBinaryWoVersion := strings.Split(module, at)[0]
-	latestModule := fmt.Sprintf("%s%s%s", goBinaryWoVersion, at, goModule.Version)
-
-	if module == latestModule {
+	if module == latestMod.Canonical {
 		return module, false, nil
 	}
 
-	return latestModule, true, nil
+	return latestMod.Canonical, true, nil
 }
