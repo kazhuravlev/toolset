@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 type parsedMod struct {
@@ -65,14 +64,7 @@ func parse(str string) (*parsedMod, error) {
 }
 
 type fetchedMod struct {
-	Version string    `json:"Version"`
-	Time    time.Time `json:"Time"`
-	Origin  struct {
-		VCS  string `json:"VCS"`
-		URL  string `json:"URL"`
-		Hash string `json:"Hash"`
-		Ref  string `json:"Ref"`
-	} `json:"Origin"`
+	Version string `json:"Version"`
 }
 
 func fetch(ctx context.Context, link string) (*fetchedMod, error) {
