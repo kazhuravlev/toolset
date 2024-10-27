@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/mod/module"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,11 +18,12 @@ type parsedMod struct {
 	Module    string // github.com/golangci/golangci-lint/cmd/golangci-lint
 	Version   string // v1.55.2
 	Program   string // golangci-lint
+	IsPrivate bool   // depends on `go env GOPRIVATE`
 }
 
 // parse will parse source string and try to extract all details about mentioned golang program.
 func parse(str string) (*parsedMod, error) {
-	var canonical, module, version, program string
+	var canonical, mod, version, program string
 
 	{
 		parts := strings.Split(str, at)
@@ -34,15 +36,15 @@ func parse(str string) (*parsedMod, error) {
 			version = parts[1]
 		}
 
-		module = parts[0]
-		canonical = module + at + version
+		mod = parts[0]
+		canonical = mod + at + version
 
 		// github.com/user/repo/cmd/program => program
-		if strings.Contains(module, "/cmd/") {
-			program = filepath.Base(strings.Split(module, "/cmd/")[1])
+		if strings.Contains(mod, "/cmd/") {
+			program = filepath.Base(strings.Split(mod, "/cmd/")[1])
 		} else {
 			// github.com/user/repo/v3 => repo
-			parts := strings.Split(module, "/")
+			parts := strings.Split(mod, "/")
 			lastPart := parts[len(parts)-1]
 			if strings.HasPrefix(lastPart, "v") {
 				program = parts[len(parts)-2]
@@ -55,9 +57,10 @@ func parse(str string) (*parsedMod, error) {
 
 	return &parsedMod{
 		Canonical: canonical,
-		Module:    module,
+		Module:    mod,
 		Version:   version,
 		Program:   program,
+		IsPrivate: module.MatchPrefixPatterns(os.Getenv("GOPRIVATE"), mod),
 	}, nil
 }
 
