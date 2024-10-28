@@ -39,8 +39,8 @@ func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
 	return goModule.Canonical, nil
 }
 
-func (r *Runtime) GetModule(_ context.Context, module string) (*structs.ModuleInfo, error) {
-	mod, err := parse(module)
+func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.ModuleInfo, error) {
+	mod, err := parse(ctx, module)
 	if err != nil {
 		return nil, fmt.Errorf("parse module (%s): %w", module, err)
 	}
