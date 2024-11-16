@@ -21,7 +21,6 @@ tasks:
     - "{{.TOOLSET}} add --tags group1 go github.com/segmentio/golines@latest"
     - "{{.TOOLSET}} add --tags group1 go honnef.co/go/tools/cmd/staticcheck@v0.5.1"
     - "{{.TOOLSET}} sync --tags group1"
-    - "{{.TOOLSET}} run goimports --help"
     - "{{.TOOLSET}} add --tags formatter,ci go golang.org/x/tools/cmd/goimports@v0.21.0"
     - "{{.TOOLSET}} add --tags local,ci go github.com/kazhuravlev/git-tools/cmd/gt"
     - "{{.TOOLSET}} add --tags local,ci,linters go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.2"
@@ -38,5 +37,13 @@ tasks:
     - "{{.TOOLSET}} sync"
     - "{{.TOOLSET}} run gt tag last"
     - "{{.TOOLSET}} list"
-
-
+    - "{{.TOOLSET}} run buf --version"
+    - "{{.TOOLSET}} run dlv version"
+    - "{{.TOOLSET}} run swagger version"
+    - "{{.TOOLSET}} run golangci-lint version"
+    - "{{.TOOLSET}} run goreleaser --version"
+    - "{{.TOOLSET}} run revive --version"
+    - "{{.TOOLSET}} run golines --version"
+    - "{{.TOOLSET}} run staticcheck -version"
+    - "{{.TOOLSET}} run gt --version"
+    - "{{.TOOLSET}} run gofumpt --version"
