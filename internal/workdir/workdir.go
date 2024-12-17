@@ -273,6 +273,11 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
 	}
 
+	c.stats.Tools[tool.ID()] = time.Now()
+	if err := c.saveStats(); err != nil {
+		return fmt.Errorf("save stats: %w", err)
+	}
+
 	if err := rt.Run(ctx, tool.Module, args...); err != nil {
 		if errors.Is(err, structs.ErrToolNotInstalled) {
 			return fmt.Errorf("run tool: %w", errors.Join(err, ErrToolNotInstalled))
@@ -452,6 +457,7 @@ func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) 
 type ToolState struct {
 	Runtime      string
 	OriginModule string
+	LastUse      optional.Val[time.Time]
 	Module       structs.ModuleInfo
 	Alias        optional.Val[string]
 	Tags         []string
@@ -465,9 +471,15 @@ func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
 			return nil, fmt.Errorf("get module info: %w", err)
 		}
 
+		var lastUse optional.Val[time.Time]
+		if val, ok := c.stats.Tools[tool.ID()]; ok {
+			lastUse.Set(val)
+		}
+
 		res = append(res, ToolState{
 			Runtime:      tool.Runtime,
 			OriginModule: tool.Module,
+			LastUse:      lastUse,
 			Module:       *mod,
 			Alias:        tool.Alias,
 			Tags:         tool.Tags,
@@ -504,6 +516,7 @@ func Init(dir string) (string, error) {
 
 	targetSpecFile := filepath.Join(dir, specFilename)
 	targetLockFile := filepath.Join(dir, lockFilename)
+	targetStatsFile := filepath.Join(dir, defaultToolsDir, statsFilename)
 
 	switch _, err := os.Stat(targetSpecFile); {
 	default:
@@ -526,6 +539,14 @@ func Init(dir string) (string, error) {
 		}
 		if err := writeJson(lock, targetLockFile); err != nil {
 			return "", fmt.Errorf("write init lock: %w", err)
+		}
+
+		_, errStats := forceReadJson(targetStatsFile, Stats{
+			Version: StatsVer1,
+			Tools:   make(map[string]time.Time),
+		})
+		if err := errStats; err != nil {
+			return "", fmt.Errorf("write init stats: %w", err)
 		}
 
 		return targetSpecFile, nil
