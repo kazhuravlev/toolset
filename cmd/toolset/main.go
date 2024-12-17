@@ -10,6 +10,7 @@ import (
 	cli "github.com/urfave/cli/v2"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -17,6 +18,7 @@ const (
 	keyCopyFrom = "copy-from"
 	keyInclude  = "include"
 	keyTags     = "tags"
+	keyUnused   = "unused"
 )
 
 var version = "unknown-dirty"
@@ -111,8 +113,15 @@ At this point tool will not be installed. In order to install added tool please 
 				Args: true,
 			},
 			{
-				Name:   "list",
-				Usage:  "list of project tools",
+				Name:  "list",
+				Usage: "list of project tools and their stats",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  keyUnused,
+						Usage: "list tools that are unused. Useful when you want to check which tools can be deleted (or excluded from tag)",
+						Value: false,
+					},
+				},
 				Action: cmdList,
 			},
 		},
@@ -290,6 +299,8 @@ func cmdUpgrade(c *cli.Context) error {
 func cmdList(c *cli.Context) error {
 	ctx := c.Context
 
+	onlyUnused := c.Bool(keyUnused)
+
 	wd, err := workdir.New()
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
@@ -300,18 +311,37 @@ func cmdList(c *cli.Context) error {
 		return fmt.Errorf("get tools: %w", err)
 	}
 
-	rows := make([]table.Row, len(tools))
-	for i, tool := range tools {
-		rows[i] = table.Row{
+	if onlyUnused {
+		tools2 := make([]workdir.ToolState, 0, len(tools))
+		for _, tool := range tools {
+			if tool.LastUse.HasVal() {
+				continue
+			}
+
+			tools2 = append(tools2, tool)
+		}
+
+		tools = tools2
+	}
+
+	rows := make([]table.Row, 0, len(tools))
+	for _, tool := range tools {
+		lastUse := "---"
+		if val, ok := tool.LastUse.Get(); ok {
+			lastUse = duration(time.Since(val))
+		}
+
+		rows = append(rows, table.Row{
 			tool.Runtime,
 			tool.Module.Name,
 			tool.Module.Version,
 			tool.Module.IsInstalled,
+			lastUse,
 			tool.Module.IsPrivate,
 			tool.Alias.ValDefault("---"),
 			strings.Join(tool.Tags, ","),
 			tool.OriginModule,
-		}
+		})
 	}
 
 	t := table.NewWriter()
@@ -320,6 +350,7 @@ func cmdList(c *cli.Context) error {
 		"Name",
 		"Version",
 		"Installed",
+		"Last Usage",
 		"Private",
 		"Alias",
 		"Tags",
@@ -332,4 +363,41 @@ func cmdList(c *cli.Context) error {
 	fmt.Println(res)
 
 	return nil
+}
+
+func duration(d time.Duration) string {
+	if d == 0 {
+		return "0s"
+	}
+
+	days := d / (24 * time.Hour)
+	d -= days * 24 * time.Hour
+
+	hours := d / time.Hour
+	d -= hours * time.Hour
+
+	minutes := d / time.Minute
+	d -= minutes * time.Minute
+
+	seconds := d / time.Second
+
+	// Build the human-readable string
+	var result string
+	if days > 0 {
+		result += fmt.Sprintf("%dd ", days)
+	}
+
+	if hours > 0 {
+		result += fmt.Sprintf("%dh ", hours)
+	}
+
+	if minutes > 0 {
+		result += fmt.Sprintf("%dm ", minutes)
+	}
+
+	if seconds > 0 {
+		result += fmt.Sprintf("%ds ", seconds)
+	}
+
+	return result
 }
