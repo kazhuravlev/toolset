@@ -10,6 +10,7 @@ import (
 	cli "github.com/urfave/cli/v2"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -304,7 +305,7 @@ func cmdList(c *cli.Context) error {
 	for i, tool := range tools {
 		lastUse := "---"
 		if val, ok := tool.LastUse.Get(); ok {
-			lastUse = val.String()
+			lastUse = duration(time.Since(val))
 		}
 
 		rows[i] = table.Row{
@@ -339,4 +340,42 @@ func cmdList(c *cli.Context) error {
 	fmt.Println(res)
 
 	return nil
+}
+
+func duration(d time.Duration) string {
+	if d == 0 {
+		return "0s"
+	}
+
+	days := d / (24 * time.Hour)
+	d -= days * 24 * time.Hour
+
+	hours := d / time.Hour
+	d -= hours * time.Hour
+
+	minutes := d / time.Minute
+	d -= minutes * time.Minute
+
+	seconds := d / time.Second
+	d -= seconds * time.Second
+
+	// Build the human-readable string
+	var result string
+	if days > 0 {
+		result += fmt.Sprintf("%dd ", days)
+	}
+
+	if hours > 0 {
+		result += fmt.Sprintf("%dh ", hours)
+	}
+
+	if minutes > 0 {
+		result += fmt.Sprintf("%dm ", minutes)
+	}
+
+	if seconds > 0 {
+		result += fmt.Sprintf("%ds ", seconds)
+	}
+
+	return result
 }
