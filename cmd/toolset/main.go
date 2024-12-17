@@ -112,7 +112,7 @@ At this point tool will not be installed. In order to install added tool please 
 			},
 			{
 				Name:   "list",
-				Usage:  "list of project tools",
+				Usage:  "list of project tools and their stats",
 				Action: cmdList,
 			},
 		},
