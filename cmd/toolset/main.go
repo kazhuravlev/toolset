@@ -118,6 +118,7 @@ At this point tool will not be installed. In order to install added tool please 
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  keyUnused,
+						Usage: "list tools that are unused. Useful when you want to check which tools can be deleted (or excluded from tag)",
 						Value: false,
 					},
 				},
