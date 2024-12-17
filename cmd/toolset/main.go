@@ -302,11 +302,17 @@ func cmdList(c *cli.Context) error {
 
 	rows := make([]table.Row, len(tools))
 	for i, tool := range tools {
+		lastUse := "---"
+		if val, ok := tool.LastUse.Get(); ok {
+			lastUse = val.String()
+		}
+
 		rows[i] = table.Row{
 			tool.Runtime,
 			tool.Module.Name,
 			tool.Module.Version,
 			tool.Module.IsInstalled,
+			lastUse,
 			tool.Module.IsPrivate,
 			tool.Alias.ValDefault("---"),
 			strings.Join(tool.Tags, ","),
@@ -320,6 +326,7 @@ func cmdList(c *cli.Context) error {
 		"Name",
 		"Version",
 		"Installed",
+		"Last Usage",
 		"Private",
 		"Alias",
 		"Tags",
