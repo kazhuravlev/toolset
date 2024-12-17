@@ -380,7 +380,6 @@ func duration(d time.Duration) string {
 	d -= minutes * time.Minute
 
 	seconds := d / time.Second
-	d -= seconds * time.Second
 
 	// Build the human-readable string
 	var result string
