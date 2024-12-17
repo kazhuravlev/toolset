@@ -167,6 +167,8 @@ ls ./bin/tools
 toolset run gt --repo ../ tag last
 # List installed tools
 toolset list
+# List installed tools that was never used
+toolset list --unused
 ```
 
 ## Contributing
