@@ -12,12 +12,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
+	// This files is placed in project root
 	specFilename    = ".toolset.json"
 	lockFilename    = ".toolset.lock.json"
 	defaultToolsDir = "./bin/tools"
+	// This file is places in tools directory
+	statsFilename = ".stats.json"
+)
+
+const (
+	StatsVer1 = "v1"
 )
 
 var ErrToolNotFoundInSpec = errors.New("tool not found in spec")
@@ -41,6 +49,7 @@ type Workdir struct {
 	dir      string
 	spec     *Spec
 	lock     *Lock
+	stats    *Stats
 	runtimes map[string]IRuntime
 }
 
@@ -128,10 +137,20 @@ func New() (*Workdir, error) {
 		}
 	}
 
+	statsFName := filepath.Join(baseDir, spec.Dir, statsFilename)
+	statsFile, err := forceReadJson(statsFName, Stats{
+		Version: StatsVer1,
+		Tools:   make(map[string]time.Time),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("read stats: %w", err)
+	}
+
 	return &Workdir{
-		dir:  baseDir,
-		spec: spec,
-		lock: &lockFile,
+		dir:   baseDir,
+		spec:  spec,
+		lock:  &lockFile,
+		stats: statsFile,
 		runtimes: map[string]IRuntime{
 			"go": runtimego.New(filepath.Join(baseDir, spec.Dir)),
 		},
@@ -150,6 +169,10 @@ func (c *Workdir) getLockFilename() string {
 	return filepath.Join(c.dir, lockFilename)
 }
 
+func (c *Workdir) getStatsFilename() string {
+	return filepath.Join(c.getToolsDir(), statsFilename)
+}
+
 func (c *Workdir) Save() error {
 	if err := writeJson(*c.spec, c.getSpecFilename()); err != nil {
 		return fmt.Errorf("write spec: %w", err)
@@ -157,6 +180,10 @@ func (c *Workdir) Save() error {
 
 	if err := writeJson(*c.lock, c.getLockFilename()); err != nil {
 		return fmt.Errorf("write lock: %w", err)
+	}
+
+	if err := c.saveStats(); err != nil {
+		return fmt.Errorf("save stats: %w", err)
 	}
 
 	return nil
@@ -462,6 +489,10 @@ func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*struct
 	}
 
 	return mod, nil
+}
+
+func (c *Workdir) saveStats() error {
+	return writeJson(*c.stats, c.getStatsFilename())
 }
 
 // Init will initialize context in specified directory.
