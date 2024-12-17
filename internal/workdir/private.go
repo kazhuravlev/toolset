@@ -58,6 +58,21 @@ func writeJson(in any, path string) error {
 	return nil
 }
 
+func forceReadJson[T any](path string, defVal T) (*T, error) {
+	if !isExists(path) {
+		if err := writeJson(defVal, path); err != nil {
+			return nil, fmt.Errorf("write json to file: %w", err)
+		}
+	}
+
+	res, err := readJson[T](path)
+	if err != nil {
+		return nil, fmt.Errorf("read json: %w", err)
+	}
+
+	return res, nil
+}
+
 func parseSourceURI(uri string) (SourceUri, error) {
 	sourceURL, err := url.Parse(uri)
 	if err != nil {
