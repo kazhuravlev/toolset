@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
+	"time"
 )
 
 type SourceUri interface {
@@ -82,6 +83,11 @@ func (l *Lock) FromSpec(spec *Spec) {
 	}
 }
 
+type Stats struct {
+	Version string               `json:"version"`
+	Tools   map[string]time.Time `json:"tools"`
+}
+
 type RemoteSpec struct {
 	Source string   `json:"source"`
 	Spec   Spec     `json:"spec"`
@@ -115,6 +121,8 @@ func (r *RemoteSpec) UnmarshalJSON(bb []byte) error {
 }
 
 type Spec struct {
+	// This dir is store all toolset-related files.
+	// This directory should be managed by toolset only.
 	Dir      string        `json:"dir"`
 	Tools    structs.Tools `json:"tools"`
 	Includes []Include     `json:"includes"`
