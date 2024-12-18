@@ -21,7 +21,8 @@ const (
 	lockFilename    = ".toolset.lock.json"
 	defaultToolsDir = "./bin/tools"
 	// This file is places in tools directory
-	statsFilename = ".stats.json"
+	statsFilename  = ".stats.json"
+	defaultDirPerm = 0o755
 )
 
 const (
@@ -137,7 +138,9 @@ func New() (*Workdir, error) {
 		}
 	}
 
-	statsFName := filepath.Join(baseDir, spec.Dir, statsFilename)
+	absToolsDir := filepath.Join(baseDir, spec.Dir)
+
+	statsFName := filepath.Join(absToolsDir, statsFilename)
 	statsFile, err := forceReadJson(statsFName, Stats{
 		Version: StatsVer1,
 		Tools:   make(map[string]time.Time),
@@ -299,7 +302,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
 	if toolsDir := c.getToolsDir(); !isExists(toolsDir) {
 		fmt.Println("Target dir not exists. Creating...", toolsDir)
-		if err := os.MkdirAll(toolsDir, 0o755); err != nil {
+		if err := os.MkdirAll(toolsDir, defaultDirPerm); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
 	}
@@ -514,9 +517,14 @@ func Init(dir string) (string, error) {
 		return "", fmt.Errorf("get abs path: %w", err)
 	}
 
+	absToolsDir := filepath.Join(dir, defaultToolsDir)
+	if err := os.MkdirAll(absToolsDir, defaultDirPerm); err != nil {
+		return "", fmt.Errorf("create tools dir: %w", err)
+	}
+
 	targetSpecFile := filepath.Join(dir, specFilename)
 	targetLockFile := filepath.Join(dir, lockFilename)
-	targetStatsFile := filepath.Join(dir, defaultToolsDir, statsFilename)
+	targetStatsFile := filepath.Join(absToolsDir, statsFilename)
 
 	switch _, err := os.Stat(targetSpecFile); {
 	default:
