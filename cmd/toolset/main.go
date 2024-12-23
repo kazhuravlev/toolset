@@ -124,6 +124,12 @@ At this point tool will not be installed. In order to install added tool please 
 				},
 				Action: cmdList,
 			},
+			{
+				Name:   "which",
+				Usage:  "show path to the actual binary",
+				Action: cmdWhich,
+				Args:   true,
+			},
 		},
 	}
 
@@ -361,6 +367,39 @@ func cmdList(c *cli.Context) error {
 
 	res := t.Render()
 	fmt.Println(res)
+
+	return nil
+}
+
+func cmdWhich(c *cli.Context) error {
+	target := c.Args().First()
+	if target == "" {
+		return fmt.Errorf("target is required")
+	}
+
+	wd, err := workdir.New()
+	if err != nil {
+		return fmt.Errorf("new workdir: %w", err)
+	}
+
+	ts, err := wd.FindTool(target)
+	if err != nil {
+		if errors.Is(err, workdir.ErrToolNotFoundInSpec) {
+			fmt.Println("tool not added. Run `toolset add --help` to add tool")
+			os.Exit(1)
+			return nil
+		}
+
+		if errors.Is(err, workdir.ErrToolNotInstalled) {
+			fmt.Println("tool not installed. Run `toolset sync --help` to install tool before run")
+			os.Exit(1)
+			return nil
+		}
+
+		return fmt.Errorf("find tool: %w", err)
+	}
+
+	fmt.Println(ts.Module.BinPath)
 
 	return nil
 }
