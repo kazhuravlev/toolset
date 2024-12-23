@@ -52,7 +52,7 @@ are the basic commands:
 
 ### Initialize Toolset
 
-Create a toolset.json configuration file in the specified directory:
+Create a `toolset.json` configuration file in the specified directory:
 
 ```shell
 toolset init .
@@ -60,7 +60,7 @@ toolset init .
 
 ### Add Tools
 
-### Direct tools
+#### Direct tools
 
 Explicitly add tool to your configuration. They have an priority on top of includes.
 
@@ -149,6 +149,24 @@ toolset upgrade --tags ci
 ```
 
 This command ensures all tools in your toolset.json configuration are updated to the latest version.
+
+### Get an absolute path to installed tool
+
+To get an abs path to installed tool you can just use a `toolset which`:
+
+```shell
+# Install some tool. For example - goimports
+toolset add go golang.org/x/tools/cmd/goimports
+toolset sync
+# Get an abs path to installed tool
+toolset which goimports
+```
+
+This command returns an abs path to goimports like that:
+
+```
+/abs/path/to/project/bin/tools/.goimports___v0.21.0/goimports
+```
 
 ## Examples
 
