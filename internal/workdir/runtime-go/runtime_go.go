@@ -128,3 +128,20 @@ func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, e
 
 	return latestMod.Canonical, true, nil
 }
+
+func (r *Runtime) Remove(ctx context.Context, tool structs.Tool) error {
+	mod, err := r.GetModule(ctx, tool.Module)
+	if err != nil {
+		return fmt.Errorf("get go module (%s): %w", tool.Module, err)
+	}
+
+	if !mod.IsInstalled {
+		return errors.New("module is not installed")
+	}
+
+	if err := os.RemoveAll(mod.BinDir); err != nil {
+		return fmt.Errorf("remove (%s): %w", mod.BinDir, err)
+	}
+
+	return nil
+}

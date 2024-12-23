@@ -44,6 +44,7 @@ type IRuntime interface {
 	Install(ctx context.Context, program string) error
 	Run(ctx context.Context, program string, args ...string) error
 	GetLatest(ctx context.Context, module string) (string, bool, error)
+	Remove(ctx context.Context, tool structs.Tool) error
 }
 
 type Workdir struct {
@@ -239,6 +240,30 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 	}
 
 	return wasAdded, program, nil
+}
+
+func (c *Workdir) RemoveTool(ctx context.Context, target string) error {
+	ts, err := c.FindTool(target)
+	if err != nil {
+		return fmt.Errorf("find tool: %w", err)
+	}
+
+	if ts.Module.IsInstalled {
+		rt, ok := c.runtimes[ts.Tool.Runtime]
+		if !ok {
+			return fmt.Errorf("unsupported runtime: %s", ts.Tool.Runtime)
+		}
+
+		if err := rt.Remove(ctx, ts.Tool); err != nil {
+			return fmt.Errorf("remove tool: %w", err)
+		}
+	}
+
+	_ = c.lock.Tools.Remove(ts.Tool)
+	_ = c.spec.Tools.Remove(ts.Tool)
+	delete(c.stats.Tools, ts.Tool.ID())
+
+	return nil
 }
 
 func (c *Workdir) FindTool(name string) (*ToolState, error) {

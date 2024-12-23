@@ -130,6 +130,12 @@ At this point tool will not be installed. In order to install added tool please 
 				Action: cmdWhich,
 				Args:   true,
 			},
+			{
+				Name:   "remove",
+				Usage:  "remove tool",
+				Action: cmdRemove,
+				Args:   true,
+			},
 		},
 	}
 
@@ -401,6 +407,30 @@ func cmdWhich(c *cli.Context) error {
 		}
 
 		fmt.Println(ts.Module.BinPath)
+	}
+
+	return nil
+}
+
+func cmdRemove(c *cli.Context) error {
+	targets := c.Args().Slice()
+	if len(targets) == 0 {
+		return fmt.Errorf("target is required")
+	}
+
+	wd, err := workdir.New()
+	if err != nil {
+		return fmt.Errorf("new workdir: %w", err)
+	}
+
+	for _, target := range targets {
+		if err := wd.RemoveTool(c.Context, target); err != nil {
+			return fmt.Errorf("remove tool (%s): %w", target, err)
+		}
+	}
+
+	if err := wd.Save(); err != nil {
+		return fmt.Errorf("save: %w", err)
 	}
 
 	return nil
