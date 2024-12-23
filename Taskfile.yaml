@@ -32,6 +32,7 @@ tasks:
     - "{{.TOOLSET}} sync --tags codegen"
     - "{{.TOOLSET}} list"
     - "{{.TOOLSET}} sync"
+    - "{{.TOOLSET}} which buf gt dlv"
     - "{{.TOOLSET}} upgrade --tags codegen"
     - "{{.TOOLSET}} upgrade"
     - "{{.TOOLSET}} sync"

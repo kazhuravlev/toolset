@@ -124,6 +124,12 @@ At this point tool will not be installed. In order to install added tool please 
 				},
 				Action: cmdList,
 			},
+			{
+				Name:   "which",
+				Usage:  "show path to the actual binary",
+				Action: cmdWhich,
+				Args:   true,
+			},
 		},
 	}
 
@@ -325,22 +331,22 @@ func cmdList(c *cli.Context) error {
 	}
 
 	rows := make([]table.Row, 0, len(tools))
-	for _, tool := range tools {
+	for _, ts := range tools {
 		lastUse := "---"
-		if val, ok := tool.LastUse.Get(); ok {
+		if val, ok := ts.LastUse.Get(); ok {
 			lastUse = duration(time.Since(val))
 		}
 
 		rows = append(rows, table.Row{
-			tool.Runtime,
-			tool.Module.Name,
-			tool.Module.Version,
-			tool.Module.IsInstalled,
+			ts.Tool.Runtime,
+			ts.Module.Name,
+			ts.Module.Version,
+			ts.Module.IsInstalled,
 			lastUse,
-			tool.Module.IsPrivate,
-			tool.Alias.ValDefault("---"),
-			strings.Join(tool.Tags, ","),
-			tool.OriginModule,
+			ts.Module.IsPrivate,
+			ts.Tool.Alias.ValDefault("---"),
+			strings.Join(ts.Tool.Tags, ","),
+			ts.Tool.Module,
 		})
 	}
 
@@ -361,6 +367,41 @@ func cmdList(c *cli.Context) error {
 
 	res := t.Render()
 	fmt.Println(res)
+
+	return nil
+}
+
+func cmdWhich(c *cli.Context) error {
+	targets := c.Args().Slice()
+	if len(targets) == 0 {
+		return fmt.Errorf("target is required")
+	}
+
+	wd, err := workdir.New()
+	if err != nil {
+		return fmt.Errorf("new workdir: %w", err)
+	}
+
+	for _, target := range targets {
+		ts, err := wd.FindTool(target)
+		if err != nil {
+			if errors.Is(err, workdir.ErrToolNotFoundInSpec) {
+				fmt.Println("tool not added. Run `toolset add --help` to add tool")
+				os.Exit(1)
+				return nil
+			}
+
+			if errors.Is(err, workdir.ErrToolNotInstalled) {
+				fmt.Println("tool not installed. Run `toolset sync --help` to install tool before run")
+				os.Exit(1)
+				return nil
+			}
+
+			return fmt.Errorf("find tool: %w", err)
+		}
+
+		fmt.Println(ts.Module.BinPath)
+	}
 
 	return nil
 }
