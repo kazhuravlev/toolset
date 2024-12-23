@@ -513,6 +513,14 @@ func (c *Workdir) saveStats() error {
 	return writeJson(*c.stats, c.getStatsFilename())
 }
 
+func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
+	if val, ok := c.stats.Tools[id]; ok {
+		return optional.New(val)
+	}
+
+	return optional.Empty[time.Time]()
+}
+
 // Init will initialize context in specified directory.
 func Init(dir string) (string, error) {
 	dir, err := filepath.Abs(dir)
