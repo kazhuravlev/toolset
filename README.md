@@ -168,6 +168,20 @@ This command returns an abs path to goimports like that:
 /abs/path/to/project/bin/tools/.goimports___v0.21.0/goimports
 ```
 
+### Remove installed tool
+
+You can use `toolset remove` in very similar order like `toolset add` or `toolset run`. This operation will remove
+requested binaries and some meta info.
+
+```shell
+# Install some tool. For example - goimports
+toolset add go golang.org/x/tools/cmd/goimports
+toolset sync
+# Remove tool by calling one of next command
+toolset remove goimports
+toolset remove golang.org/x/tools/cmd/goimports
+```
+
 ## Examples
 
 Here’s an [example](./example) of a directory with the toolset. To try it out, follow these steps:
