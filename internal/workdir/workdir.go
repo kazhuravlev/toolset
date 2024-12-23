@@ -272,22 +272,22 @@ func (c *Workdir) FindTool(name string) (*ToolState, error) {
 
 // RunTool will run a tool by its name and args.
 func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error {
-	tool, err := c.FindTool(str)
+	ts, err := c.FindTool(str)
 	if err != nil {
 		return err
 	}
 
-	rt, ok := c.runtimes[tool.Runtime]
+	rt, ok := c.runtimes[ts.Tool.Runtime]
 	if !ok {
-		return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+		return fmt.Errorf("unsupported runtime: %s", ts.Tool.Runtime)
 	}
 
-	c.stats.Tools[tool.ID()] = time.Now()
+	c.stats.Tools[ts.Tool.ID()] = time.Now()
 	if err := c.saveStats(); err != nil {
 		return fmt.Errorf("save stats: %w", err)
 	}
 
-	if err := rt.Run(ctx, tool.Module, args...); err != nil {
+	if err := rt.Run(ctx, ts.Tool.Module, args...); err != nil {
 		if errors.Is(err, structs.ErrToolNotInstalled) {
 			return fmt.Errorf("run tool: %w", errors.Join(err, ErrToolNotInstalled))
 		}
