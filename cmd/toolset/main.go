@@ -325,22 +325,22 @@ func cmdList(c *cli.Context) error {
 	}
 
 	rows := make([]table.Row, 0, len(tools))
-	for _, tool := range tools {
+	for _, ts := range tools {
 		lastUse := "---"
-		if val, ok := tool.LastUse.Get(); ok {
+		if val, ok := ts.LastUse.Get(); ok {
 			lastUse = duration(time.Since(val))
 		}
 
 		rows = append(rows, table.Row{
-			tool.Runtime,
-			tool.Module.Name,
-			tool.Module.Version,
-			tool.Module.IsInstalled,
+			ts.Tool.Runtime,
+			ts.Module.Name,
+			ts.Module.Version,
+			ts.Module.IsInstalled,
 			lastUse,
-			tool.Module.IsPrivate,
-			tool.Alias.ValDefault("---"),
-			strings.Join(tool.Tags, ","),
-			tool.OriginModule,
+			ts.Module.IsPrivate,
+			ts.Tool.Alias.ValDefault("---"),
+			strings.Join(ts.Tool.Tags, ","),
+			ts.Tool.Module,
 		})
 	}
 
