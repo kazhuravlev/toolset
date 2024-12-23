@@ -2,6 +2,7 @@ package structs
 
 import (
 	"errors"
+	"fmt"
 	"github.com/kazhuravlev/optional"
 	"slices"
 	"strconv"
@@ -24,6 +25,10 @@ type Tool struct {
 	// Alias create a link in tools. Works like exposing some tools
 	Alias optional.Val[string] `json:"alias"`
 	Tags  []string             `json:"tags"`
+}
+
+func (t Tool) ID() string {
+	return fmt.Sprintf("%s:%s", t.Runtime, t.Module)
 }
 
 func (t Tool) IsSame(tool Tool) bool {

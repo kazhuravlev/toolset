@@ -1,6 +1,7 @@
 package runtimego
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,7 +25,7 @@ type moduleInfo struct {
 }
 
 // parse will parse source string and try to extract all details about mentioned golang program.
-func parse(str string) (*moduleInfo, error) {
+func parse(ctx context.Context, str string) (*moduleInfo, error) {
 	var canonical, mod, version, program string
 
 	{
@@ -56,12 +57,24 @@ func parse(str string) (*moduleInfo, error) {
 		}
 	}
 
+	buf := bytes.NewBuffer(nil)
+	{
+		cmd := exec.CommandContext(ctx, golang, "env", "GOPRIVATE")
+		cmd.Stdout = buf
+		cmd.Stderr = io.Discard
+		if err := cmd.Run(); err != nil {
+			return nil, fmt.Errorf("go env GOPRIVATE: %w", err)
+		}
+	}
+
+	goPrivate := strings.TrimSpace(buf.String()) // trim new line ending
+
 	return &moduleInfo{
 		Canonical: canonical,
 		Module:    mod,
 		Version:   version,
 		Program:   program,
-		IsPrivate: module.MatchPrefixPatterns(os.Getenv("GOPRIVATE"), mod),
+		IsPrivate: module.MatchPrefixPatterns(goPrivate, mod),
 	}, nil
 }
 
@@ -70,7 +83,7 @@ type fetchedMod struct {
 }
 
 func fetchLatest(ctx context.Context, link string) (*moduleInfo, error) {
-	mod, err := parse(link)
+	mod, err := parse(ctx, link)
 	if err != nil {
 		return nil, fmt.Errorf("parse module (%s) string: %w", link, err)
 	}
@@ -81,7 +94,7 @@ func fetchLatest(ctx context.Context, link string) (*moduleInfo, error) {
 			return nil, fmt.Errorf("fetch private module: %w", err)
 		}
 
-		return parse(mod.Module + at + privateMod.Version)
+		return parse(ctx, mod.Module+at+privateMod.Version)
 	}
 
 	link = mod.Module
@@ -118,7 +131,7 @@ func fetchLatest(ctx context.Context, link string) (*moduleInfo, error) {
 			return nil, fmt.Errorf("unable to decode module: %w", err)
 		}
 
-		mod2, err := parse(mod.Module + at + fMod.Version)
+		mod2, err := parse(ctx, mod.Module+at+fMod.Version)
 		if err != nil {
 			return nil, fmt.Errorf("parse fetched module: %w", err)
 		}
@@ -151,7 +164,7 @@ func fetchLatestPrivate(ctx context.Context, mod moduleInfo) (*moduleInfo, error
 	defer os.RemoveAll(tmpDir)
 
 	{
-		cmd := exec.CommandContext(ctx, "go", "mod", "init", "sample")
+		cmd := exec.CommandContext(ctx, golang, "mod", "init", "sample")
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -161,7 +174,7 @@ func fetchLatestPrivate(ctx context.Context, mod moduleInfo) (*moduleInfo, error
 	}
 
 	{
-		cmd := exec.CommandContext(ctx, "go", "get", mod.Module)
+		cmd := exec.CommandContext(ctx, golang, "get", mod.Module)
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -183,13 +196,9 @@ func fetchLatestPrivate(ctx context.Context, mod moduleInfo) (*moduleInfo, error
 
 	for _, require := range modFile.Require {
 		if strings.HasPrefix(mod.Module, require.Mod.Path) {
-			return parse(mod.Module + at + require.Mod.Version)
+			return parse(ctx, mod.Module+at+require.Mod.Version)
 		}
 	}
 
 	return nil, errors.New("sky was falling")
-}
-
-func Fetch(ctx context.Context, link string) (*moduleInfo, error) {
-	return fetchLatest(ctx, link)
 }

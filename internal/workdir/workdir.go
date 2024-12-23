@@ -12,12 +12,21 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
+	// This files is placed in project root
 	specFilename    = ".toolset.json"
 	lockFilename    = ".toolset.lock.json"
 	defaultToolsDir = "./bin/tools"
+	// This file is places in tools directory
+	statsFilename  = ".stats.json"
+	defaultDirPerm = 0o755
+)
+
+const (
+	StatsVer1 = "v1"
 )
 
 var ErrToolNotFoundInSpec = errors.New("tool not found in spec")
@@ -41,6 +50,7 @@ type Workdir struct {
 	dir      string
 	spec     *Spec
 	lock     *Lock
+	stats    *Stats
 	runtimes map[string]IRuntime
 }
 
@@ -128,10 +138,22 @@ func New() (*Workdir, error) {
 		}
 	}
 
+	absToolsDir := filepath.Join(baseDir, spec.Dir)
+
+	statsFName := filepath.Join(absToolsDir, statsFilename)
+	statsFile, err := forceReadJson(statsFName, Stats{
+		Version: StatsVer1,
+		Tools:   make(map[string]time.Time),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("read stats: %w", err)
+	}
+
 	return &Workdir{
-		dir:  baseDir,
-		spec: spec,
-		lock: &lockFile,
+		dir:   baseDir,
+		spec:  spec,
+		lock:  &lockFile,
+		stats: statsFile,
 		runtimes: map[string]IRuntime{
 			"go": runtimego.New(filepath.Join(baseDir, spec.Dir)),
 		},
@@ -150,6 +172,10 @@ func (c *Workdir) getLockFilename() string {
 	return filepath.Join(c.dir, lockFilename)
 }
 
+func (c *Workdir) getStatsFilename() string {
+	return filepath.Join(c.getToolsDir(), statsFilename)
+}
+
 func (c *Workdir) Save() error {
 	if err := writeJson(*c.spec, c.getSpecFilename()); err != nil {
 		return fmt.Errorf("write spec: %w", err)
@@ -157,6 +183,10 @@ func (c *Workdir) Save() error {
 
 	if err := writeJson(*c.lock, c.getLockFilename()); err != nil {
 		return fmt.Errorf("write lock: %w", err)
+	}
+
+	if err := c.saveStats(); err != nil {
+		return fmt.Errorf("save stats: %w", err)
 	}
 
 	return nil
@@ -211,7 +241,7 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 	return wasAdded, program, nil
 }
 
-func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
+func (c *Workdir) FindTool(name string) (*ToolState, error) {
 	for _, tool := range c.lock.Tools {
 		mod, err := c.getModuleInfo(context.TODO(), tool)
 		if err != nil {
@@ -220,7 +250,10 @@ func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
 
 		// ...by alias
 		if tool.Alias.HasVal() && tool.Alias.Val() == name {
-			return &tool, nil
+			lastUse := c.getToolLastUse(tool.ID())
+			res := adaptToolState(tool, mod, lastUse)
+
+			return &res, nil
 		}
 
 		// ...by canonical binary from module
@@ -228,7 +261,10 @@ func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
 			continue
 		}
 
-		return &tool, nil
+		lastUse := c.getToolLastUse(tool.ID())
+		res := adaptToolState(tool, mod, lastUse)
+
+		return &res, nil
 	}
 
 	return nil, fmt.Errorf("tool (%s) not found: %w", name, ErrToolNotFoundInSpec)
@@ -236,17 +272,22 @@ func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
 
 // RunTool will run a tool by its name and args.
 func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error {
-	tool, err := c.FindTool(str)
+	ts, err := c.FindTool(str)
 	if err != nil {
 		return err
 	}
 
-	rt, ok := c.runtimes[tool.Runtime]
+	rt, ok := c.runtimes[ts.Tool.Runtime]
 	if !ok {
-		return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+		return fmt.Errorf("unsupported runtime: %s", ts.Tool.Runtime)
 	}
 
-	if err := rt.Run(ctx, tool.Module, args...); err != nil {
+	c.stats.Tools[ts.Tool.ID()] = time.Now()
+	if err := c.saveStats(); err != nil {
+		return fmt.Errorf("save stats: %w", err)
+	}
+
+	if err := rt.Run(ctx, ts.Tool.Module, args...); err != nil {
 		if errors.Is(err, structs.ErrToolNotInstalled) {
 			return fmt.Errorf("run tool: %w", errors.Join(err, ErrToolNotInstalled))
 		}
@@ -267,7 +308,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
 	if toolsDir := c.getToolsDir(); !isExists(toolsDir) {
 		fmt.Println("Target dir not exists. Creating...", toolsDir)
-		if err := os.MkdirAll(toolsDir, 0o755); err != nil {
+		if err := os.MkdirAll(toolsDir, defaultDirPerm); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
 	}
@@ -353,6 +394,8 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 // Upgrade will upgrade only spec tools. and re-fetch latest versions of includes.
 func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 	for _, tool := range c.spec.Tools.Filter(tags) {
+		fmt.Println("Checking:", tool.Module, "...")
+
 		// FIXME(zhuravlev): remove all "is runtime supported" checks by checking it once at spec load.
 		rt, ok := c.runtimes[tool.Runtime]
 		if !ok {
@@ -365,10 +408,11 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 		}
 
 		if !haveUpdate {
+			fmt.Println(">>> Have no updates")
 			continue
 		}
 
-		fmt.Println("Upgrade:", tool.Module, "=>", module)
+		fmt.Println(">>> Upgrade to:", module)
 
 		tool.Module = module
 
@@ -423,11 +467,9 @@ func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) 
 
 // ToolState describe a state of this tool.
 type ToolState struct {
-	Runtime      string
-	OriginModule string
-	Module       structs.ModuleInfo
-	Alias        optional.Val[string]
-	Tags         []string
+	Module  structs.ModuleInfo
+	Tool    structs.Tool
+	LastUse optional.Val[time.Time]
 }
 
 func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
@@ -438,13 +480,9 @@ func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
 			return nil, fmt.Errorf("get module info: %w", err)
 		}
 
-		res = append(res, ToolState{
-			Runtime:      tool.Runtime,
-			OriginModule: tool.Module,
-			Module:       *mod,
-			Alias:        tool.Alias,
-			Tags:         tool.Tags,
-		})
+		lastUse := c.getToolLastUse(tool.ID())
+
+		res = append(res, adaptToolState(tool, mod, lastUse))
 	}
 
 	return res, nil
@@ -464,6 +502,18 @@ func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*struct
 	return mod, nil
 }
 
+func (c *Workdir) saveStats() error {
+	return writeJson(*c.stats, c.getStatsFilename())
+}
+
+func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
+	if val, ok := c.stats.Tools[id]; ok {
+		return optional.New(val)
+	}
+
+	return optional.Empty[time.Time]()
+}
+
 // Init will initialize context in specified directory.
 func Init(dir string) (string, error) {
 	dir, err := filepath.Abs(dir)
@@ -471,8 +521,14 @@ func Init(dir string) (string, error) {
 		return "", fmt.Errorf("get abs path: %w", err)
 	}
 
+	absToolsDir := filepath.Join(dir, defaultToolsDir)
+	if err := os.MkdirAll(absToolsDir, defaultDirPerm); err != nil {
+		return "", fmt.Errorf("create tools dir: %w", err)
+	}
+
 	targetSpecFile := filepath.Join(dir, specFilename)
 	targetLockFile := filepath.Join(dir, lockFilename)
+	targetStatsFile := filepath.Join(absToolsDir, statsFilename)
 
 	switch _, err := os.Stat(targetSpecFile); {
 	default:
@@ -497,6 +553,22 @@ func Init(dir string) (string, error) {
 			return "", fmt.Errorf("write init lock: %w", err)
 		}
 
+		_, errStats := forceReadJson(targetStatsFile, Stats{
+			Version: StatsVer1,
+			Tools:   make(map[string]time.Time),
+		})
+		if err := errStats; err != nil {
+			return "", fmt.Errorf("write init stats: %w", err)
+		}
+
 		return targetSpecFile, nil
+	}
+}
+
+func adaptToolState(tool structs.Tool, mod *structs.ModuleInfo, lastUse optional.Val[time.Time]) ToolState {
+	return ToolState{
+		Tool:    tool,
+		LastUse: lastUse,
+		Module:  *mod,
 	}
 }
