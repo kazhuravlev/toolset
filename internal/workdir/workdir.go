@@ -571,3 +571,11 @@ func Init(dir string) (string, error) {
 		return targetSpecFile, nil
 	}
 }
+
+func adaptToolState(tool structs.Tool, mod *structs.ModuleInfo, lastUse optional.Val[time.Time]) ToolState {
+	return ToolState{
+		Tool:    tool,
+		LastUse: lastUse,
+		Module:  *mod,
+	}
+}
