@@ -461,12 +461,9 @@ func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) 
 
 // ToolState describe a state of this tool.
 type ToolState struct {
-	Runtime      string
-	OriginModule string
-	LastUse      optional.Val[time.Time]
-	Module       structs.ModuleInfo
-	Alias        optional.Val[string]
-	Tags         []string
+	Module  structs.ModuleInfo
+	Tool    structs.Tool
+	LastUse optional.Val[time.Time]
 }
 
 func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
