@@ -372,8 +372,8 @@ func cmdList(c *cli.Context) error {
 }
 
 func cmdWhich(c *cli.Context) error {
-	target := c.Args().First()
-	if target == "" {
+	targets := c.Args().Slice()
+	if len(targets) == 0 {
 		return fmt.Errorf("target is required")
 	}
 
@@ -382,24 +382,26 @@ func cmdWhich(c *cli.Context) error {
 		return fmt.Errorf("new workdir: %w", err)
 	}
 
-	ts, err := wd.FindTool(target)
-	if err != nil {
-		if errors.Is(err, workdir.ErrToolNotFoundInSpec) {
-			fmt.Println("tool not added. Run `toolset add --help` to add tool")
-			os.Exit(1)
-			return nil
+	for _, target := range targets {
+		ts, err := wd.FindTool(target)
+		if err != nil {
+			if errors.Is(err, workdir.ErrToolNotFoundInSpec) {
+				fmt.Println("tool not added. Run `toolset add --help` to add tool")
+				os.Exit(1)
+				return nil
+			}
+
+			if errors.Is(err, workdir.ErrToolNotInstalled) {
+				fmt.Println("tool not installed. Run `toolset sync --help` to install tool before run")
+				os.Exit(1)
+				return nil
+			}
+
+			return fmt.Errorf("find tool: %w", err)
 		}
 
-		if errors.Is(err, workdir.ErrToolNotInstalled) {
-			fmt.Println("tool not installed. Run `toolset sync --help` to install tool before run")
-			os.Exit(1)
-			return nil
-		}
-
-		return fmt.Errorf("find tool: %w", err)
+		fmt.Println(ts.Module.BinPath)
 	}
-
-	fmt.Println(ts.Module.BinPath)
 
 	return nil
 }
