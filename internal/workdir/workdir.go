@@ -476,14 +476,7 @@ func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
 
 		lastUse := c.getToolLastUse(tool.ID())
 
-		res = append(res, ToolState{
-			Runtime:      tool.Runtime,
-			OriginModule: tool.Module,
-			LastUse:      lastUse,
-			Module:       *mod,
-			Alias:        tool.Alias,
-			Tags:         tool.Tags,
-		})
+		res = append(res, adaptToolState(tool, mod, lastUse))
 	}
 
 	return res, nil
