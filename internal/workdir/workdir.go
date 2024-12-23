@@ -241,7 +241,7 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 	return wasAdded, program, nil
 }
 
-func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
+func (c *Workdir) FindTool(name string) (*ToolState, error) {
 	for _, tool := range c.lock.Tools {
 		mod, err := c.getModuleInfo(context.TODO(), tool)
 		if err != nil {
@@ -250,7 +250,10 @@ func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
 
 		// ...by alias
 		if tool.Alias.HasVal() && tool.Alias.Val() == name {
-			return &tool, nil
+			lastUse := c.getToolLastUse(tool.ID())
+			res := adaptToolState(tool, mod, lastUse)
+
+			return &res, nil
 		}
 
 		// ...by canonical binary from module
@@ -258,7 +261,10 @@ func (c *Workdir) FindTool(name string) (*structs.Tool, error) {
 			continue
 		}
 
-		return &tool, nil
+		lastUse := c.getToolLastUse(tool.ID())
+		res := adaptToolState(tool, mod, lastUse)
+
+		return &res, nil
 	}
 
 	return nil, fmt.Errorf("tool (%s) not found: %w", name, ErrToolNotFoundInSpec)
