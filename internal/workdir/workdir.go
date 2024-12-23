@@ -474,10 +474,7 @@ func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
 			return nil, fmt.Errorf("get module info: %w", err)
 		}
 
-		var lastUse optional.Val[time.Time]
-		if val, ok := c.stats.Tools[tool.ID()]; ok {
-			lastUse.Set(val)
-		}
+		lastUse := c.getToolLastUse(tool.ID())
 
 		res = append(res, ToolState{
 			Runtime:      tool.Runtime,
