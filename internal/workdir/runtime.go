@@ -36,10 +36,20 @@ func (r *Runtimes) Get(runtime string) (IRuntime, error) {
 	return rt, nil
 }
 
-func NewRuntimes(baseDir, specDir string) *Runtimes {
-	return &Runtimes{
-		impls: map[string]IRuntime{
-			"go": runtimego.New(filepath.Join(baseDir, specDir)),
-		},
+func NewRuntimes(ctx context.Context, baseDir, specDir string) (*Runtimes, error) {
+	binToolDir := filepath.Join(baseDir, specDir)
+
+	goRuntimes, err := runtimego.Discover(ctx, binToolDir)
+	if err != nil {
+		return nil, fmt.Errorf("discovering go runtimes: %w", err)
 	}
+
+	impls := make(map[string]IRuntime, len(goRuntimes))
+	for _, rt := range goRuntimes {
+		impls["go@"+rt.Version()] = rt
+	}
+
+	return &Runtimes{
+		impls: impls,
+	}, nil
 }

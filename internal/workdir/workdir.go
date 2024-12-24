@@ -39,7 +39,7 @@ type Workdir struct {
 	runtimes *Runtimes
 }
 
-func New(dir string) (*Workdir, error) {
+func New(ctx context.Context, dir string) (*Workdir, error) {
 	// Make abs path to spec.
 	toolsetFilename, err := filepath.Abs(filepath.Join(dir, specFilename))
 	if err != nil {
@@ -94,7 +94,7 @@ func New(dir string) (*Workdir, error) {
 						return nil, fmt.Errorf("re-init toolset: %w", err)
 					}
 
-					wd, err := New(dir)
+					wd, err := New(ctx, dir)
 					if err != nil {
 						return nil, fmt.Errorf("new context in re-created workdir: %w", err)
 					}
@@ -134,12 +134,17 @@ func New(dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read stats: %w", err)
 	}
 
+	runtimes, err := NewRuntimes(ctx, baseDir, spec.Dir)
+	if err != nil {
+		return nil, fmt.Errorf("new runtimes: %w", err)
+	}
+
 	return &Workdir{
 		dir:      baseDir,
 		spec:     spec,
 		lock:     &lockFile,
 		stats:    statsFile,
-		runtimes: NewRuntimes(baseDir, spec.Dir),
+		runtimes: runtimes,
 	}, nil
 }
 

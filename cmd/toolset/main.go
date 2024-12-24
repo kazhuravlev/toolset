@@ -166,7 +166,7 @@ func cmdInit(c *cli.Context) error {
 	fmt.Println("Spec created:", absSpecName)
 
 	if val := c.String(keyCopyFrom); val != "" {
-		wd, err := workdir.New(targetDir)
+		wd, err := workdir.New(c.Context, targetDir)
 		if err != nil {
 			return fmt.Errorf("new workdir: %w", err)
 		}
@@ -189,7 +189,7 @@ func cmdInit(c *cli.Context) error {
 func cmdAdd(c *cli.Context) error {
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(c.Context, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -251,7 +251,7 @@ func cmdRun(c *cli.Context) error {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(c.Context, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -287,7 +287,7 @@ func cmdSync(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(ctx, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -309,7 +309,7 @@ func cmdUpgrade(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(ctx, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -338,7 +338,7 @@ func cmdList(c *cli.Context) error {
 
 	onlyUnused := c.Bool(keyUnused)
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(ctx, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -408,7 +408,7 @@ func cmdWhich(c *cli.Context) error {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(c.Context, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -443,7 +443,7 @@ func cmdRemove(c *cli.Context) error {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(c.Context, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
