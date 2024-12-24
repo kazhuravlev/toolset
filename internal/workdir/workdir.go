@@ -477,13 +477,6 @@ func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) 
 	return count, nil
 }
 
-// ToolState describe a state of this tool.
-type ToolState struct {
-	Module  structs.ModuleInfo
-	Tool    structs.Tool
-	LastUse optional.Val[time.Time]
-}
-
 func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
 	res := make([]ToolState, 0, len(c.lock.Tools))
 	for _, tool := range c.lock.Tools {
@@ -498,6 +491,25 @@ func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
 	}
 
 	return res, nil
+}
+
+func (c *Workdir) RuntimeAdd(ctx context.Context, runtime string) error {
+	if err := c.runtimes.Install(ctx, runtime); err != nil {
+		return fmt.Errorf("install runtime: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Workdir) RuntimeList() []string {
+	keys := make([]string, 0, len(c.runtimes.impls))
+	for k := range c.runtimes.impls {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
 }
 
 func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*structs.ModuleInfo, error) {
@@ -524,25 +536,6 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 	}
 
 	return optional.Empty[time.Time]()
-}
-
-func (c *Workdir) RuntimeAdd(ctx context.Context, runtime string) error {
-	if err := c.runtimes.Install(ctx, runtime); err != nil {
-		return fmt.Errorf("install runtime: %w", err)
-	}
-
-	return nil
-}
-
-func (c *Workdir) RuntimeList() []string {
-	keys := make([]string, 0, len(c.runtimes.impls))
-	for k := range c.runtimes.impls {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	return keys
 }
 
 // Init will initialize context in specified directory.
@@ -593,13 +586,5 @@ func Init(dir string) (string, error) {
 		}
 
 		return targetSpecFile, nil
-	}
-}
-
-func adaptToolState(tool structs.Tool, mod *structs.ModuleInfo, lastUse optional.Val[time.Time]) ToolState {
-	return ToolState{
-		Tool:    tool,
-		LastUse: lastUse,
-		Module:  *mod,
 	}
 }

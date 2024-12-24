@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/kazhuravlev/optional"
+	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,6 +16,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 )
 
 func isExists(path string) bool {
@@ -223,4 +226,12 @@ func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded
 		Source: source,
 		Tags:   tags,
 	}), nil
+}
+
+func adaptToolState(tool structs.Tool, mod *structs.ModuleInfo, lastUse optional.Val[time.Time]) ToolState {
+	return ToolState{
+		Tool:    tool,
+		LastUse: lastUse,
+		Module:  *mod,
+	}
 }
