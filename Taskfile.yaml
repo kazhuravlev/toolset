@@ -17,9 +17,9 @@ tasks:
     - "{{.TOOLSET}} init --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
   test:remove:
     - task: "init"
-    - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
     - "{{.TOOLSET}} sync"
-    - "{{.TOOLSET}} remove goimports"
+    - "{{.TOOLSET}} list"
+    - "{{.TOOLSET}} remove goimports gofumpt"
     - "{{.TOOLSET}} list"
   test:
     - task: "init"
