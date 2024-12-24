@@ -333,7 +333,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 	for _, tool := range c.lock.Tools.Filter(tags) {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
 
-		rt, err := c.runtimes.Get(tool.Runtime)
+		rt, err := c.runtimes.GetInstall(ctx, tool.Runtime)
 		if err != nil {
 			return fmt.Errorf("get runtime: %w", err)
 		}
