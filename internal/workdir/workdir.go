@@ -55,9 +55,9 @@ type Workdir struct {
 	runtimes map[string]IRuntime
 }
 
-func New() (*Workdir, error) {
+func New(dir string) (*Workdir, error) {
 	// Make abs path to spec.
-	toolsetFilename, err := filepath.Abs(specFilename)
+	toolsetFilename, err := filepath.Abs(filepath.Join(dir, specFilename))
 	if err != nil {
 		return nil, fmt.Errorf("get abs spec path: %w", err)
 	}
@@ -110,7 +110,7 @@ func New() (*Workdir, error) {
 						return nil, fmt.Errorf("re-init toolset: %w", err)
 					}
 
-					wd, err := New()
+					wd, err := New(dir)
 					if err != nil {
 						return nil, fmt.Errorf("new context in re-created workdir: %w", err)
 					}
