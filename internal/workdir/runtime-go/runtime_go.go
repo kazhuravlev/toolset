@@ -197,7 +197,14 @@ func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
 				continue
 			}
 
-			goBin := filepath.Join(binToolDir, e.Name(), "bin", "go")
+			ver := strings.TrimPrefix(e.Name(), runtimePrefix)
+
+			goBin := filepath.Join(binToolDir, e.Name(), "go"+ver, "bin", "go")
+			if !isExists(goBin) {
+				_ = os.RemoveAll(filepath.Join(binToolDir, e.Name()))
+				continue
+			}
+
 			goVer, err := getGoVersion(ctx, goBin)
 			if err != nil {
 				return res, fmt.Errorf("get go version for (%s): %w", goBin, err)
