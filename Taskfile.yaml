@@ -21,10 +21,6 @@ tasks:
     - "{{.TOOLSET}} sync"
     - "{{.TOOLSET}} remove goimports"
     - "{{.TOOLSET}} list"
-    - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
-    - "{{.TOOLSET}} sync"
-    - "{{.TOOLSET}} remove golang.org/x/tools/cmd/goimports"
-    - "{{.TOOLSET}} list"
   test:
     - task: "init"
     - "{{.TOOLSET}} add -tags group1 go golang.org/x/tools/cmd/goimports@v0.24.0"
