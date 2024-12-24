@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 const golang = "go"
@@ -157,22 +158,54 @@ func (r *Runtime) Version() string {
 	return r.goVersion
 }
 
+const runtimePrefix = ".rtgo__"
+
 // Discover will find all supported golang runtimes. It can be:
 // - global installation
 // - local ./bin/tools installation
 func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
 	var res []*Runtime
-	lp, err := exec.LookPath(golang)
-	if err != nil {
-		return res, fmt.Errorf("find golang: %w", err)
+
+	// Discover global version
+	{
+		lp, err := exec.LookPath(golang)
+		if err != nil {
+			return res, fmt.Errorf("find golang: %w", err)
+		}
+
+		ver, err := getGoVersion(ctx, lp)
+		if err != nil {
+			return res, fmt.Errorf("get go version: %w", err)
+		}
+
+		res = append(res, New(binToolDir, lp, ver))
 	}
 
-	ver, err := getGoVersion(ctx, lp)
-	if err != nil {
-		return res, fmt.Errorf("get go version: %w", err)
-	}
+	// Discover local installations
+	if isExists(binToolDir) {
+		entries, err := os.ReadDir(binToolDir)
+		if err != nil {
+			return nil, fmt.Errorf("list dir: %w", err)
+		}
 
-	res = append(res, New(binToolDir, lp, ver))
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+
+			if !strings.HasPrefix(e.Name(), runtimePrefix) {
+				continue
+			}
+
+			goBin := filepath.Join(binToolDir, e.Name(), "bin", "go")
+			goVer, err := getGoVersion(ctx, goBin)
+			if err != nil {
+				return res, fmt.Errorf("get go version for (%s): %w", goBin, err)
+			}
+
+			res = append(res, New(binToolDir, goBin, goVer))
+		}
+	}
 
 	return res, nil
 }
