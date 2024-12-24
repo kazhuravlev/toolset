@@ -47,12 +47,29 @@ type IRuntime interface {
 	Remove(ctx context.Context, tool structs.Tool) error
 }
 
+type Runtimes struct {
+	impls map[string]IRuntime
+}
+
+func (r *Runtimes) Get(runtime string) (IRuntime, bool) {
+	val, ok := r.impls[runtime]
+	return val, ok
+}
+
+func NewRuntimes(baseDir, specDir string) *Runtimes {
+	return &Runtimes{
+		impls: map[string]IRuntime{
+			"go": runtimego.New(filepath.Join(baseDir, specDir)),
+		},
+	}
+}
+
 type Workdir struct {
 	dir      string
 	spec     *Spec
 	lock     *Lock
 	stats    *Stats
-	runtimes map[string]IRuntime
+	runtimes *Runtimes
 }
 
 func New(dir string) (*Workdir, error) {
@@ -151,13 +168,11 @@ func New(dir string) (*Workdir, error) {
 	}
 
 	return &Workdir{
-		dir:   baseDir,
-		spec:  spec,
-		lock:  &lockFile,
-		stats: statsFile,
-		runtimes: map[string]IRuntime{
-			"go": runtimego.New(filepath.Join(baseDir, spec.Dir)),
-		},
+		dir:      baseDir,
+		spec:     spec,
+		lock:     &lockFile,
+		stats:    statsFile,
+		runtimes: NewRuntimes(baseDir, spec.Dir),
 	}, nil
 }
 
@@ -218,7 +233,7 @@ func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) 
 }
 
 func (c *Workdir) Add(ctx context.Context, runtime, program string, alias optional.Val[string], tags []string) (bool, string, error) {
-	rt, ok := c.runtimes[runtime]
+	rt, ok := c.runtimes.Get(runtime)
 	if !ok {
 		return false, "", fmt.Errorf("unsupported runtime: %s", runtime)
 	}
@@ -249,7 +264,7 @@ func (c *Workdir) RemoveTool(ctx context.Context, target string) error {
 	}
 
 	if ts.Module.IsInstalled {
-		rt, ok := c.runtimes[ts.Tool.Runtime]
+		rt, ok := c.runtimes.Get(ts.Tool.Runtime)
 		if !ok {
 			return fmt.Errorf("unsupported runtime: %s", ts.Tool.Runtime)
 		}
@@ -302,7 +317,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return err
 	}
 
-	rt, ok := c.runtimes[ts.Tool.Runtime]
+	rt, ok := c.runtimes.Get(ts.Tool.Runtime)
 	if !ok {
 		return fmt.Errorf("unsupported runtime: %s", ts.Tool.Runtime)
 	}
@@ -346,7 +361,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 	for _, tool := range c.lock.Tools.Filter(tags) {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
 
-		rt, ok := c.runtimes[tool.Runtime]
+		rt, ok := c.runtimes.Get(tool.Runtime)
 		if !ok {
 			return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
 		}
@@ -422,7 +437,7 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 		fmt.Println("Checking:", tool.Module, "...")
 
 		// FIXME(zhuravlev): remove all "is runtime supported" checks by checking it once at spec load.
-		rt, ok := c.runtimes[tool.Runtime]
+		rt, ok := c.runtimes.Get(tool.Runtime)
 		if !ok {
 			return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
 		}
@@ -514,7 +529,7 @@ func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
 }
 
 func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*structs.ModuleInfo, error) {
-	rt, ok := c.runtimes[tool.Runtime]
+	rt, ok := c.runtimes.Get(tool.Runtime)
 	if !ok {
 		return nil, fmt.Errorf("unsupported runtime: %s", tool.Runtime)
 	}
