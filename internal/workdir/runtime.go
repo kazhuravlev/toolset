@@ -1,0 +1,40 @@
+package workdir
+
+import (
+	"context"
+	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
+	"github.com/kazhuravlev/toolset/internal/workdir/structs"
+	"path/filepath"
+)
+
+type IRuntime interface {
+	// Parse will parse string with module name. It is used only on `toolset add` step.
+	// Parse should:
+	//	1) ensure that this program is valid, exists, and can be installed.
+	//	2) normalize program name and return a canonical name.
+	Parse(ctx context.Context, str string) (string, error)
+	// GetModule returns an information about module (parsed module).
+	GetModule(ctx context.Context, program string) (*structs.ModuleInfo, error)
+	// Install will install the program.
+	Install(ctx context.Context, program string) error
+	Run(ctx context.Context, program string, args ...string) error
+	GetLatest(ctx context.Context, module string) (string, bool, error)
+	Remove(ctx context.Context, tool structs.Tool) error
+}
+
+type Runtimes struct {
+	impls map[string]IRuntime
+}
+
+func (r *Runtimes) Get(runtime string) (IRuntime, bool) {
+	val, ok := r.impls[runtime]
+	return val, ok
+}
+
+func NewRuntimes(baseDir, specDir string) *Runtimes {
+	return &Runtimes{
+		impls: map[string]IRuntime{
+			"go": runtimego.New(filepath.Join(baseDir, specDir)),
+		},
+	}
+}
