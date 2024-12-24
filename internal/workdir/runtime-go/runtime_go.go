@@ -9,17 +9,24 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 )
 
 const golang = "go"
 const at = "@"
 
 type Runtime struct {
-	baseDir string
+	goBin      string // absolute path to golang binary
+	goVersion  string // ex: 1.23
+	binToolDir string
 }
 
-func New(baseDir string) *Runtime {
-	return &Runtime{baseDir: baseDir}
+func New(binToolDir, goBin, goVer string) *Runtime {
+	return &Runtime{
+		goBin:      goBin,
+		goVersion:  goVer,
+		binToolDir: binToolDir,
+	}
 }
 
 // Parse will parse string to normal version.
@@ -45,7 +52,7 @@ func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.Module
 		return nil, fmt.Errorf("parse module (%s): %w", module, err)
 	}
 
-	programDir := filepath.Join(r.baseDir, fmt.Sprintf(".%s___%s", mod.Program, mod.Version))
+	programDir := filepath.Join(r.binToolDir, fmt.Sprintf(".%s___%s", mod.Program, mod.Version))
 	programBinary := filepath.Join(programDir, mod.Program)
 
 	return &structs.ModuleInfo{
@@ -144,4 +151,53 @@ func (r *Runtime) Remove(ctx context.Context, tool structs.Tool) error {
 	}
 
 	return nil
+}
+
+func (r *Runtime) Version() string {
+	return r.goVersion
+}
+
+// Discover will find all supported golang runtimes. It can be:
+// - global installation
+// - local ./bin/tools installation
+func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
+	var res []*Runtime
+	lp, err := exec.LookPath(golang)
+	if err != nil {
+		return res, fmt.Errorf("find golang: %w", err)
+	}
+
+	ver, err := getGoVersion(ctx, lp)
+	if err != nil {
+		return res, fmt.Errorf("get go version: %w", err)
+	}
+
+	res = append(res, New(binToolDir, lp, ver))
+
+	return res, nil
+}
+
+var reVersion = regexp.MustCompile(`^go version go(\d+\.\d+(?:\.\d+)?)(?: .*|$)`)
+
+func getGoVersion(ctx context.Context, bin string) (string, error) {
+	cmd := exec.CommandContext(ctx, bin, "version")
+
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("go version (%s): %w", cmd.String(), err)
+	}
+
+	// FindStringSubmatch returns a slice of matched strings:
+	// the first element is the entire match, and subsequent elements (if any)
+	// are the capturing groups—in this case, our version number.
+	matches := reVersion.FindStringSubmatch(stdout.String())
+
+	if len(matches) > 1 {
+		// matches[1] is the captured version part: "1.23.4"
+		return matches[1], nil
+	}
+
+	return "", errors.New("could not determine go version")
 }
