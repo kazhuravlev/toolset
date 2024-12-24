@@ -13,8 +13,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+var reVersion = regexp.MustCompile(`^go version go(\d+\.\d+(?:\.\d+)?)(?: .*|$)`)
 
 type moduleInfo struct {
 	Canonical string // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
@@ -201,4 +204,25 @@ func fetchLatestPrivate(ctx context.Context, mod moduleInfo) (*moduleInfo, error
 	}
 
 	return nil, errors.New("sky was falling")
+}
+
+func getGoVersion(ctx context.Context, bin string) (string, error) {
+	cmd := exec.CommandContext(ctx, bin, "version")
+
+	var stdout bytes.Buffer
+	cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
+	cmd.Stdout = &stdout
+
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("go version (%s): %w", cmd.String(), err)
+	}
+
+	matches := reVersion.FindStringSubmatch(stdout.String())
+
+	if len(matches) > 1 {
+		// matches[1] is the captured version part: "1.23.4"
+		return matches[1], nil
+	}
+
+	return "", errors.New("could not determine go version")
 }

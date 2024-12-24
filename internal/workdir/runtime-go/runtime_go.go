@@ -10,11 +10,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
 const golang = "go"
+const runtimePrefix = ".rtgo__"
 const at = "@"
 
 type Runtime struct {
@@ -159,8 +159,6 @@ func (r *Runtime) Version() string {
 	return r.goVersion
 }
 
-const runtimePrefix = ".rtgo__"
-
 // Discover will find all supported golang runtimes. It can be:
 // - global installation
 // - local ./bin/tools installation
@@ -216,32 +214,6 @@ func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
 	}
 
 	return res, nil
-}
-
-var reVersion = regexp.MustCompile(`^go version go(\d+\.\d+(?:\.\d+)?)(?: .*|$)`)
-
-func getGoVersion(ctx context.Context, bin string) (string, error) {
-	cmd := exec.CommandContext(ctx, bin, "version")
-
-	var stdout bytes.Buffer
-	cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
-	cmd.Stdout = &stdout
-
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("go version (%s): %w", cmd.String(), err)
-	}
-
-	// FindStringSubmatch returns a slice of matched strings:
-	// the first element is the entire match, and subsequent elements (if any)
-	// are the capturing groups—in this case, our version number.
-	matches := reVersion.FindStringSubmatch(stdout.String())
-
-	if len(matches) > 1 {
-		// matches[1] is the captured version part: "1.23.4"
-		return matches[1], nil
-	}
-
-	return "", errors.New("could not determine go version")
 }
 
 func Install(ctx context.Context, binToolDir, ver string) error {
