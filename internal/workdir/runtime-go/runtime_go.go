@@ -81,10 +81,10 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 	cmd.Env = append(os.Environ(), "GOBIN="+mod.BinDir, "GOTOOLCHAIN=local")
 
 	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
+	cmd.Stderr = &stdout
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("run go install (%s): %w", cmd.String(), err)
+		return fmt.Errorf("run go install (%s): %w", strings.TrimSpace(stdout.String()), err)
 	}
 
 	return nil
