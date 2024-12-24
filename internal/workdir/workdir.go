@@ -320,7 +320,6 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
 	if toolsDir := c.getToolsDir(); !isExists(toolsDir) {
-		fmt.Println("Target dir not exists. Creating...", toolsDir)
 		if err := os.MkdirAll(toolsDir, defaultDirPerm); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
