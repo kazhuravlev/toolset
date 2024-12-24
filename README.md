@@ -55,7 +55,10 @@ are the basic commands:
 Create a `toolset.json` configuration file in the specified directory:
 
 ```shell
+# Init an empty project
 toolset init .
+# ...or from existing one.
+toolset init --copy-from git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json
 ```
 
 ### Add Tools
@@ -177,9 +180,8 @@ requested binaries and some meta info.
 # Install some tool. For example - goimports
 toolset add go golang.org/x/tools/cmd/goimports
 toolset sync
-# Remove tool by calling one of next command
+# Remove tool by calling
 toolset remove goimports
-toolset remove golang.org/x/tools/cmd/goimports
 ```
 
 ## Examples
