@@ -6,7 +6,10 @@ import (
 	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"path/filepath"
+	"strings"
 )
+
+const runtimeGo = "go"
 
 type IRuntime interface {
 	// Parse will parse string with module name. It is used only on `toolset add` step.
@@ -24,7 +27,8 @@ type IRuntime interface {
 }
 
 type Runtimes struct {
-	impls map[string]IRuntime
+	binToolDir string
+	impls      map[string]IRuntime
 }
 
 func NewRuntimes(ctx context.Context, baseDir, specDir string) (*Runtimes, error) {
@@ -37,11 +41,12 @@ func NewRuntimes(ctx context.Context, baseDir, specDir string) (*Runtimes, error
 
 	impls := make(map[string]IRuntime, len(goRuntimes))
 	for _, rt := range goRuntimes {
-		impls["go@"+rt.Version()] = rt
+		impls[runtimeGo+"@"+rt.Version()] = rt
 	}
 
 	return &Runtimes{
-		impls: impls,
+		binToolDir: binToolDir,
+		impls:      impls,
 	}, nil
 }
 
@@ -52,4 +57,22 @@ func (r *Runtimes) Get(runtime string) (IRuntime, error) {
 	}
 
 	return rt, nil
+}
+
+func (r *Runtimes) Install(ctx context.Context, runtime string) error {
+	if _, err := r.Get(runtime); err == nil {
+		// Already installed
+		return nil
+	}
+
+	if !strings.HasPrefix(runtime, runtimeGo+"@") {
+		return fmt.Errorf("unsupported runtime: %s", runtime)
+	}
+
+	ver := strings.TrimPrefix(runtime, runtimeGo+"@")
+	if err := runtimego.Install(ctx, r.binToolDir, ver); err != nil {
+		return fmt.Errorf("install tool runtime (%s): %w", runtime, err)
+	}
+
+	return nil
 }

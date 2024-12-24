@@ -143,6 +143,26 @@ At this point tool will not be installed. In order to install added tool please 
 				Action: cmdRemove,
 				Args:   true,
 			},
+			{
+				Name:  "runtime",
+				Usage: "manage runtimes",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "add",
+						Usage: "add new",
+						Description: `Install runtime in local project dir. 
+
+$ toolset runtime add go@1.22`,
+						Action: cmdRuntimeAdd,
+						Args:   true,
+					},
+					{
+						Name:   "list",
+						Usage:  "list all runtimes",
+						Action: cmdRuntimeList,
+					},
+				},
+			},
 		},
 	}
 
@@ -241,6 +261,51 @@ func cmdAdd(c *cli.Context) error {
 	} else {
 		fmt.Printf("tool added to toolset: %s\n", mod)
 	}
+
+	return nil
+}
+
+func cmdRuntimeAdd(c *cli.Context) error {
+	wd, err := workdir.New(c.Context, "./")
+	if err != nil {
+		return fmt.Errorf("new workdir: %w", err)
+	}
+
+	runtime := c.Args().First()
+
+	if err := wd.RuntimeAdd(c.Context, runtime); err != nil {
+		return fmt.Errorf("add runtime: %w", err)
+	}
+
+	if err := wd.Save(); err != nil {
+		return fmt.Errorf("save context: %w", err)
+	}
+
+	return nil
+}
+
+func cmdRuntimeList(c *cli.Context) error {
+	wd, err := workdir.New(c.Context, "./")
+	if err != nil {
+		return fmt.Errorf("new workdir: %w", err)
+	}
+
+	t := table.NewWriter()
+	t.AppendHeader(table.Row{
+		"Runtime",
+	})
+
+	list := wd.RuntimeList()
+
+	rows := make([]table.Row, 0, len(list))
+	for _, name := range list {
+		rows = append(rows, table.Row{name})
+	}
+
+	t.AppendRows(rows)
+
+	res := t.Render()
+	fmt.Println(res)
 
 	return nil
 }

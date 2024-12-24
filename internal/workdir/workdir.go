@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/semaphore"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -524,6 +525,25 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 	}
 
 	return optional.Empty[time.Time]()
+}
+
+func (c *Workdir) RuntimeAdd(ctx context.Context, runtime string) error {
+	if err := c.runtimes.Install(ctx, runtime); err != nil {
+		return fmt.Errorf("install runtime: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Workdir) RuntimeList() []string {
+	keys := make([]string, 0, len(c.runtimes.impls))
+	for k := range c.runtimes.impls {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
 }
 
 // Init will initialize context in specified directory.
