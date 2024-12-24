@@ -27,15 +27,6 @@ type Runtimes struct {
 	impls map[string]IRuntime
 }
 
-func (r *Runtimes) Get(runtime string) (IRuntime, error) {
-	rt, ok := r.impls[runtime]
-	if !ok {
-		return nil, fmt.Errorf("unsupported runtime: %s", runtime)
-	}
-
-	return rt, nil
-}
-
 func NewRuntimes(ctx context.Context, baseDir, specDir string) (*Runtimes, error) {
 	binToolDir := filepath.Join(baseDir, specDir)
 
@@ -52,4 +43,13 @@ func NewRuntimes(ctx context.Context, baseDir, specDir string) (*Runtimes, error
 	return &Runtimes{
 		impls: impls,
 	}, nil
+}
+
+func (r *Runtimes) Get(runtime string) (IRuntime, error) {
+	rt, ok := r.impls[runtime]
+	if !ok {
+		return nil, fmt.Errorf("unsupported runtime: %s", runtime)
+	}
+
+	return rt, nil
 }
