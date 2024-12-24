@@ -4,6 +4,13 @@ vars:
   TOOLSET: go run ./cmd/toolset
 
 tasks:
+  upd:dl:
+    - rm -rf dl
+    - git clone --depth 1 https://github.com/golang/dl.git
+    - rm -rf internal/version
+    - mv dl/internal/version internal/version
+    - rm -rf dl
+    - go test ./internal/version
   init:
     - "rm .toolset.json .toolset.lock.json || true"
     - "rm -rf ./bin"
