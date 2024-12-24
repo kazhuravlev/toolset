@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/kazhuravlev/toolset/internal/version"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"os"
 	"os/exec"
@@ -223,6 +224,7 @@ func getGoVersion(ctx context.Context, bin string) (string, error) {
 	cmd := exec.CommandContext(ctx, bin, "version")
 
 	var stdout bytes.Buffer
+	cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
@@ -240,4 +242,14 @@ func getGoVersion(ctx context.Context, bin string) (string, error) {
 	}
 
 	return "", errors.New("could not determine go version")
+}
+
+func Install(ctx context.Context, binToolDir, ver string) error {
+	dstDir := filepath.Join(binToolDir, runtimePrefix+ver)
+	if err := version.Install(ctx, dstDir, "go"+ver); err != nil {
+		_ = os.RemoveAll(dstDir)
+		return fmt.Errorf("install go (%s): %w", ver, err)
+	}
+
+	return nil
 }
