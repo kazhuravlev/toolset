@@ -63,6 +63,7 @@ func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 	buf := bytes.NewBuffer(nil)
 	{
 		cmd := exec.CommandContext(ctx, goBin, "env", "GOPRIVATE")
+		cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 		cmd.Stdout = buf
 		cmd.Stderr = io.Discard
 		if err := cmd.Run(); err != nil {
@@ -168,6 +169,7 @@ func fetchLatestPrivate(ctx context.Context, goBin string, mod moduleInfo) (*mod
 
 	{
 		cmd := exec.CommandContext(ctx, goBin, "mod", "init", "sample")
+		cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -178,6 +180,7 @@ func fetchLatestPrivate(ctx context.Context, goBin string, mod moduleInfo) (*mod
 
 	{
 		cmd := exec.CommandContext(ctx, goBin, "get", mod.Module)
+		cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -208,9 +211,9 @@ func fetchLatestPrivate(ctx context.Context, goBin string, mod moduleInfo) (*mod
 
 func getGoVersion(ctx context.Context, bin string) (string, error) {
 	cmd := exec.CommandContext(ctx, bin, "version")
+	cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 
 	var stdout bytes.Buffer
-	cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
