@@ -60,6 +60,10 @@ func writeJson(in any, path string) error {
 
 func forceReadJson[T any](path string, defVal T) (*T, error) {
 	if !isExists(path) {
+		if err := os.MkdirAll(filepath.Dir(path), defaultDirPerm); err != nil {
+			return nil, fmt.Errorf("mkdir: %w", err)
+		}
+
 		if err := writeJson(defVal, path); err != nil {
 			return nil, fmt.Errorf("write json to file: %w", err)
 		}
