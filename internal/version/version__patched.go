@@ -1,12 +1,13 @@
 package version
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"path/filepath"
 )
 
-func Install(dst, version string) error {
+func Install(_ context.Context, dst, version string) error {
 	log.SetFlags(0)
 
 	root := Path(dst, version)
