@@ -200,12 +200,12 @@ func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) 
 }
 
 func (c *Workdir) Add(ctx context.Context, runtime, program string, alias optional.Val[string], tags []string) (bool, string, error) {
-	rt, ok := c.runtimes.Get(runtime)
-	if !ok {
-		return false, "", fmt.Errorf("unsupported runtime: %s", runtime)
+	rt, err := c.runtimes.Get(runtime)
+	if err != nil {
+		return false, "", fmt.Errorf("get runtime: %w", err)
 	}
 
-	program, err := rt.Parse(ctx, program)
+	program, err = rt.Parse(ctx, program)
 	if err != nil {
 		return false, "", fmt.Errorf("parse program: %w", err)
 	}
@@ -231,9 +231,9 @@ func (c *Workdir) RemoveTool(ctx context.Context, target string) error {
 	}
 
 	if ts.Module.IsInstalled {
-		rt, ok := c.runtimes.Get(ts.Tool.Runtime)
-		if !ok {
-			return fmt.Errorf("unsupported runtime: %s", ts.Tool.Runtime)
+		rt, err := c.runtimes.Get(ts.Tool.Runtime)
+		if err != nil {
+			return fmt.Errorf("get runtime: %w", err)
 		}
 
 		if err := rt.Remove(ctx, ts.Tool); err != nil {
@@ -284,9 +284,9 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return err
 	}
 
-	rt, ok := c.runtimes.Get(ts.Tool.Runtime)
-	if !ok {
-		return fmt.Errorf("unsupported runtime: %s", ts.Tool.Runtime)
+	rt, err := c.runtimes.Get(ts.Tool.Runtime)
+	if err != nil {
+		return fmt.Errorf("get runtime: %w", err)
 	}
 
 	c.stats.Tools[ts.Tool.ID()] = time.Now()
@@ -328,9 +328,9 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 	for _, tool := range c.lock.Tools.Filter(tags) {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
 
-		rt, ok := c.runtimes.Get(tool.Runtime)
-		if !ok {
-			return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+		rt, err := c.runtimes.Get(tool.Runtime)
+		if err != nil {
+			return fmt.Errorf("get runtime: %w", err)
 		}
 
 		mod, err := rt.GetModule(ctx, tool.Module)
@@ -404,9 +404,9 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 		fmt.Println("Checking:", tool.Module, "...")
 
 		// FIXME(zhuravlev): remove all "is runtime supported" checks by checking it once at spec load.
-		rt, ok := c.runtimes.Get(tool.Runtime)
-		if !ok {
-			return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+		rt, err := c.runtimes.Get(tool.Runtime)
+		if err != nil {
+			return fmt.Errorf("get runtime: %w", err)
 		}
 
 		module, haveUpdate, err := rt.GetLatest(ctx, tool.Module)
@@ -496,9 +496,9 @@ func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
 }
 
 func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*structs.ModuleInfo, error) {
-	rt, ok := c.runtimes.Get(tool.Runtime)
-	if !ok {
-		return nil, fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+	rt, err := c.runtimes.Get(tool.Runtime)
+	if err != nil {
+		return nil, fmt.Errorf("get runtime: %w", err)
 	}
 
 	mod, err := rt.GetModule(ctx, tool.Module)

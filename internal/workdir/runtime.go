@@ -2,6 +2,7 @@ package workdir
 
 import (
 	"context"
+	"fmt"
 	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"path/filepath"
@@ -26,9 +27,13 @@ type Runtimes struct {
 	impls map[string]IRuntime
 }
 
-func (r *Runtimes) Get(runtime string) (IRuntime, bool) {
-	val, ok := r.impls[runtime]
-	return val, ok
+func (r *Runtimes) Get(runtime string) (IRuntime, error) {
+	rt, ok := r.impls[runtime]
+	if !ok {
+		return nil, fmt.Errorf("unsupported runtime: %s", runtime)
+	}
+
+	return rt, nil
 }
 
 func NewRuntimes(baseDir, specDir string) *Runtimes {
