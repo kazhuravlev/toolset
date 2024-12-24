@@ -41,7 +41,7 @@ func NewRuntimes(ctx context.Context, baseDir, specDir string) (*Runtimes, error
 
 	impls := make(map[string]IRuntime, len(goRuntimes))
 	for _, rt := range goRuntimes {
-		impls[runtimeGo+"@"+rt.Version()] = rt
+		impls[rt.Version()] = rt
 	}
 
 	return &Runtimes{

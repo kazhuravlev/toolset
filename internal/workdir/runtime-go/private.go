@@ -28,7 +28,7 @@ type moduleInfo struct {
 }
 
 // parse will parse source string and try to extract all details about mentioned golang program.
-func parse(ctx context.Context, str string) (*moduleInfo, error) {
+func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 	var canonical, mod, version, program string
 
 	{
@@ -62,7 +62,7 @@ func parse(ctx context.Context, str string) (*moduleInfo, error) {
 
 	buf := bytes.NewBuffer(nil)
 	{
-		cmd := exec.CommandContext(ctx, golang, "env", "GOPRIVATE")
+		cmd := exec.CommandContext(ctx, goBin, "env", "GOPRIVATE")
 		cmd.Stdout = buf
 		cmd.Stderr = io.Discard
 		if err := cmd.Run(); err != nil {
@@ -85,19 +85,19 @@ type fetchedMod struct {
 	Version string `json:"Version"`
 }
 
-func fetchLatest(ctx context.Context, link string) (*moduleInfo, error) {
-	mod, err := parse(ctx, link)
+func fetchLatest(ctx context.Context, goBin, link string) (*moduleInfo, error) {
+	mod, err := parse(ctx, goBin, link)
 	if err != nil {
 		return nil, fmt.Errorf("parse module (%s) string: %w", link, err)
 	}
 
 	if mod.IsPrivate {
-		privateMod, err := fetchLatestPrivate(ctx, *mod)
+		privateMod, err := fetchLatestPrivate(ctx, goBin, *mod)
 		if err != nil {
 			return nil, fmt.Errorf("fetch private module: %w", err)
 		}
 
-		return parse(ctx, mod.Module+at+privateMod.Version)
+		return parse(ctx, goBin, mod.Module+at+privateMod.Version)
 	}
 
 	link = mod.Module
@@ -134,7 +134,7 @@ func fetchLatest(ctx context.Context, link string) (*moduleInfo, error) {
 			return nil, fmt.Errorf("unable to decode module: %w", err)
 		}
 
-		mod2, err := parse(ctx, mod.Module+at+fMod.Version)
+		mod2, err := parse(ctx, goBin, mod.Module+at+fMod.Version)
 		if err != nil {
 			return nil, fmt.Errorf("parse fetched module: %w", err)
 		}
@@ -159,7 +159,7 @@ func isExists(path string) bool {
 // - Add dependency
 // - Get dep indo
 // - Remove temp dir
-func fetchLatestPrivate(ctx context.Context, mod moduleInfo) (*moduleInfo, error) {
+func fetchLatestPrivate(ctx context.Context, goBin string, mod moduleInfo) (*moduleInfo, error) {
 	tmpDir, err := os.MkdirTemp("", "gomodtemp")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %v", err)
@@ -167,7 +167,7 @@ func fetchLatestPrivate(ctx context.Context, mod moduleInfo) (*moduleInfo, error
 	defer os.RemoveAll(tmpDir)
 
 	{
-		cmd := exec.CommandContext(ctx, golang, "mod", "init", "sample")
+		cmd := exec.CommandContext(ctx, goBin, "mod", "init", "sample")
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -177,7 +177,7 @@ func fetchLatestPrivate(ctx context.Context, mod moduleInfo) (*moduleInfo, error
 	}
 
 	{
-		cmd := exec.CommandContext(ctx, golang, "get", mod.Module)
+		cmd := exec.CommandContext(ctx, goBin, "get", mod.Module)
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -199,7 +199,7 @@ func fetchLatestPrivate(ctx context.Context, mod moduleInfo) (*moduleInfo, error
 
 	for _, require := range modFile.Require {
 		if strings.HasPrefix(mod.Module, require.Mod.Path) {
-			return parse(ctx, mod.Module+at+require.Mod.Version)
+			return parse(ctx, goBin, mod.Module+at+require.Mod.Version)
 		}
 	}
 
