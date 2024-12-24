@@ -143,6 +143,26 @@ At this point tool will not be installed. In order to install added tool please 
 				Action: cmdRemove,
 				Args:   true,
 			},
+			{
+				Name:  "runtime",
+				Usage: "manage runtimes",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "add",
+						Usage: "add new",
+						Description: `Install runtime in local project dir. 
+
+$ toolset runtime add go@1.22`,
+						Action: cmdRuntimeAdd,
+						Args:   true,
+					},
+					{
+						Name:   "list",
+						Usage:  "list all runtimes",
+						Action: cmdRuntimeList,
+					},
+				},
+			},
 		},
 	}
 
@@ -166,7 +186,7 @@ func cmdInit(c *cli.Context) error {
 	fmt.Println("Spec created:", absSpecName)
 
 	if val := c.String(keyCopyFrom); val != "" {
-		wd, err := workdir.New(targetDir)
+		wd, err := workdir.New(c.Context, targetDir)
 		if err != nil {
 			return fmt.Errorf("new workdir: %w", err)
 		}
@@ -189,7 +209,7 @@ func cmdInit(c *cli.Context) error {
 func cmdAdd(c *cli.Context) error {
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(c.Context, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -245,13 +265,58 @@ func cmdAdd(c *cli.Context) error {
 	return nil
 }
 
+func cmdRuntimeAdd(c *cli.Context) error {
+	wd, err := workdir.New(c.Context, "./")
+	if err != nil {
+		return fmt.Errorf("new workdir: %w", err)
+	}
+
+	runtime := c.Args().First()
+
+	if err := wd.RuntimeAdd(c.Context, runtime); err != nil {
+		return fmt.Errorf("add runtime: %w", err)
+	}
+
+	if err := wd.Save(); err != nil {
+		return fmt.Errorf("save context: %w", err)
+	}
+
+	return nil
+}
+
+func cmdRuntimeList(c *cli.Context) error {
+	wd, err := workdir.New(c.Context, "./")
+	if err != nil {
+		return fmt.Errorf("new workdir: %w", err)
+	}
+
+	t := table.NewWriter()
+	t.AppendHeader(table.Row{
+		"Runtime",
+	})
+
+	list := wd.RuntimeList()
+
+	rows := make([]table.Row, 0, len(list))
+	for _, name := range list {
+		rows = append(rows, table.Row{name})
+	}
+
+	t.AppendRows(rows)
+
+	res := t.Render()
+	fmt.Println(res)
+
+	return nil
+}
+
 func cmdRun(c *cli.Context) error {
 	target := c.Args().First()
 	if target == "" {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(c.Context, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -287,7 +352,7 @@ func cmdSync(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(ctx, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -309,7 +374,7 @@ func cmdUpgrade(c *cli.Context) error {
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(ctx, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -338,7 +403,7 @@ func cmdList(c *cli.Context) error {
 
 	onlyUnused := c.Bool(keyUnused)
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(ctx, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -408,7 +473,7 @@ func cmdWhich(c *cli.Context) error {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(c.Context, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -443,7 +508,7 @@ func cmdRemove(c *cli.Context) error {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New("./")
+	wd, err := workdir.New(c.Context, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}

@@ -4,19 +4,22 @@ vars:
   TOOLSET: go run ./cmd/toolset
 
 tasks:
+  upd:dl:
+    - rm -rf dl
+    - git clone --depth 1 https://github.com/golang/dl.git
+    - rm -rf internal/version
+    - mv dl/internal/version internal/version
+    - rm -rf dl
+    - go test ./internal/version
   init:
     - "rm .toolset.json .toolset.lock.json || true"
     - "rm -rf ./bin"
     - "{{.TOOLSET}} init --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
   test:remove:
     - task: "init"
-    - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
     - "{{.TOOLSET}} sync"
-    - "{{.TOOLSET}} remove goimports"
     - "{{.TOOLSET}} list"
-    - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
-    - "{{.TOOLSET}} sync"
-    - "{{.TOOLSET}} remove golang.org/x/tools/cmd/goimports"
+    - "{{.TOOLSET}} remove goimports gofumpt"
     - "{{.TOOLSET}} list"
   test:
     - task: "init"
