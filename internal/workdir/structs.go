@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"time"
 )
@@ -137,4 +138,11 @@ func (s *Spec) AddInclude(include Include) bool {
 
 	s.Includes = append(s.Includes, include)
 	return true
+}
+
+// ToolState describe a state of this tool.
+type ToolState struct {
+	Module  structs.ModuleInfo
+	Tool    structs.Tool
+	LastUse optional.Val[time.Time]
 }

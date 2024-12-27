@@ -5,21 +5,30 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/kazhuravlev/toolset/internal/version"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
-const golang = "go"
+const runtimePrefix = ".rtgo__"
 const at = "@"
 
 type Runtime struct {
-	baseDir string
+	goBin      string // absolute path to golang binary
+	isGlobal   bool
+	goVersion  string // ex: 1.23
+	binToolDir string
 }
 
-func New(baseDir string) *Runtime {
-	return &Runtime{baseDir: baseDir}
+func New(binToolDir, goBin, goVer string) *Runtime {
+	return &Runtime{
+		goBin:      goBin,
+		goVersion:  goVer,
+		binToolDir: binToolDir,
+	}
 }
 
 // Parse will parse string to normal version.
@@ -31,7 +40,7 @@ func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
 		return "", errors.New("program name not provided")
 	}
 
-	goModule, err := fetchLatest(ctx, str)
+	goModule, err := fetchLatest(ctx, r.goBin, str)
 	if err != nil {
 		return "", fmt.Errorf("get go module version: %w", err)
 	}
@@ -40,12 +49,12 @@ func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
 }
 
 func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.ModuleInfo, error) {
-	mod, err := parse(ctx, module)
+	mod, err := parse(ctx, r.goBin, module)
 	if err != nil {
 		return nil, fmt.Errorf("parse module (%s): %w", module, err)
 	}
 
-	programDir := filepath.Join(r.baseDir, fmt.Sprintf(".%s___%s", mod.Program, mod.Version))
+	programDir := filepath.Join(r.binToolDir, fmt.Sprintf(".%s___%s", mod.Program, mod.Version))
 	programBinary := filepath.Join(programDir, mod.Program)
 
 	return &structs.ModuleInfo{
@@ -68,22 +77,14 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 		return fmt.Errorf("create mod dir (%s): %w", mod.BinDir, err)
 	}
 
-	cmd := exec.CommandContext(ctx, golang, "install", program)
-	cmd.Env = append(os.Environ(), "GOBIN="+mod.BinDir)
-
-	lp, _ := exec.LookPath(golang)
-	if lp != "" {
-		// Update cmd.Path even if err is non-nil.
-		// If err is ErrDot (especially on Windows), lp may include a resolved
-		// extension (like .exe or .bat) that should be preserved.
-		cmd.Path = lp
-	}
+	cmd := exec.CommandContext(ctx, r.goBin, "install", program)
+	cmd.Env = append(os.Environ(), "GOBIN="+mod.BinDir, "GOTOOLCHAIN=local")
 
 	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
+	cmd.Stderr = &stdout
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("run go install (%s): %w", cmd.String(), err)
+		return fmt.Errorf("run go install (%s): %w", strings.TrimSpace(stdout.String()), err)
 	}
 
 	return nil
@@ -117,7 +118,7 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 }
 
 func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, error) {
-	latestMod, err := fetchLatest(ctx, module)
+	latestMod, err := fetchLatest(ctx, r.goBin, module)
 	if err != nil {
 		return "", false, fmt.Errorf("get go module: %w", err)
 	}
@@ -141,6 +142,85 @@ func (r *Runtime) Remove(ctx context.Context, tool structs.Tool) error {
 
 	if err := os.RemoveAll(mod.BinDir); err != nil {
 		return fmt.Errorf("remove (%s): %w", mod.BinDir, err)
+	}
+
+	return nil
+}
+
+func (r *Runtime) Version() string {
+	if r.isGlobal {
+		return "go"
+	}
+
+	return "go@" + r.goVersion
+}
+
+// Discover will find all supported golang runtimes. It can be:
+// - global installation
+// - local ./bin/tools installation
+func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
+	const golang = "go"
+
+	var res []*Runtime
+
+	// Discover global version
+	{
+		lp, err := exec.LookPath(golang)
+		if err != nil {
+			return res, fmt.Errorf("find golang: %w", err)
+		}
+
+		ver, err := getGoVersion(ctx, lp)
+		if err != nil {
+			return res, fmt.Errorf("get go version: %w", err)
+		}
+
+		rt := New(binToolDir, lp, ver)
+		rt.isGlobal = true
+		res = append(res, rt)
+	}
+
+	// Discover local installations
+	if isExists(binToolDir) {
+		entries, err := os.ReadDir(binToolDir)
+		if err != nil {
+			return nil, fmt.Errorf("list dir: %w", err)
+		}
+
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+
+			if !strings.HasPrefix(e.Name(), runtimePrefix) {
+				continue
+			}
+
+			ver := strings.TrimPrefix(e.Name(), runtimePrefix)
+
+			goBin := filepath.Join(binToolDir, e.Name(), "go"+ver, "bin", "go")
+			if !isExists(goBin) {
+				_ = os.RemoveAll(filepath.Join(binToolDir, e.Name()))
+				continue
+			}
+
+			goVer, err := getGoVersion(ctx, goBin)
+			if err != nil {
+				return res, fmt.Errorf("get go version for (%s): %w", goBin, err)
+			}
+
+			res = append(res, New(binToolDir, goBin, goVer))
+		}
+	}
+
+	return res, nil
+}
+
+func Install(ctx context.Context, binToolDir, ver string) error {
+	dstDir := filepath.Join(binToolDir, runtimePrefix+ver)
+	if err := version.Install(ctx, dstDir, "go"+ver); err != nil {
+		_ = os.RemoveAll(dstDir)
+		return fmt.Errorf("install go (%s): %w", ver, err)
 	}
 
 	return nil
