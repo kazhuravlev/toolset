@@ -55,7 +55,10 @@ are the basic commands:
 Create a `toolset.json` configuration file in the specified directory:
 
 ```shell
+# Init an empty project
 toolset init .
+# ...or from existing one.
+toolset init --copy-from git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json
 ```
 
 ### Add Tools
@@ -116,6 +119,25 @@ toolset add --tags ci go github.com/jstemmer/go-junit-report/v2@latest
 toolset add --tags ci go github.com/boumenot/gocover-cobertura
 ```
 
+#### Use specific golang version
+
+In order to install tool with concrete golang version:
+
+```shell
+# Add a new runtime (it will installed at the moment)
+toolset runtime add go@1.22.10
+# Check that it was added
+toolset runtime list
+```
+
+And install tool with specific version:
+
+```shell 
+toolset add go@1.22.10 github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0
+toolset sync
+toolset list
+```
+
 ### Install tools
 
 Ensure all specified tools are installed or updated to the defined versions:
@@ -166,6 +188,19 @@ This command returns an abs path to goimports like that:
 
 ```
 /abs/path/to/project/bin/tools/.goimports___v0.21.0/goimports
+```
+
+### Remove installed tool
+
+You can use `toolset remove` in very similar order like `toolset add` or `toolset run`. This operation will remove
+requested binaries and some meta info.
+
+```shell
+# Install some tool. For example - goimports
+toolset add go golang.org/x/tools/cmd/goimports
+toolset sync
+# Remove tool by calling
+toolset remove goimports
 ```
 
 ## Examples

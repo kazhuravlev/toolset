@@ -90,6 +90,17 @@ func (tools *Tools) Filter(tags []string) Tools {
 	return res
 }
 
+func (tools *Tools) Remove(tool Tool) bool {
+	for i, t := range *tools {
+		if t.IsSame(tool) {
+			*tools = slices.Delete(*tools, i, i+1)
+			return true
+		}
+	}
+
+	return false
+}
+
 type ModuleInfo struct {
 	Name        string // golangci-lint
 	Version     string // v1.61.0

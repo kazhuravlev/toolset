@@ -4,10 +4,38 @@ vars:
   TOOLSET: go run ./cmd/toolset
 
 tasks:
-  test:
+  upd:dl:
+    - rm -rf dl
+    - git clone --depth 1 https://github.com/golang/dl.git
+    - rm -rf internal/version
+    - mv dl/internal/version internal/version
+    - rm -rf dl
+    - rm ./internal/version/gotip.go
+    - go test ./internal/version
+  init:
+    - "rm .toolset.json .toolset.lock.json || true"
+    - "rm -rf ./bin"
+    - "{{.TOOLSET}} init --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
+  test:remove:
+    - task: "init"
+    - "{{.TOOLSET}} sync"
+    - "{{.TOOLSET}} list"
+    - "{{.TOOLSET}} remove goimports gofumpt"
+    - "{{.TOOLSET}} list"
+  test:runtimes:
     - "rm .toolset.json .toolset.lock.json || true"
     - "rm -rf ./bin"
     - "{{.TOOLSET}} init"
+    - "{{.TOOLSET}} runtime add go@1.22.10"
+    - "{{.TOOLSET}} runtime list"
+    - "{{.TOOLSET}} add go@1.22.10 golang.org/x/tools/cmd/goimports"
+    - "{{.TOOLSET}} sync"
+    - "{{.TOOLSET}} remove goimports"
+    - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
+    - "{{.TOOLSET}} sync"
+    - "{{.TOOLSET}} remove goimports"
+  test:
+    - task: "init"
     - "{{.TOOLSET}} add -tags group1 go golang.org/x/tools/cmd/goimports@v0.24.0"
     - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
     - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports@latest"

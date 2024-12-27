@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kazhuravlev/optional"
-	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"golang.org/x/sync/semaphore"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -32,31 +32,17 @@ const (
 var ErrToolNotFoundInSpec = errors.New("tool not found in spec")
 var ErrToolNotInstalled = errors.New("tool not installed")
 
-type IRuntime interface {
-	// Parse will parse string with module name. It is used only on `toolset add` step.
-	// Parse should:
-	//	1) ensure that this program is valid, exists, and can be installed.
-	//	2) normalize program name and return a canonical name.
-	Parse(ctx context.Context, str string) (string, error)
-	// GetModule returns an information about module (parsed module).
-	GetModule(ctx context.Context, program string) (*structs.ModuleInfo, error)
-	// Install will install the program.
-	Install(ctx context.Context, program string) error
-	Run(ctx context.Context, program string, args ...string) error
-	GetLatest(ctx context.Context, module string) (string, bool, error)
-}
-
 type Workdir struct {
 	dir      string
 	spec     *Spec
 	lock     *Lock
 	stats    *Stats
-	runtimes map[string]IRuntime
+	runtimes *Runtimes
 }
 
-func New() (*Workdir, error) {
+func New(ctx context.Context, dir string) (*Workdir, error) {
 	// Make abs path to spec.
-	toolsetFilename, err := filepath.Abs(specFilename)
+	toolsetFilename, err := filepath.Abs(filepath.Join(dir, specFilename))
 	if err != nil {
 		return nil, fmt.Errorf("get abs spec path: %w", err)
 	}
@@ -109,7 +95,7 @@ func New() (*Workdir, error) {
 						return nil, fmt.Errorf("re-init toolset: %w", err)
 					}
 
-					wd, err := New()
+					wd, err := New(ctx, dir)
 					if err != nil {
 						return nil, fmt.Errorf("new context in re-created workdir: %w", err)
 					}
@@ -149,14 +135,17 @@ func New() (*Workdir, error) {
 		return nil, fmt.Errorf("read stats: %w", err)
 	}
 
+	runtimes, err := NewRuntimes(ctx, baseDir, spec.Dir)
+	if err != nil {
+		return nil, fmt.Errorf("new runtimes: %w", err)
+	}
+
 	return &Workdir{
-		dir:   baseDir,
-		spec:  spec,
-		lock:  &lockFile,
-		stats: statsFile,
-		runtimes: map[string]IRuntime{
-			"go": runtimego.New(filepath.Join(baseDir, spec.Dir)),
-		},
+		dir:      baseDir,
+		spec:     spec,
+		lock:     &lockFile,
+		stats:    statsFile,
+		runtimes: runtimes,
 	}, nil
 }
 
@@ -217,12 +206,12 @@ func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) 
 }
 
 func (c *Workdir) Add(ctx context.Context, runtime, program string, alias optional.Val[string], tags []string) (bool, string, error) {
-	rt, ok := c.runtimes[runtime]
-	if !ok {
-		return false, "", fmt.Errorf("unsupported runtime: %s", runtime)
+	rt, err := c.runtimes.Get(runtime)
+	if err != nil {
+		return false, "", fmt.Errorf("get runtime: %w", err)
 	}
 
-	program, err := rt.Parse(ctx, program)
+	program, err = rt.Parse(ctx, program)
 	if err != nil {
 		return false, "", fmt.Errorf("parse program: %w", err)
 	}
@@ -239,6 +228,30 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 	}
 
 	return wasAdded, program, nil
+}
+
+func (c *Workdir) RemoveTool(ctx context.Context, target string) error {
+	ts, err := c.FindTool(target)
+	if err != nil {
+		return fmt.Errorf("find tool: %w", err)
+	}
+
+	if ts.Module.IsInstalled {
+		rt, err := c.runtimes.Get(ts.Tool.Runtime)
+		if err != nil {
+			return fmt.Errorf("get runtime: %w", err)
+		}
+
+		if err := rt.Remove(ctx, ts.Tool); err != nil {
+			return fmt.Errorf("remove tool: %w", err)
+		}
+	}
+
+	_ = c.lock.Tools.Remove(ts.Tool)
+	_ = c.spec.Tools.Remove(ts.Tool)
+	delete(c.stats.Tools, ts.Tool.ID())
+
+	return nil
 }
 
 func (c *Workdir) FindTool(name string) (*ToolState, error) {
@@ -277,9 +290,9 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return err
 	}
 
-	rt, ok := c.runtimes[ts.Tool.Runtime]
-	if !ok {
-		return fmt.Errorf("unsupported runtime: %s", ts.Tool.Runtime)
+	rt, err := c.runtimes.Get(ts.Tool.Runtime)
+	if err != nil {
+		return fmt.Errorf("get runtime: %w", err)
 	}
 
 	c.stats.Tools[ts.Tool.ID()] = time.Now()
@@ -307,7 +320,6 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
 	if toolsDir := c.getToolsDir(); !isExists(toolsDir) {
-		fmt.Println("Target dir not exists. Creating...", toolsDir)
 		if err := os.MkdirAll(toolsDir, defaultDirPerm); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
@@ -321,9 +333,9 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 	for _, tool := range c.lock.Tools.Filter(tags) {
 		fmt.Println("Sync:", tool.Runtime, tool.Module, tool.Alias.ValDefault(""))
 
-		rt, ok := c.runtimes[tool.Runtime]
-		if !ok {
-			return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+		rt, err := c.runtimes.GetInstall(ctx, tool.Runtime)
+		if err != nil {
+			return fmt.Errorf("get runtime: %w", err)
 		}
 
 		mod, err := rt.GetModule(ctx, tool.Module)
@@ -397,9 +409,9 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 		fmt.Println("Checking:", tool.Module, "...")
 
 		// FIXME(zhuravlev): remove all "is runtime supported" checks by checking it once at spec load.
-		rt, ok := c.runtimes[tool.Runtime]
-		if !ok {
-			return fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+		rt, err := c.runtimes.Get(tool.Runtime)
+		if err != nil {
+			return fmt.Errorf("get runtime: %w", err)
 		}
 
 		module, haveUpdate, err := rt.GetLatest(ctx, tool.Module)
@@ -465,13 +477,6 @@ func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) 
 	return count, nil
 }
 
-// ToolState describe a state of this tool.
-type ToolState struct {
-	Module  structs.ModuleInfo
-	Tool    structs.Tool
-	LastUse optional.Val[time.Time]
-}
-
 func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
 	res := make([]ToolState, 0, len(c.lock.Tools))
 	for _, tool := range c.lock.Tools {
@@ -488,10 +493,29 @@ func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
 	return res, nil
 }
 
+func (c *Workdir) RuntimeAdd(ctx context.Context, runtime string) error {
+	if err := c.runtimes.Install(ctx, runtime); err != nil {
+		return fmt.Errorf("install runtime: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Workdir) RuntimeList() []string {
+	keys := make([]string, 0, len(c.runtimes.impls))
+	for k := range c.runtimes.impls {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
+}
+
 func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*structs.ModuleInfo, error) {
-	rt, ok := c.runtimes[tool.Runtime]
-	if !ok {
-		return nil, fmt.Errorf("unsupported runtime: %s", tool.Runtime)
+	rt, err := c.runtimes.Get(tool.Runtime)
+	if err != nil {
+		return nil, fmt.Errorf("get runtime: %w", err)
 	}
 
 	mod, err := rt.GetModule(ctx, tool.Module)
@@ -562,13 +586,5 @@ func Init(dir string) (string, error) {
 		}
 
 		return targetSpecFile, nil
-	}
-}
-
-func adaptToolState(tool structs.Tool, mod *structs.ModuleInfo, lastUse optional.Val[time.Time]) ToolState {
-	return ToolState{
-		Tool:    tool,
-		LastUse: lastUse,
-		Module:  *mod,
 	}
 }
