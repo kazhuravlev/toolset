@@ -93,7 +93,7 @@ func fetchLatest(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 	}
 
 	if mod.IsPrivate {
-		privateMod, err := fetchLatestPrivate(ctx, goBin, *mod)
+		privateMod, err := fetchPrivate(ctx, goBin, *mod)
 		if err != nil {
 			return nil, fmt.Errorf("fetch private module: %w", err)
 		}
@@ -135,7 +135,7 @@ func fetchLatest(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 			return nil, fmt.Errorf("unable to decode module: %w", err)
 		}
 
-		mod2, err := parse(ctx, goBin, mod.Module+at+fMod.Version)
+		mod2, err := parse(ctx, goBin, mod.Module+at+mod.Version)
 		if err != nil {
 			return nil, fmt.Errorf("parse fetched module: %w", err)
 		}
@@ -154,13 +154,13 @@ func isExists(path string) bool {
 	return true
 }
 
-// fetchLatestPrivate is a hack around golang tooling. This function do next steps:
+// fetchPrivate is a hack around golang tooling. This function do next steps:
 // - Creates a temp dir
 // - Init module in this dir
 // - Add dependency
-// - Get dep indo
+// - Get dep info
 // - Remove temp dir
-func fetchLatestPrivate(ctx context.Context, goBin string, mod moduleInfo) (*moduleInfo, error) {
+func fetchPrivate(ctx context.Context, goBin string, mod moduleInfo) (*moduleInfo, error) {
 	tmpDir, err := os.MkdirTemp("", "gomodtemp")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %v", err)
@@ -179,7 +179,7 @@ func fetchLatestPrivate(ctx context.Context, goBin string, mod moduleInfo) (*mod
 	}
 
 	{
-		cmd := exec.CommandContext(ctx, goBin, "get", mod.Module)
+		cmd := exec.CommandContext(ctx, goBin, "get", mod.Canonical)
 		cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
