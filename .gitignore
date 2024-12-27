@@ -51,8 +51,6 @@ Temporary Items
 
 ### Other
 .idea/
-.toolset.json
-.toolset.lock.json
 bin/
 
 coverage.txt
