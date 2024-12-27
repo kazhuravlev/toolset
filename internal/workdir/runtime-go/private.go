@@ -27,6 +27,10 @@ type moduleInfo struct {
 	IsPrivate bool   // depends on `go env GOPRIVATE`
 }
 
+func (mi moduleInfo) IsLatest() bool {
+	return mi.Version == "latest"
+}
+
 // parse will parse source string and try to extract all details about mentioned golang program.
 func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 	var canonical, mod, version, program string
@@ -135,7 +139,11 @@ func fetchLatest(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 			return nil, fmt.Errorf("unable to decode module: %w", err)
 		}
 
-		mod2, err := parse(ctx, goBin, mod.Module+at+mod.Version)
+		resVersion := mod.Version
+		if mod.IsLatest() {
+			resVersion = fMod.Version
+		}
+		mod2, err := parse(ctx, goBin, mod.Module+at+resVersion)
 		if err != nil {
 			return nil, fmt.Errorf("parse fetched module: %w", err)
 		}
