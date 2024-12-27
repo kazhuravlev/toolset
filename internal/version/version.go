@@ -534,5 +534,5 @@ func dedupEnv(caseInsensitive bool, env []string) []string {
 func handleSignals() {
 	// Ensure that signals intended for the child process are not handled by
 	// this process' runtime (e.g. SIGQUIT). See issue #36976.
-	signal.Notify(make(chan os.Signal), signalsToIgnore...)
+	signal.Notify(make(chan os.Signal), signalsToIgnore...) //nolint:staticcheck
 }

@@ -10,6 +10,7 @@ tasks:
     - rm -rf internal/version
     - mv dl/internal/version internal/version
     - rm -rf dl
+    - rm ./internal/version/gotip.go
     - go test ./internal/version
   init:
     - "rm .toolset.json .toolset.lock.json || true"
