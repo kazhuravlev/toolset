@@ -119,6 +119,25 @@ toolset add --tags ci go github.com/jstemmer/go-junit-report/v2@latest
 toolset add --tags ci go github.com/boumenot/gocover-cobertura
 ```
 
+#### Use specific golang version
+
+In order to install tool with concrete golang version:
+
+```shell
+# Add a new runtime (it will installed at the moment)
+toolset runtime add go@1.22.10
+# Check that it was added
+toolset runtime list
+```
+
+And install tool with specific version:
+
+```shell 
+toolset add go@1.22.10 github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0
+toolset sync
+toolset list
+```
+
 ### Install tools
 
 Ensure all specified tools are installed or updated to the defined versions:
