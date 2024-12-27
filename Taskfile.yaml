@@ -21,6 +21,18 @@ tasks:
     - "{{.TOOLSET}} list"
     - "{{.TOOLSET}} remove goimports gofumpt"
     - "{{.TOOLSET}} list"
+  test:runtimes:
+    - "rm .toolset.json .toolset.lock.json || true"
+    - "rm -rf ./bin"
+    - "{{.TOOLSET}} init"
+    - "{{.TOOLSET}} runtime add go@1.22.10"
+    - "{{.TOOLSET}} runtime list"
+    - "{{.TOOLSET}} add go@1.22.10 golang.org/x/tools/cmd/goimports"
+    - "{{.TOOLSET}} sync"
+    - "{{.TOOLSET}} remove goimports"
+    - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
+    - "{{.TOOLSET}} sync"
+    - "{{.TOOLSET}} remove goimports"
   test:
     - task: "init"
     - "{{.TOOLSET}} add -tags group1 go golang.org/x/tools/cmd/goimports@v0.24.0"
