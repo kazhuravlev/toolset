@@ -40,7 +40,7 @@ func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
 		return "", errors.New("program name not provided")
 	}
 
-	goModule, err := fetchLatest(ctx, r.goBin, str)
+	goModule, err := fetchModule(ctx, r.goBin, str)
 	if err != nil {
 		return "", fmt.Errorf("get go module version: %w", err)
 	}
@@ -118,7 +118,12 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 }
 
 func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, error) {
-	latestMod, err := fetchLatest(ctx, r.goBin, module)
+	mod, err := parse(ctx, r.goBin, module)
+	if err != nil {
+		return "", false, fmt.Errorf("parse module (%s): %w", module, err)
+	}
+
+	latestMod, err := fetchModule(ctx, r.goBin, mod.Latest().Canonical)
 	if err != nil {
 		return "", false, fmt.Errorf("get go module: %w", err)
 	}

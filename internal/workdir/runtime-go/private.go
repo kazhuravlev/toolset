@@ -31,6 +31,16 @@ func (mi moduleInfo) IsLatest() bool {
 	return mi.Version == "latest"
 }
 
+func (mi moduleInfo) Latest() moduleInfo {
+	return moduleInfo{
+		Canonical: mi.Module + at + "latest",
+		Module:    mi.Module,
+		Version:   "latest",
+		Program:   mi.Program,
+		IsPrivate: mi.IsPrivate,
+	}
+}
+
 // parse will parse source string and try to extract all details about mentioned golang program.
 func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 	var canonical, mod, version, program string
@@ -90,7 +100,11 @@ type fetchedMod struct {
 	Version string `json:"Version"`
 }
 
-func fetchLatest(ctx context.Context, goBin, link string) (*moduleInfo, error) {
+// fetchModule will fetch the module for required version. Always returns a specific version
+// @ => @latest
+// @latest => @vX.X.X
+// @vX.X.X => @vX.X.X
+func fetchModule(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 	mod, err := parse(ctx, goBin, link)
 	if err != nil {
 		return nil, fmt.Errorf("parse module (%s) string: %w", link, err)
@@ -109,7 +123,15 @@ func fetchLatest(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 	for {
 		// TODO: use a local proxy if configured.
 		// Get the latest version
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://proxy.golang.org/%s/@latest", link), nil)
+
+		var modUrl string
+		if mod.IsLatest() {
+			modUrl = fmt.Sprintf("https://proxy.golang.org/%s/@latest", link)
+		} else {
+			modUrl = fmt.Sprintf("https://proxy.golang.org/%s/@v/%s.info", link, mod.Version)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, modUrl, nil)
 		if err != nil {
 			return nil, fmt.Errorf("create request: %w", err)
 		}
@@ -139,11 +161,7 @@ func fetchLatest(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 			return nil, fmt.Errorf("unable to decode module: %w", err)
 		}
 
-		resVersion := mod.Version
-		if mod.IsLatest() {
-			resVersion = fMod.Version
-		}
-		mod2, err := parse(ctx, goBin, mod.Module+at+resVersion)
+		mod2, err := parse(ctx, goBin, mod.Module+at+fMod.Version)
 		if err != nil {
 			return nil, fmt.Errorf("parse fetched module: %w", err)
 		}
