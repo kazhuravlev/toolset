@@ -28,6 +28,29 @@ func TestTool(t *testing.T) {
 		t1 := Tool("go", "some-mod", optional.Empty[string](), nil)
 		require.Equal(t, "go:some-mod", t1.ID())
 	})
+
+	t.Run("IsSame", func(t *testing.T) {
+		t.Run("runtime_must_equals", func(t *testing.T) {
+			t1 := Tool("rt1", "", optional.Empty[string](), nil)
+			t2 := Tool("rt2", "", optional.Empty[string](), nil)
+			require.False(t, t1.IsSame(t2))
+		})
+		t.Run("module_must_equals", func(t *testing.T) {
+			t1 := Tool("rt1", "mod1", optional.Empty[string](), nil)
+			t2 := Tool("rt1", "mod2", optional.Empty[string](), nil)
+			require.False(t, t1.IsSame(t2))
+		})
+		t.Run("module_version_does_not_matter", func(t *testing.T) {
+			t1 := Tool("rt1", "mod1@v999", optional.Empty[string](), nil)
+			t2 := Tool("rt1", "mod1@v888", optional.Empty[string](), nil)
+			require.True(t, t1.IsSame(t2))
+		})
+		t.Run("alias_and_tags_not_matter", func(t *testing.T) {
+			t1 := Tool("rt1", "mod1", optional.Empty[string](), nil)
+			t2 := Tool("rt1", "mod1", optional.New("alias"), []string{"tag1"})
+			require.True(t, t1.IsSame(t2))
+		})
+	})
 }
 
 func Tool(runtime, module string, alias optional.Val[string], tags []string) structs.Tool {

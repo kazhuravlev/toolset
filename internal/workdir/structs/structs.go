@@ -32,6 +32,7 @@ func (t Tool) ID() string {
 	return fmt.Sprintf("%s:%s", t.Runtime, t.Module)
 }
 
+// IsSame returns true when it detects that this is the same tools. It does not check tool version.
 func (t Tool) IsSame(tool Tool) bool {
 	if t.Runtime != tool.Runtime {
 		return false
