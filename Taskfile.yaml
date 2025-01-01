@@ -1,7 +1,7 @@
 version: '3'
 
 vars:
-  TOOLSET: go run ./cmd/toolset
+  TOOLSET: go run ../cmd/toolset
 
 tasks:
   tools:install:
@@ -50,12 +50,14 @@ tasks:
     - go test ./internal/version
 
   init:
+    dir: temp_tests
     cmds:
       - "rm .toolset.json .toolset.lock.json || true"
       - "rm -rf ./bin"
       - "{{.TOOLSET}} init --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
 
   test:remove:
+    dir: temp_tests
     cmds:
       - task: "init"
       - "{{.TOOLSET}} sync"
@@ -64,6 +66,7 @@ tasks:
       - "{{.TOOLSET}} list"
 
   test:runtimes:
+    dir: temp_tests
     cmds:
       - "rm .toolset.json .toolset.lock.json || true"
       - "rm -rf ./bin"
@@ -78,6 +81,7 @@ tasks:
       - "{{.TOOLSET}} remove goimports"
 
   test:
+    dir: temp_tests
     cmds:
       - task: "init"
       - "{{.TOOLSET}} add -tags group1 go golang.org/x/tools/cmd/goimports@v0.24.0"
