@@ -9,6 +9,11 @@ tasks:
     cmds:
       - go run github.com/kazhuravlev/toolset/cmd/toolset@latest sync
 
+  tests:
+    desc: Run project tests
+    cmds:
+      - task: "tools:install"
+
   upd:dl:
     - rm -rf dl
     - git clone --depth 1 https://github.com/golang/dl.git
