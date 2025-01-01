@@ -4,6 +4,11 @@ vars:
   TOOLSET: go run ./cmd/toolset
 
 tasks:
+  tools:install:
+    desc: Install development tools
+    cmds:
+      - go run github.com/kazhuravlev/toolset/cmd/toolset@latest sync
+
   upd:dl:
     - rm -rf dl
     - git clone --depth 1 https://github.com/golang/dl.git
