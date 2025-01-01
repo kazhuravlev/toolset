@@ -3,10 +3,11 @@ package structs
 import (
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/toolset/internal/workdir/modver"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/kazhuravlev/toolset/internal/workdir/modver"
 
 	"github.com/kazhuravlev/optional"
 )

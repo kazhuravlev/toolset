@@ -74,8 +74,15 @@ func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 
 	goPrivate := strings.TrimSpace(buf.String()) // trim new line ending
 
+	var modVer modver.ModVer
+	if version == "latest" {
+		modVer = modver.NewLatest(mod)
+	} else {
+		modVer = modver.NewVer(mod, version)
+	}
+
 	return &moduleInfo{
-		Mod:       modver.NewVer(mod, version),
+		Mod:       modVer,
 		Program:   program,
 		IsPrivate: module.MatchPrefixPatterns(goPrivate, mod),
 	}, nil
@@ -108,7 +115,6 @@ func fetchModule(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 	for {
 		// TODO: use a local proxy if configured.
 		// Get the latest version
-
 		var modUrl string
 		if mod.Mod.IsLatest() {
 			modUrl = fmt.Sprintf("https://proxy.golang.org/%s/@latest", link)

@@ -14,7 +14,7 @@ func (m ModVer) Name() string {
 }
 
 func (m ModVer) Version() string {
-	if m.ver == latest {
+	if m.IsLatest() {
 		return "latest"
 	}
 
