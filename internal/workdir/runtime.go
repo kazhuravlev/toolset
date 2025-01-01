@@ -3,10 +3,11 @@ package workdir
 import (
 	"context"
 	"fmt"
-	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
-	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"path/filepath"
 	"strings"
+
+	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
+	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 )
 
 const runtimeGo = "go"

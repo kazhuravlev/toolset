@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/optional"
-	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"io"
 	"net/http"
 	"net/url"
@@ -17,6 +15,9 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/kazhuravlev/optional"
+	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 )
 
 func isExists(path string) bool {

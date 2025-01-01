@@ -4,6 +4,42 @@ vars:
   TOOLSET: go run ./cmd/toolset
 
 tasks:
+  tools:install:
+    desc: Install tools
+    run: once
+    cmds:
+      - echo ">> Install tools..."
+      - go run github.com/kazhuravlev/toolset/cmd/toolset@latest sync
+
+  fmt:
+    desc: Format codebase
+    deps:
+      - "tools:install"
+    vars:
+      GO_FILES:
+        sh: "find . -type f -name '*.go' -not -path './internal/version/*' | xargs echo"
+    cmds:
+      - echo ">>> Format code..."
+      - go fmt ./...
+      - toolset run gofumpt -l -w {{.GO_FILES}}
+      - toolset run goimports -d -w {{.GO_FILES}}
+
+  lint:
+    desc: Run static analysis
+    deps:
+      - "tools:install"
+    cmds:
+      - echo ">> Run linter..."
+      - toolset run golangci-lint run ./...
+
+  tests:
+    desc: Run project tests
+    deps:
+      - "tools:install"
+    cmds:
+      - echo ">> Run tests..."
+      - toolset run gotestsum
+
   upd:dl:
     - rm -rf dl
     - git clone --depth 1 https://github.com/golang/dl.git
@@ -12,16 +48,19 @@ tasks:
     - rm -rf dl
     - rm ./internal/version/gotip.go
     - go test ./internal/version
+
   init:
     - "rm .toolset.json .toolset.lock.json || true"
     - "rm -rf ./bin"
     - "{{.TOOLSET}} init --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
+
   test:remove:
     - task: "init"
     - "{{.TOOLSET}} sync"
     - "{{.TOOLSET}} list"
     - "{{.TOOLSET}} remove goimports gofumpt"
     - "{{.TOOLSET}} list"
+
   test:runtimes:
     - "rm .toolset.json .toolset.lock.json || true"
     - "rm -rf ./bin"
@@ -34,6 +73,7 @@ tasks:
     - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
     - "{{.TOOLSET}} sync"
     - "{{.TOOLSET}} remove goimports"
+
   test:
     - task: "init"
     - "{{.TOOLSET}} add -tags group1 go golang.org/x/tools/cmd/goimports@v0.24.0"

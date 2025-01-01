@@ -3,10 +3,11 @@ package structs
 import (
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/optional"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/kazhuravlev/optional"
 )
 
 var ErrToolNotInstalled = errors.New("tool not installed")
@@ -15,7 +16,7 @@ type RunError struct {
 	ExitCode int
 }
 
-func (e *RunError) Error() string { return strconv.Itoa(e.ExitCode) }
+func (e RunError) Error() string { return strconv.Itoa(e.ExitCode) }
 
 type Tool struct {
 	// Name of runtime
@@ -31,6 +32,7 @@ func (t Tool) ID() string {
 	return fmt.Sprintf("%s:%s", t.Runtime, t.Module)
 }
 
+// IsSame returns true when it detects that this is the same tools. It does not check tool version.
 func (t Tool) IsSame(tool Tool) bool {
 	if t.Runtime != tool.Runtime {
 		return false
@@ -46,6 +48,7 @@ func (t Tool) IsSame(tool Tool) bool {
 
 type Tools []Tool
 
+// Add will add tool to list if that tool not exists yet. Returns true when tool was added.
 func (tools *Tools) Add(tool Tool) bool {
 	for _, t := range *tools {
 		if t.IsSame(tool) {
@@ -58,7 +61,8 @@ func (tools *Tools) Add(tool Tool) bool {
 	return true
 }
 
-func (tools *Tools) AddOrUpdateTool(tool Tool) {
+// UpsertTool will add tool if not exists or replace to the given version.
+func (tools *Tools) UpsertTool(tool Tool) {
 	for i, t := range *tools {
 		if t.IsSame(tool) {
 			(*tools)[i] = tool

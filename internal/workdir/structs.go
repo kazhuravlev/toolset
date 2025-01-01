@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
-	"time"
 )
 
 type SourceUri interface {

@@ -5,16 +5,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/toolset/internal/version"
-	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/kazhuravlev/toolset/internal/version"
+	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 )
 
-const runtimePrefix = ".rtgo__"
-const at = "@"
+const (
+	runtimePrefix = ".rtgo__"
+	at            = "@"
+)
 
 type Runtime struct {
 	goBin      string // absolute path to golang binary
@@ -108,7 +111,7 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 	if err := cmd.Run(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			return fmt.Errorf("exit not ok (%s): %w", program, errors.Join(&structs.RunError{ExitCode: exitErr.ExitCode()}, err))
+			return fmt.Errorf("exit not ok (%s): %w", program, errors.Join(structs.RunError{ExitCode: exitErr.ExitCode()}, err))
 		}
 
 		return fmt.Errorf("run (%s): %w", program, err)

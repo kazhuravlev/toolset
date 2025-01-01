@@ -3,14 +3,15 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	cli "github.com/urfave/cli/v2"
-	"os"
-	"strings"
-	"time"
 )
 
 const (
@@ -334,7 +335,7 @@ func cmdRun(c *cli.Context) error {
 			return nil
 		}
 
-		var errRun *structs.RunError
+		var errRun structs.RunError
 		if errors.As(err, &errRun) {
 			os.Exit(errRun.ExitCode)
 			return nil

@@ -4,6 +4,7 @@
 [![License](https://img.shields.io/github/license/kazhuravlev/toolset?color=blue)](https://github.com/kazhuravlev/toolset/blob/master/LICENSE)
 [![Build Status](https://github.com/kazhuravlev/toolset/actions/workflows/release.yml/badge.svg)](https://github.com/kazhuravlev/toolset/actions/workflows/release.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kazhuravlev/toolset)](https://goreportcard.com/report/github.com/kazhuravlev/toolset)
+[![codecov](https://codecov.io/gh/kazhuravlev/toolset/graph/badge.svg?token=CD8TDB2DBU)](https://codecov.io/gh/kazhuravlev/toolset)
 
 `toolset` is a lightweight utility for managing project-specific tools like linters, formatters, and code generators. It
 ensures that your development tools remain up-to-date and allows you to specify exact tool versions for consistent,
