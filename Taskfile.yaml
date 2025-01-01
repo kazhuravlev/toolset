@@ -6,6 +6,7 @@ vars:
 tasks:
   tools:install:
     desc: Install tools
+    run: once
     cmds:
       - echo ">> Install tools..."
       - go run github.com/kazhuravlev/toolset/cmd/toolset@latest sync
