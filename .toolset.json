@@ -6,6 +6,12 @@
 			"module": "gotest.tools/gotestsum@v1.12.0",
 			"alias": null,
 			"tags": null
+		},
+		{
+			"runtime": "go",
+			"module": "github.com/golangci/golangci-lint/cmd/golangci-lint@v1.63.0",
+			"alias": null,
+			"tags": null
 		}
 	],
 	"includes": []
