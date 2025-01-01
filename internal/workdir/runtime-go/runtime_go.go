@@ -126,7 +126,7 @@ func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, e
 		return "", false, fmt.Errorf("parse module (%s): %w", module, err)
 	}
 
-	latestMod, err := fetchModule(ctx, r.goBin, mod.Latest().Canonical)
+	latestMod, err := fetchModule(ctx, r.goBin, mod.AsLatest().Canonical)
 	if err != nil {
 		return "", false, fmt.Errorf("get go module: %w", err)
 	}

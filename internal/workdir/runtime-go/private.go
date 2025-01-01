@@ -28,11 +28,13 @@ type moduleInfo struct {
 	IsPrivate bool   // depends on `go env GOPRIVATE`
 }
 
+// IsLatest returns true when module describe @latest version.
 func (mi moduleInfo) IsLatest() bool {
 	return mi.Version == "latest"
 }
 
-func (mi moduleInfo) Latest() moduleInfo {
+// AsLatest returns the same module but with latest version.
+func (mi moduleInfo) AsLatest() moduleInfo {
 	return moduleInfo{
 		Canonical: mi.Module + at + "latest",
 		Module:    mi.Module,
