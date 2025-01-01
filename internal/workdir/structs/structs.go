@@ -15,7 +15,7 @@ type RunError struct {
 	ExitCode int
 }
 
-func (e *RunError) Error() string { return strconv.Itoa(e.ExitCode) }
+func (e RunError) Error() string { return strconv.Itoa(e.ExitCode) }
 
 type Tool struct {
 	// Name of runtime

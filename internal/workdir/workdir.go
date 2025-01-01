@@ -305,7 +305,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 			return fmt.Errorf("run tool: %w", errors.Join(err, ErrToolNotInstalled))
 		}
 
-		var errRun *structs.RunError
+		var errRun structs.RunError
 		if errors.As(err, &errRun) {
 			return fmt.Errorf("exit not zero: %w", err)
 		}

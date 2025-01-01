@@ -334,7 +334,7 @@ func cmdRun(c *cli.Context) error {
 			return nil
 		}
 
-		var errRun *structs.RunError
+		var errRun structs.RunError
 		if errors.As(err, &errRun) {
 			os.Exit(errRun.ExitCode)
 			return nil
