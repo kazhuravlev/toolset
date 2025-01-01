@@ -3,6 +3,7 @@ package structs
 import (
 	"errors"
 	"fmt"
+	"github.com/kazhuravlev/toolset/internal/workdir/modver"
 	"slices"
 	"strconv"
 	"strings"
@@ -107,7 +108,7 @@ func (tools *Tools) Remove(tool Tool) bool {
 
 type ModuleInfo struct {
 	Name        string // golangci-lint
-	Version     string // v1.61.0
+	Mod         modver.ModVer
 	BinDir      string // /home/user/bin/tools/.golangci-lint__v1.1.1
 	BinPath     string // /home/user/bin/tools/.golangci-lint__v1.1.1/golangci-lint
 	IsInstalled bool

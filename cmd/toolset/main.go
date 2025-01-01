@@ -437,7 +437,7 @@ func cmdList(c *cli.Context) error {
 		rows = append(rows, table.Row{
 			ts.Tool.Runtime,
 			ts.Module.Name,
-			ts.Module.Version,
+			ts.Module.Mod.Version(),
 			ts.Module.IsInstalled,
 			lastUse,
 			ts.Module.IsPrivate,
