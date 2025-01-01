@@ -5,14 +5,23 @@ vars:
 
 tasks:
   tools:install:
-    desc: Install development tools
+    desc: Install tools
     cmds:
+      - echo ">> Install tools..."
       - go run github.com/kazhuravlev/toolset/cmd/toolset@latest sync
+
+  lint:
+    cmds:
+      - echo ">> Run linter..."
+      - toolset run golangci-lint run ./...
 
   tests:
     desc: Run project tests
+    deps:
+      - "tools:install"
     cmds:
-      - task: "tools:install"
+      - echo ">> Run tests..."
+      - toolset run gotestsum
 
   upd:dl:
     - rm -rf dl
@@ -22,16 +31,19 @@ tasks:
     - rm -rf dl
     - rm ./internal/version/gotip.go
     - go test ./internal/version
+
   init:
     - "rm .toolset.json .toolset.lock.json || true"
     - "rm -rf ./bin"
     - "{{.TOOLSET}} init --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
+
   test:remove:
     - task: "init"
     - "{{.TOOLSET}} sync"
     - "{{.TOOLSET}} list"
     - "{{.TOOLSET}} remove goimports gofumpt"
     - "{{.TOOLSET}} list"
+
   test:runtimes:
     - "rm .toolset.json .toolset.lock.json || true"
     - "rm -rf ./bin"
@@ -44,6 +56,7 @@ tasks:
     - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
     - "{{.TOOLSET}} sync"
     - "{{.TOOLSET}} remove goimports"
+
   test:
     - task: "init"
     - "{{.TOOLSET}} add -tags group1 go golang.org/x/tools/cmd/goimports@v0.24.0"
