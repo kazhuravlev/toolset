@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kazhuravlev/toolset/internal/workdir/prog"
+	"github.com/kazhuravlev/toolset/internal/prog"
 
 	"github.com/kazhuravlev/optional"
 )

@@ -14,7 +14,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/kazhuravlev/toolset/internal/workdir/prog"
+	"github.com/kazhuravlev/toolset/internal/prog"
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"

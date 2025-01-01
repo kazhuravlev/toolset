@@ -3,7 +3,8 @@ package prog_test
 import (
 	"testing"
 
-	"github.com/kazhuravlev/toolset/internal/workdir/prog"
+	"github.com/kazhuravlev/toolset/internal/prog"
+
 	"github.com/stretchr/testify/require"
 )
 
