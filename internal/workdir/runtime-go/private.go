@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/mod/modfile"
-	"golang.org/x/mod/module"
 	"io"
 	"net/http"
 	"os"
@@ -15,6 +13,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 )
 
 var reVersion = regexp.MustCompile(`^go version go(\d+\.\d+(?:\.\d+)?)(?: .*|$)`)

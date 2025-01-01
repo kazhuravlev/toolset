@@ -3,10 +3,11 @@ package structs
 import (
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/optional"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/kazhuravlev/optional"
 )
 
 var ErrToolNotInstalled = errors.New("tool not installed")

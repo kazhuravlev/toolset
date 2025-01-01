@@ -1,9 +1,10 @@
 package structs_test
 
 import (
+	"testing"
+
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestRunError(t *testing.T) {

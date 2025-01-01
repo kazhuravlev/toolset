@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/optional"
-	"github.com/kazhuravlev/toolset/internal/workdir/structs"
-	"golang.org/x/sync/semaphore"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/kazhuravlev/optional"
+	"github.com/kazhuravlev/toolset/internal/workdir/structs"
+	"golang.org/x/sync/semaphore"
 )
 
 const (
@@ -29,8 +30,10 @@ const (
 	StatsVer1 = "v1"
 )
 
-var ErrToolNotFoundInSpec = errors.New("tool not found in spec")
-var ErrToolNotInstalled = errors.New("tool not installed")
+var (
+	ErrToolNotFoundInSpec = errors.New("tool not found in spec")
+	ErrToolNotInstalled   = errors.New("tool not installed")
+)
 
 type Workdir struct {
 	dir      string
