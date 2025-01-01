@@ -3,7 +3,7 @@ name: Check
 on:
   pull_request:
   push:
-    branches: [ 'master', 'main' ]
+    branches: [ 'main' ]
 
 jobs:
   lint:
@@ -18,7 +18,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: 'v1.61'
+          version: 'v1.63'
 
   build:
     name: Build on golang ${{ matrix.go_version }} and ${{ matrix.os }}
@@ -47,7 +47,9 @@ jobs:
           go build -v -o /dev/null ./cmd/toolset
 
       - name: Test
-        run: go test -v -race -coverprofile coverage.txt -covermode atomic -count 1 ./...
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
