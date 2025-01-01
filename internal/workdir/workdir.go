@@ -431,8 +431,8 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 
 		tool.Module = module
 
-		c.spec.Tools.AddOrUpdateTool(tool)
-		c.lock.Tools.AddOrUpdateTool(tool)
+		c.spec.Tools.UpsertTool(tool)
+		c.lock.Tools.UpsertTool(tool)
 	}
 
 	var resRemotes []RemoteSpec

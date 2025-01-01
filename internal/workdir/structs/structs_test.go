@@ -53,6 +53,65 @@ func TestTool(t *testing.T) {
 	})
 }
 
+func TestTools(t *testing.T) {
+	tool1 := Tool("r1", "m1", optional.Empty[string](), []string{"tag1"})
+	tool2 := Tool("r2", "m2", optional.Empty[string](), []string{"tag2"})
+
+	t.Run("tool_can_be_added_only_once", func(t *testing.T) {
+		var tools structs.Tools
+		tools.Add(tool1)
+		tools.Add(tool1)
+		require.Len(t, tools, 1)
+		require.Equal(t, tool1, tools[0])
+	})
+
+	t.Run("remove_not_exists_tool", func(t *testing.T) {
+		var tools structs.Tools
+		tools.Remove(tool1)
+		require.Len(t, tools, 0)
+	})
+
+	t.Run("remove_exists_tool", func(t *testing.T) {
+		var tools structs.Tools
+		tools.Add(tool1)
+		require.Len(t, tools, 1)
+		tools.Remove(tool1)
+		require.Len(t, tools, 0)
+	})
+
+	t.Run("upsert_tool", func(t *testing.T) {
+		var tools structs.Tools
+		tools.UpsertTool(tool1)
+		require.Len(t, tools, 1)
+
+		tools.UpsertTool(tool1)
+		require.Len(t, tools, 1)
+	})
+
+	t.Run("filter_tools", func(t *testing.T) {
+		var tools structs.Tools
+
+		t.Run("filter_empty_tools", func(t *testing.T) {
+			tools.Filter(nil)
+			require.Len(t, tools, 0)
+
+			tools.Filter([]string{})
+			require.Len(t, tools, 0)
+		})
+
+		tools.UpsertTool(tool1)
+		tools.UpsertTool(tool2)
+		require.Len(t, tools, 2)
+
+		t.Run("filter_tools", func(t *testing.T) {
+			tools2 := tools.Filter([]string{"tag1"})
+			require.Len(t, tools2, 1)
+			require.Equal(t, tool1, tools2[0])
+			require.Len(t, tools, 2, "filtered tools should have the same length")
+		})
+	})
+}
+
 func Tool(runtime, module string, alias optional.Val[string], tags []string) structs.Tool {
 	return structs.Tool{
 		Runtime: runtime,

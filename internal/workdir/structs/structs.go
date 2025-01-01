@@ -48,6 +48,7 @@ func (t Tool) IsSame(tool Tool) bool {
 
 type Tools []Tool
 
+// Add will add tool to list if that tool not exists yet. Returns true when tool was added.
 func (tools *Tools) Add(tool Tool) bool {
 	for _, t := range *tools {
 		if t.IsSame(tool) {
@@ -60,7 +61,8 @@ func (tools *Tools) Add(tool Tool) bool {
 	return true
 }
 
-func (tools *Tools) AddOrUpdateTool(tool Tool) {
+// UpsertTool will add tool if not exists or replace to the given version.
+func (tools *Tools) UpsertTool(tool Tool) {
 	for i, t := range *tools {
 		if t.IsSame(tool) {
 			(*tools)[i] = tool
