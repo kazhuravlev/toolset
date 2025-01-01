@@ -14,7 +14,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/kazhuravlev/toolset/internal/workdir/modver"
+	"github.com/kazhuravlev/toolset/internal/workdir/prog"
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
@@ -23,7 +23,7 @@ import (
 var reVersion = regexp.MustCompile(`^go version go(\d+\.\d+(?:\.\d+)?)(?: .*|$)`)
 
 type moduleInfo struct {
-	Mod modver.ModVer
+	Mod prog.Version
 
 	Program   string // golangci-lint
 	IsPrivate bool   // depends on `go env GOPRIVATE`
@@ -74,11 +74,11 @@ func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 
 	goPrivate := strings.TrimSpace(buf.String()) // trim new line ending
 
-	var modVer modver.ModVer
+	var modVer prog.Version
 	if version == "latest" {
-		modVer = modver.NewLatest(mod)
+		modVer = prog.NewLatest(mod)
 	} else {
-		modVer = modver.NewVer(mod, version)
+		modVer = prog.NewVer(mod, version)
 	}
 
 	return &moduleInfo{

@@ -1,14 +1,14 @@
-package modver_test
+package prog_test
 
 import (
 	"testing"
 
-	"github.com/kazhuravlev/toolset/internal/workdir/modver"
+	"github.com/kazhuravlev/toolset/internal/workdir/prog"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLatest(t *testing.T) {
-	mod := modver.NewLatest("mod1")
+	mod := prog.NewLatest("mod1")
 	require.Equal(t, "mod1", mod.Name())
 	require.Equal(t, "latest", mod.Version())
 	require.Equal(t, "mod1@latest", mod.S())
@@ -17,7 +17,7 @@ func TestLatest(t *testing.T) {
 }
 
 func TestNotLatest(t *testing.T) {
-	mod := modver.NewVer("mod1", "ver1")
+	mod := prog.NewVer("mod1", "ver1")
 	require.Equal(t, "mod1", mod.Name())
 	require.Equal(t, "ver1", mod.Version())
 	require.Equal(t, "mod1@ver1", mod.S())
@@ -27,6 +27,6 @@ func TestNotLatest(t *testing.T) {
 
 func TestEmpty(t *testing.T) {
 	require.Panics(t, func() {
-		modver.NewVer("mod1", "")
+		prog.NewVer("mod1", "")
 	})
 }
