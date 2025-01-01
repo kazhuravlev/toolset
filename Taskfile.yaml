@@ -12,6 +12,9 @@ tasks:
       - go run github.com/kazhuravlev/toolset/cmd/toolset@latest sync
 
   lint:
+    desc: Run static analysis
+    deps:
+      - "tools:install"
     cmds:
       - echo ">> Run linter..."
       - toolset run golangci-lint run ./...
