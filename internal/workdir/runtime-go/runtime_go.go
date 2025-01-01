@@ -48,7 +48,7 @@ func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
 		return "", fmt.Errorf("get go module version: %w", err)
 	}
 
-	return goModule.Canonical, nil
+	return goModule.Mod.S(), nil
 }
 
 func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.ModuleInfo, error) {
@@ -57,12 +57,12 @@ func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.Module
 		return nil, fmt.Errorf("parse module (%s): %w", module, err)
 	}
 
-	programDir := filepath.Join(r.binToolDir, fmt.Sprintf(".%s___%s", mod.Program, mod.Version))
+	programDir := filepath.Join(r.binToolDir, fmt.Sprintf(".%s___%s", mod.Program, mod.Mod.Version()))
 	programBinary := filepath.Join(programDir, mod.Program)
 
 	return &structs.ModuleInfo{
 		Name:        mod.Program,
-		Version:     mod.Version,
+		Version:     mod.Mod.Version(),
 		BinDir:      programDir,
 		BinPath:     programBinary,
 		IsInstalled: isExists(programBinary),
@@ -120,22 +120,23 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 	return nil
 }
 
-func (r *Runtime) GetLatest(ctx context.Context, module string) (string, bool, error) {
-	mod, err := parse(ctx, r.goBin, module)
+func (r *Runtime) GetLatest(ctx context.Context, moduleReq string) (string, bool, error) {
+	mod, err := parse(ctx, r.goBin, moduleReq)
 	if err != nil {
-		return "", false, fmt.Errorf("parse module (%s): %w", module, err)
+		return "", false, fmt.Errorf("parse module (%s): %w", moduleReq, err)
 	}
 
-	latestMod, err := fetchModule(ctx, r.goBin, mod.AsLatest().Canonical)
+	latestStr := mod.Mod.AsLatest().S()
+	latestMod, err := fetchModule(ctx, r.goBin, latestStr)
 	if err != nil {
 		return "", false, fmt.Errorf("get go module: %w", err)
 	}
 
-	if module == latestMod.Canonical {
-		return module, false, nil
+	if moduleReq == latestMod.Mod.S() {
+		return moduleReq, false, nil
 	}
 
-	return latestMod.Canonical, true, nil
+	return latestMod.Mod.S(), true, nil
 }
 
 func (r *Runtime) Remove(ctx context.Context, tool structs.Tool) error {

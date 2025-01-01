@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/kazhuravlev/toolset/internal/workdir/modver"
+
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 )
@@ -21,32 +23,15 @@ import (
 var reVersion = regexp.MustCompile(`^go version go(\d+\.\d+(?:\.\d+)?)(?: .*|$)`)
 
 type moduleInfo struct {
-	Canonical string // github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
-	Module    string // github.com/golangci/golangci-lint/cmd/golangci-lint
-	Version   string // v1.55.2
+	Mod modver.ModVer
+
 	Program   string // golangci-lint
 	IsPrivate bool   // depends on `go env GOPRIVATE`
 }
 
-// IsLatest returns true when module describe @latest version.
-func (mi moduleInfo) IsLatest() bool {
-	return mi.Version == "latest"
-}
-
-// AsLatest returns the same module but with latest version.
-func (mi moduleInfo) AsLatest() moduleInfo {
-	return moduleInfo{
-		Canonical: mi.Module + at + "latest",
-		Module:    mi.Module,
-		Version:   "latest",
-		Program:   mi.Program,
-		IsPrivate: mi.IsPrivate,
-	}
-}
-
 // parse will parse source string and try to extract all details about mentioned golang program.
 func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
-	var canonical, mod, version, program string
+	var mod, version, program string
 
 	{
 		parts := strings.Split(str, at)
@@ -60,7 +45,6 @@ func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 		}
 
 		mod = parts[0]
-		canonical = mod + at + version
 
 		// github.com/user/repo/cmd/program => program
 		if strings.Contains(mod, "/cmd/") {
@@ -91,9 +75,7 @@ func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 	goPrivate := strings.TrimSpace(buf.String()) // trim new line ending
 
 	return &moduleInfo{
-		Canonical: canonical,
-		Module:    mod,
-		Version:   version,
+		Mod:       modver.NewVer(mod, version),
 		Program:   program,
 		IsPrivate: module.MatchPrefixPatterns(goPrivate, mod),
 	}, nil
@@ -119,19 +101,19 @@ func fetchModule(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 			return nil, fmt.Errorf("fetch private module: %w", err)
 		}
 
-		return parse(ctx, goBin, mod.Module+at+privateMod.Version)
+		return parse(ctx, goBin, mod.Mod.Name()+at+privateMod.Mod.Version())
 	}
 
-	link = mod.Module
+	link = mod.Mod.Name()
 	for {
 		// TODO: use a local proxy if configured.
 		// Get the latest version
 
 		var modUrl string
-		if mod.IsLatest() {
+		if mod.Mod.IsLatest() {
 			modUrl = fmt.Sprintf("https://proxy.golang.org/%s/@latest", link)
 		} else {
-			modUrl = fmt.Sprintf("https://proxy.golang.org/%s/@v/%s.info", link, mod.Version)
+			modUrl = fmt.Sprintf("https://proxy.golang.org/%s/@v/%s.info", link, mod.Mod.Version())
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, modUrl, nil)
@@ -164,7 +146,7 @@ func fetchModule(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 			return nil, fmt.Errorf("unable to decode module: %w", err)
 		}
 
-		mod2, err := parse(ctx, goBin, mod.Module+at+fMod.Version)
+		mod2, err := parse(ctx, goBin, mod.Mod.Name()+at+fMod.Version)
 		if err != nil {
 			return nil, fmt.Errorf("parse fetched module: %w", err)
 		}
@@ -208,7 +190,7 @@ func fetchPrivate(ctx context.Context, goBin string, mod moduleInfo) (*moduleInf
 	}
 
 	{
-		cmd := exec.CommandContext(ctx, goBin, "get", mod.Canonical)
+		cmd := exec.CommandContext(ctx, goBin, "get", mod.Mod.S())
 		cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
@@ -230,8 +212,8 @@ func fetchPrivate(ctx context.Context, goBin string, mod moduleInfo) (*moduleInf
 	}
 
 	for _, require := range modFile.Require {
-		if strings.HasPrefix(mod.Module, require.Mod.Path) {
-			return parse(ctx, goBin, mod.Module+at+require.Mod.Version)
+		if strings.HasPrefix(mod.Mod.Name(), require.Mod.Path) {
+			return parse(ctx, goBin, mod.Mod.Name()+at+require.Mod.Version)
 		}
 	}
 
