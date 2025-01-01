@@ -11,6 +11,16 @@ tasks:
       - echo ">> Install tools..."
       - go run github.com/kazhuravlev/toolset/cmd/toolset@latest sync
 
+  fmt:
+    desc: Format codebase
+    deps:
+      - "tools:install"
+    cmds:
+      - echo ">>> Format code..."
+      - go fmt ./...
+      - toolset run gofumpt -l -w .
+      - toolset run goimports -d -w $(find . -type f -name '*.go' -not -path './internal/version/*')
+
   lint:
     desc: Run static analysis
     deps:
