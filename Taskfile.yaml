@@ -15,11 +15,14 @@ tasks:
     desc: Format codebase
     deps:
       - "tools:install"
+    vars:
+      GO_FILES:
+        sh: "find . -type f -name '*.go' -not -path './internal/version/*' | xargs echo"
     cmds:
       - echo ">>> Format code..."
       - go fmt ./...
-      - toolset run gofumpt -l -w .
-      - toolset run goimports -d -w $(find . -type f -name '*.go' -not -path './internal/version/*')
+      - toolset run gofumpt -l -w {{.GO_FILES}}
+      - toolset run goimports -d -w {{.GO_FILES}}
 
   lint:
     desc: Run static analysis
