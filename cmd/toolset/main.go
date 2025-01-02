@@ -438,7 +438,7 @@ func cmdList(c *cli.Context) error {
 	}
 
 	if onlyUnused {
-		tools2 := make([]workdir.ToolState, 0, len(tools))
+		tools2 := make([]structs.ToolState, 0, len(tools))
 		for _, tool := range tools {
 			if tool.LastUse.HasVal() {
 				continue

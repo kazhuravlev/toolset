@@ -1,15 +1,16 @@
 package structs
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/kazhuravlev/toolset/internal/prog"
+	"time"
 
 	"github.com/kazhuravlev/optional"
+	"github.com/kazhuravlev/toolset/internal/prog"
 )
 
 var ErrToolNotInstalled = errors.New("tool not installed")
@@ -114,4 +115,98 @@ type ModuleInfo struct {
 	BinPath     string // /home/user/bin/tools/.golangci-lint__v1.1.1/golangci-lint
 	IsInstalled bool
 	IsPrivate   bool
+}
+
+type Spec struct {
+	// This dir is store all toolset-related files.
+	// This directory should be managed by toolset only.
+	Dir      string    `json:"dir"`
+	Tools    Tools     `json:"tools"`
+	Includes []Include `json:"includes"`
+}
+
+func (s *Spec) AddInclude(include Include) bool {
+	for _, inc := range s.Includes {
+		if inc.IsSame(include) {
+			return false
+		}
+	}
+
+	s.Includes = append(s.Includes, include)
+	return true
+}
+
+type Include struct {
+	Src  string   `json:"src"`
+	Tags []string `json:"tags"`
+}
+
+func (i Include) IsSame(include Include) bool {
+	return i.Src == include.Src
+}
+
+func (i *Include) UnmarshalJSON(bb []byte) error {
+	var incStruct struct {
+		Src  string   `json:"src"`
+		Tags []string `json:"tags"`
+	}
+	if err := json.Unmarshal(bb, &incStruct); err != nil {
+		// NOTE: Migration: probably this is an old version of include. This version is just a string.
+		var inc string
+		if errStr := json.Unmarshal(bb, &inc); errStr != nil {
+			return fmt.Errorf("unmarshal Include: %w", errors.Join(err, errStr))
+		}
+
+		i.Src = inc
+		i.Tags = []string{}
+		return nil
+	}
+
+	*i = incStruct
+
+	return nil
+}
+
+type Stats struct {
+	Version string               `json:"version"`
+	Tools   map[string]time.Time `json:"tools"`
+}
+
+// ToolState describe a state of this tool.
+type ToolState struct {
+	Module  ModuleInfo
+	Tool    Tool
+	LastUse optional.Val[time.Time]
+}
+
+type RemoteSpec struct {
+	Source string   `json:"source"`
+	Spec   Spec     `json:"spec"`
+	Tags   []string `json:"tags"`
+}
+
+func (r *RemoteSpec) UnmarshalJSON(bb []byte) error {
+	// NOTE(zhuravlev): Migration: from Tags to tags
+	var spec struct {
+		Source string   `json:"source"`
+		Spec   Spec     `json:"spec"`
+		Tags   []string `json:"tags"`
+	}
+	if err := json.Unmarshal(bb, &spec); err != nil {
+		var specOld struct {
+			Source string   `json:"Source"`
+			Spec   Spec     `json:"Spec"`
+			Tags   []string `json:"Tags"`
+		}
+		if errOld := json.Unmarshal(bb, &specOld); errOld != nil {
+			return fmt.Errorf("unmarshal RemoteSpec: %w", errors.Join(err, errOld))
+		}
+
+		*r = RemoteSpec(specOld)
+		return nil
+	}
+
+	*r = spec
+
+	return nil
 }

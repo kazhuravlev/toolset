@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	remotes2 "github.com/kazhuravlev/toolset/internal/workdir/remotes"
+
 	"github.com/kazhuravlev/toolset/internal/fsh"
 
 	"github.com/kazhuravlev/optional"
@@ -36,9 +38,9 @@ var (
 
 type Workdir struct {
 	dir      string
-	spec     *Spec
+	spec     *structs.Spec
 	lock     *Lock
-	stats    *Stats
+	stats    *structs.Stats
 	runtimes *Runtimes
 	fs       fsh.FS
 }
@@ -68,7 +70,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 	baseDir := filepath.Dir(toolsetFilename)
 	lockFname := filepath.Join(baseDir, lockFilename)
 
-	spec, err := fsh.ReadJson[Spec](fs, toolsetFilename)
+	spec, err := fsh.ReadJson[structs.Spec](fs, toolsetFilename)
 	if err != nil {
 		return nil, fmt.Errorf("spec file not found: %w", err)
 	}
@@ -88,7 +90,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 
 	absToolsDir := filepath.Join(baseDir, spec.Dir)
 	statsFName := filepath.Join(absToolsDir, statsFilename)
-	statsFile, err := fsh.ReadOrCreateJson(fs, statsFName, Stats{
+	statsFile, err := fsh.ReadOrCreateJson(fs, statsFName, structs.Stats{
 		Version: StatsVer1,
 		Tools:   make(map[string]time.Time),
 	})
@@ -135,10 +137,10 @@ func Init(fs fsh.FS, dir string) error {
 	case err == nil:
 		return errors.New("spec already exists")
 	case os.IsNotExist(err):
-		spec := Spec{
+		spec := structs.Spec{
 			Dir:      defaultToolsDir,
 			Tools:    make(structs.Tools, 0),
-			Includes: make([]Include, 0),
+			Includes: make([]structs.Include, 0),
 		}
 		if err := fsh.WriteJson(fs, spec, targetSpecFile); err != nil {
 			return fmt.Errorf("write init spec: %w", err)
@@ -146,13 +148,13 @@ func Init(fs fsh.FS, dir string) error {
 
 		lock := Lock{
 			Tools:   make(structs.Tools, 0),
-			Remotes: make([]RemoteSpec, 0),
+			Remotes: make([]structs.RemoteSpec, 0),
 		}
 		if err := fsh.WriteJson(fs, lock, targetLockFile); err != nil {
 			return fmt.Errorf("write init lock: %w", err)
 		}
 
-		_, errStats := fsh.ReadOrCreateJson(fs, targetStatsFile, Stats{
+		_, errStats := fsh.ReadOrCreateJson(fs, targetStatsFile, structs.Stats{
 			Version: StatsVer1,
 			Tools:   make(map[string]time.Time),
 		})
@@ -182,12 +184,12 @@ func (c *Workdir) Save() error {
 
 func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) (int, error) {
 	// Check that source is exists and valid.
-	remotes, err := fetchRemoteSpec(ctx, c.fs, source, tags, nil)
+	remotes, err := remotes2.FetchRemote(ctx, c.fs, source, tags, nil)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
 
-	wasAdded := c.spec.AddInclude(Include{Src: source, Tags: tags})
+	wasAdded := c.spec.AddInclude(structs.Include{Src: source, Tags: tags})
 	if !wasAdded {
 		return 0, nil
 	}
@@ -253,7 +255,7 @@ func (c *Workdir) RemoveTool(ctx context.Context, target string) error {
 	return nil
 }
 
-func (c *Workdir) FindTool(name string) (*ToolState, error) {
+func (c *Workdir) FindTool(name string) (*structs.ToolState, error) {
 	for _, tool := range c.lock.Tools {
 		mod, err := c.getModuleInfo(context.TODO(), tool)
 		if err != nil {
@@ -431,9 +433,9 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 		c.lock.Tools.UpsertTool(tool)
 	}
 
-	resRemotes := make([]RemoteSpec, 0, len(c.spec.Includes))
+	resRemotes := make([]structs.RemoteSpec, 0, len(c.spec.Includes))
 	for _, inc := range c.spec.Includes {
-		remotes, err := fetchRemoteSpec(ctx, c.fs, inc.Src, inc.Tags, nil)
+		remotes, err := remotes2.FetchRemote(ctx, c.fs, inc.Src, inc.Tags, nil)
 		if err != nil {
 			return fmt.Errorf("fetch remotes: %w", err)
 		}
@@ -455,7 +457,7 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 // CopySource will add all tools from source.
 // Source can be a path to file or a http url or git repo.
 func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) (int, error) {
-	specs, err := fetchRemoteSpec(ctx, c.fs, source, tags, nil)
+	specs, err := remotes2.FetchRemote(ctx, c.fs, source, tags, nil)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
@@ -476,8 +478,8 @@ func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) 
 	return count, nil
 }
 
-func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
-	res := make([]ToolState, 0, len(c.lock.Tools))
+func (c *Workdir) GetTools(ctx context.Context) ([]structs.ToolState, error) {
+	res := make([]structs.ToolState, 0, len(c.lock.Tools))
 	for _, tool := range c.lock.Tools {
 		mod, err := c.getModuleInfo(ctx, tool)
 		if err != nil {
@@ -551,4 +553,25 @@ func (c *Workdir) getLockFilename() string {
 
 func (c *Workdir) getStatsFilename() string {
 	return filepath.Join(c.getToolsDir(), statsFilename)
+}
+
+type Lock struct {
+	Tools   structs.Tools        `json:"tools"`
+	Remotes []structs.RemoteSpec `json:"remotes"`
+}
+
+func (l *Lock) FromSpec(spec *structs.Spec) {
+	l.Tools = make(structs.Tools, 0, len(spec.Tools))
+	for _, tool := range spec.Tools {
+		l.Tools.Add(tool)
+	}
+
+	// TODO(zhuravlev): should we refresh remotes from spec?
+
+	for _, remote := range l.Remotes {
+		for _, tool := range remote.Spec.Tools {
+			tool.Tags = append(tool.Tags, remote.Tags...)
+			l.Tools.Add(tool)
+		}
+	}
 }

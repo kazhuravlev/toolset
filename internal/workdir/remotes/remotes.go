@@ -1,4 +1,4 @@
-package workdir
+package remotes
 
 import (
 	"bytes"
@@ -14,15 +14,13 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
-	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"github.com/spf13/afero"
 )
 
-func parseSourceURI(uri string) (SourceUri, error) {
+func ParseRemote(uri string) (SourceUri, error) {
 	sourceURL, err := url.Parse(uri)
 	if err != nil {
 		return nil, fmt.Errorf("parse source uri: %w", err)
@@ -59,16 +57,16 @@ func parseSourceURI(uri string) (SourceUri, error) {
 	}
 }
 
-func fetchRemoteSpec(ctx context.Context, fs fsh.FS, source string, tags []string, excluded []string) ([]RemoteSpec, error) {
+func FetchRemote(ctx context.Context, fs fsh.FS, source string, tags []string, excluded []string) ([]structs.RemoteSpec, error) {
 	{
 		if slices.Contains(excluded, source) {
-			return []RemoteSpec{}, nil
+			return []structs.RemoteSpec{}, nil
 		}
 
 		excluded = append(excluded, source)
 	}
 
-	srcURI, err := parseSourceURI(source)
+	srcURI, err := ParseRemote(source)
 	if err != nil {
 		return nil, fmt.Errorf("parse source uri: %w", err)
 	}
@@ -144,14 +142,14 @@ func fetchRemoteSpec(ctx context.Context, fs fsh.FS, source string, tags []strin
 		buf = bb
 	}
 
-	var spec Spec
+	var spec structs.Spec
 	if err := json.Unmarshal(buf, &spec); err != nil {
 		return nil, fmt.Errorf("parse source: %w", err)
 	}
 
-	var res []RemoteSpec
+	var res []structs.RemoteSpec
 	for _, inc := range spec.Includes {
-		remotes, err := fetchRemoteSpec(ctx, fs, inc.Src, append(slices.Clone(tags), inc.Tags...), excluded)
+		remotes, err := FetchRemote(ctx, fs, inc.Src, append(slices.Clone(tags), inc.Tags...), excluded)
 		if err != nil {
 			return nil, fmt.Errorf("fetch one of remotes (%s): %w", inc, err)
 		}
@@ -163,17 +161,32 @@ func fetchRemoteSpec(ctx context.Context, fs fsh.FS, source string, tags []strin
 		res = append(res, remotes...)
 	}
 
-	return append(res, RemoteSpec{
+	return append(res, structs.RemoteSpec{
 		Spec:   spec,
 		Source: source,
 		Tags:   tags,
 	}), nil
 }
 
-func adaptToolState(tool structs.Tool, mod *structs.ModuleInfo, lastUse optional.Val[time.Time]) ToolState {
-	return ToolState{
-		Tool:    tool,
-		LastUse: lastUse,
-		Module:  *mod,
-	}
+type SourceUri interface {
+	isSourceUri()
 }
+
+type SourceUriFile struct {
+	Path string
+}
+
+func (SourceUriFile) isSourceUri() {}
+
+type SourceUriUrl struct {
+	URL string
+}
+
+func (SourceUriUrl) isSourceUri() {}
+
+type SourceUriGit struct {
+	Addr string
+	Path string
+}
+
+func (SourceUriGit) isSourceUri() {}

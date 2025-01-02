@@ -1,8 +1,10 @@
-package workdir
+package remotes_test
 
 import (
 	"context"
 	"testing"
+
+	"github.com/kazhuravlev/toolset/internal/workdir/remotes"
 
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -11,35 +13,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_parseSourceURI(t *testing.T) {
+func TestParseRemote(t *testing.T) {
 	t.Run("valid_cases", func(t *testing.T) {
-		f := func(uri string, exp SourceUri) {
-			res, err := parseSourceURI(uri)
+		f := func(uri string, exp remotes.SourceUri) {
+			res, err := remotes.ParseRemote(uri)
 			require.NoError(t, err)
 			require.NotNil(t, res)
 			require.Equal(t, exp, res)
 		}
 
 		f("/path/to/file.txt",
-			SourceUriFile{Path: "/path/to/file.txt"})
+			remotes.SourceUriFile{Path: "/path/to/file.txt"})
 		f("http://127.0.0.1:8000/path/to/file.txt",
-			SourceUriUrl{URL: "http://127.0.0.1:8000/path/to/file.txt"})
+			remotes.SourceUriUrl{URL: "http://127.0.0.1:8000/path/to/file.txt"})
 		f("https://127.0.0.1:8000/path/to/file.txt",
-			SourceUriUrl{URL: "https://127.0.0.1:8000/path/to/file.txt"})
+			remotes.SourceUriUrl{URL: "https://127.0.0.1:8000/path/to/file.txt"})
 		f("git+ssh://127.0.0.1:/path/to/file.txt",
-			SourceUriGit{Addr: "127.0.0.1", Path: "/path/to/file.txt"})
+			remotes.SourceUriGit{Addr: "127.0.0.1", Path: "/path/to/file.txt"})
 		f("git+https://127.0.0.1:/path/to/file.txt",
-			SourceUriGit{Addr: "https://127.0.0.1", Path: "/path/to/file.txt"})
+			remotes.SourceUriGit{Addr: "https://127.0.0.1", Path: "/path/to/file.txt"})
 	})
 
 	t.Run("invalid_cases", func(t *testing.T) {
-		res, err := parseSourceURI("ftp://127.0.0.1:8000/path/to/file.txt")
+		res, err := remotes.ParseRemote("ftp://127.0.0.1:8000/path/to/file.txt")
 		require.Error(t, err)
 		require.Nil(t, res)
 	})
 }
 
-func Test_fetchRemoteSpec(t *testing.T) {
+func TestFetchRemote(t *testing.T) {
 	t.Run("file_src", func(t *testing.T) {
 		ctx := context.Background()
 		fs := fsh.NewMemFS(map[string]string{
@@ -62,12 +64,12 @@ func Test_fetchRemoteSpec(t *testing.T) {
 		}`,
 		})
 
-		res, err := fetchRemoteSpec(ctx, fs, "/.toolset.json", []string{"tag2"}, nil)
+		res, err := remotes.FetchRemote(ctx, fs, "/.toolset.json", []string{"tag2"}, nil)
 		require.NoError(t, err)
 		require.Len(t, res, 1)
-		require.Equal(t, RemoteSpec{
+		require.Equal(t, structs.RemoteSpec{
 			Source: "/.toolset.json",
-			Spec: Spec{
+			Spec: structs.Spec{
 				Dir: "./bin/tools",
 				Tools: structs.Tools{
 					{
@@ -77,7 +79,7 @@ func Test_fetchRemoteSpec(t *testing.T) {
 						Tags:    []string{"tag1"},
 					},
 				},
-				Includes: []Include{
+				Includes: []structs.Include{
 					{
 						Src:  "/.toolset.json",
 						Tags: []string{"tag3"},
@@ -92,12 +94,12 @@ func Test_fetchRemoteSpec(t *testing.T) {
 		ctx := context.Background()
 		fs := fsh.NewRealFS()
 
-		res, err := fetchRemoteSpec(ctx, fs, "git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json", nil, nil)
+		res, err := remotes.FetchRemote(ctx, fs, "git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json", nil, nil)
 		require.NoError(t, err)
 		require.Len(t, res, 1)
-		require.Equal(t, RemoteSpec{
+		require.Equal(t, structs.RemoteSpec{
 			Source: "git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d88.git:/sample-toolset.json",
-			Spec: Spec{
+			Spec: structs.Spec{
 				Dir: "./bin/tools",
 				Tools: structs.Tools{
 					{Runtime: "go", Module: "golang.org/x/tools/cmd/stringer@v0.26.0", Alias: optional.Empty[string](), Tags: nil},
