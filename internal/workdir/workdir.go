@@ -431,7 +431,7 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 		c.lock.Tools.UpsertTool(tool)
 	}
 
-	var resRemotes []RemoteSpec
+	resRemotes := make([]RemoteSpec, 0, len(c.spec.Includes))
 	for _, inc := range c.spec.Includes {
 		remotes, err := fetchRemoteSpec(ctx, c.fs, inc.Src, inc.Tags, nil)
 		if err != nil {
