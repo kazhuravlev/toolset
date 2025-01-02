@@ -183,12 +183,11 @@ func cmdInit(c *cli.Context) error {
 		targetDir = "."
 	}
 
-	absSpecName, err := workdir.Init(fs, targetDir)
-	if err != nil {
+	if err := workdir.Init(fs, targetDir); err != nil {
 		return fmt.Errorf("init workdir: %w", err)
 	}
 
-	fmt.Println("Spec created:", absSpecName)
+	fmt.Println("Spec created")
 
 	if val := c.String(keyCopyFrom); val != "" {
 		wd, err := workdir.New(c.Context, fs, targetDir)

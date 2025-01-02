@@ -113,15 +113,15 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 }
 
 // Init will initialize context in specified directory.
-func Init(fs fsh.FS, dir string) (string, error) {
+func Init(fs fsh.FS, dir string) error {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
-		return "", fmt.Errorf("get abs path: %w", err)
+		return fmt.Errorf("get abs path: %w", err)
 	}
 
 	absToolsDir := filepath.Join(dir, defaultToolsDir)
 	if err := fs.MkdirAll(absToolsDir, fsh.DefaultDirPerm); err != nil {
-		return "", fmt.Errorf("create tools dir: %w", err)
+		return fmt.Errorf("create tools dir: %w", err)
 	}
 
 	targetSpecFile := filepath.Join(dir, specFilename)
@@ -130,9 +130,9 @@ func Init(fs fsh.FS, dir string) (string, error) {
 
 	switch _, err := fs.Stat(targetSpecFile); {
 	default:
-		return "", fmt.Errorf("check target spec file exists: %w", err)
+		return fmt.Errorf("check target spec file exists: %w", err)
 	case err == nil:
-		return "", errors.New("spec already exists")
+		return errors.New("spec already exists")
 	case os.IsNotExist(err):
 		spec := Spec{
 			Dir:      defaultToolsDir,
@@ -140,7 +140,7 @@ func Init(fs fsh.FS, dir string) (string, error) {
 			Includes: make([]Include, 0),
 		}
 		if err := fsh.WriteJson(fs, spec, targetSpecFile); err != nil {
-			return "", fmt.Errorf("write init spec: %w", err)
+			return fmt.Errorf("write init spec: %w", err)
 		}
 
 		lock := Lock{
@@ -148,7 +148,7 @@ func Init(fs fsh.FS, dir string) (string, error) {
 			Remotes: make([]RemoteSpec, 0),
 		}
 		if err := fsh.WriteJson(fs, lock, targetLockFile); err != nil {
-			return "", fmt.Errorf("write init lock: %w", err)
+			return fmt.Errorf("write init lock: %w", err)
 		}
 
 		_, errStats := fsh.ReadOrCreateJson(fs, targetStatsFile, Stats{
@@ -156,10 +156,10 @@ func Init(fs fsh.FS, dir string) (string, error) {
 			Tools:   make(map[string]time.Time),
 		})
 		if err := errStats; err != nil {
-			return "", fmt.Errorf("write init stats: %w", err)
+			return fmt.Errorf("write init stats: %w", err)
 		}
 
-		return targetSpecFile, nil
+		return nil
 	}
 }
 
