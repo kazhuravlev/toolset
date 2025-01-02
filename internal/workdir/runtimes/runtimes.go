@@ -1,16 +1,22 @@
-package workdir
+package runtimes
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"path/filepath"
+	"sort"
 	"strings"
 
-	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
+	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtimes/runtime-go"
+
+	"github.com/kazhuravlev/toolset/internal/fsh"
+
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 )
 
 const runtimeGo = "go"
+
+var ErrNotFound = errors.New("not found")
 
 type IRuntime interface {
 	// Parse will parse string with module name. It is used only on `toolset add` step.
@@ -28,43 +34,23 @@ type IRuntime interface {
 }
 
 type Runtimes struct {
+	fs         fsh.FS
 	binToolDir string
 	impls      map[string]IRuntime
 }
 
-func NewRuntimes(ctx context.Context, baseDir, specDir string) (*Runtimes, error) {
-	binToolDir := filepath.Join(baseDir, specDir)
-
-	runtimes := &Runtimes{
+func New(fs fsh.FS, binToolDir string) (*Runtimes, error) {
+	return &Runtimes{
+		fs:         fs,
 		binToolDir: binToolDir,
 		impls:      make(map[string]IRuntime),
-	}
-
-	if err := runtimes.discover(ctx); err != nil {
-		return nil, err
-	}
-
-	return runtimes, nil
-}
-
-func (r *Runtimes) discover(ctx context.Context) error {
-	goRuntimes, err := runtimego.Discover(ctx, r.binToolDir)
-	if err != nil {
-		return fmt.Errorf("discovering go runtimes: %w", err)
-	}
-
-	r.impls = make(map[string]IRuntime, len(goRuntimes))
-	for _, rt := range goRuntimes {
-		r.impls[rt.Version()] = rt
-	}
-
-	return nil
+	}, nil
 }
 
 func (r *Runtimes) Get(runtime string) (IRuntime, error) {
 	rt, ok := r.impls[runtime]
 	if !ok {
-		return nil, fmt.Errorf("unsupported runtime: %s", runtime)
+		return nil, ErrNotFound
 	}
 
 	return rt, nil
@@ -72,10 +58,6 @@ func (r *Runtimes) Get(runtime string) (IRuntime, error) {
 
 // GetInstall will get installed runtime or try to install it in other case.
 func (r *Runtimes) GetInstall(ctx context.Context, runtime string) (IRuntime, error) {
-	if rt, err := r.Get(runtime); err == nil {
-		return rt, nil
-	}
-
 	if err := r.Install(ctx, runtime); err != nil {
 		return nil, err
 	}
@@ -94,12 +76,37 @@ func (r *Runtimes) Install(ctx context.Context, runtime string) error {
 	}
 
 	ver := strings.TrimPrefix(runtime, runtimeGo+"@")
-	if err := runtimego.Install(ctx, r.binToolDir, ver); err != nil {
+	if err := runtimego.Install(ctx, r.fs, r.binToolDir, ver); err != nil {
 		return fmt.Errorf("install tool runtime (%s): %w", runtime, err)
 	}
 
-	if err := r.discover(ctx); err != nil {
+	if err := r.Discover(ctx); err != nil {
 		return fmt.Errorf("discover tools: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Runtimes) List() []string {
+	keys := make([]string, 0, len(r.impls))
+	for k := range r.impls {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
+}
+
+func (r *Runtimes) Discover(ctx context.Context) error {
+	goRuntimes, err := runtimego.Discover(ctx, r.fs, r.binToolDir)
+	if err != nil {
+		return fmt.Errorf("discovering go runtimes: %w", err)
+	}
+
+	r.impls = make(map[string]IRuntime, len(goRuntimes))
+	for _, rt := range goRuntimes {
+		r.impls[rt.Version()] = rt
 	}
 
 	return nil

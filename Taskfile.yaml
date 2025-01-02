@@ -1,7 +1,7 @@
 version: '3'
 
 vars:
-  TOOLSET: go run ./cmd/toolset
+  TOOLSET: go run ../cmd/toolset
 
 tasks:
   tools:install:
@@ -50,69 +50,88 @@ tasks:
     - go test ./internal/version
 
   init:
-    - "rm .toolset.json .toolset.lock.json || true"
-    - "rm -rf ./bin"
-    - "{{.TOOLSET}} init --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
+    dir: temp_tests
+    cmds:
+      - "rm .toolset.json .toolset.lock.json || true"
+      - "rm -rf ./bin"
+      - "{{.TOOLSET}} init --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
 
   test:remove:
-    - task: "init"
-    - "{{.TOOLSET}} sync"
-    - "{{.TOOLSET}} list"
-    - "{{.TOOLSET}} remove goimports gofumpt"
-    - "{{.TOOLSET}} list"
+    dir: temp_tests
+    cmds:
+      - task: "init"
+      - "{{.TOOLSET}} sync"
+      - "{{.TOOLSET}} list"
+      - "{{.TOOLSET}} remove goimports gofumpt"
+      - "{{.TOOLSET}} list"
+
+  test:alias:
+    dir: temp_tests
+    cmds:
+      - task: "init"
+      - "{{.TOOLSET}} add go github.com/vburenin/ifacemaker iface"
+      - "{{.TOOLSET}} sync"
+      - "{{.TOOLSET}} list"
+      - ls -lsa bin/tools | grep iface
 
   test:runtimes:
-    - "rm .toolset.json .toolset.lock.json || true"
-    - "rm -rf ./bin"
-    - "{{.TOOLSET}} init"
-    - "{{.TOOLSET}} runtime add go@1.22.10"
-    - "{{.TOOLSET}} runtime list"
-    - "{{.TOOLSET}} add go@1.22.10 golang.org/x/tools/cmd/goimports"
-    - "{{.TOOLSET}} sync"
-    - "{{.TOOLSET}} remove goimports"
-    - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
-    - "{{.TOOLSET}} sync"
-    - "{{.TOOLSET}} remove goimports"
+    dir: temp_tests
+    cmds:
+      - "rm .toolset.json .toolset.lock.json || true"
+      - "rm -rf ./bin"
+      - "{{.TOOLSET}} init"
+      - "{{.TOOLSET}} runtime add go@1.22.10"
+      - "{{.TOOLSET}} runtime list"
+      - "{{.TOOLSET}} add go@1.22.10 golang.org/x/tools/cmd/goimports"
+      - "{{.TOOLSET}} sync"
+      - "{{.TOOLSET}} remove goimports"
+      - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
+      - "{{.TOOLSET}} sync"
+      - "{{.TOOLSET}} remove goimports"
+      - "{{.TOOLSET}} list"
 
   test:
-    - task: "init"
-    - "{{.TOOLSET}} add -tags group1 go golang.org/x/tools/cmd/goimports@v0.24.0"
-    - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
-    - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports@latest"
-    - "{{.TOOLSET}} add go github.com/bufbuild/buf/cmd/buf@v1.47.2"
-    - "{{.TOOLSET}} add go github.com/go-delve/delve/cmd/dlv@latest"
-    - "{{.TOOLSET}} add go github.com/go-swagger/go-swagger/cmd/swagger@latest"
-    - "{{.TOOLSET}} add go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.0"
-    - "{{.TOOLSET}} add go github.com/goreleaser/goreleaser/v2@latest"
-    - "{{.TOOLSET}} add go github.com/kisielk/errcheck@latest"
-    - "{{.TOOLSET}} add --tags group1 go github.com/mgechev/revive@latest"
-    - "{{.TOOLSET}} add --tags group1 go github.com/segmentio/golines@latest"
-    - "{{.TOOLSET}} add --tags group1 go honnef.co/go/tools/cmd/staticcheck@v0.5.1"
-    - "{{.TOOLSET}} sync --tags group1"
-    - "{{.TOOLSET}} add --tags formatter,ci go golang.org/x/tools/cmd/goimports@v0.21.0"
-    - "{{.TOOLSET}} add --tags local,ci go github.com/kazhuravlev/git-tools/cmd/gt"
-    - "{{.TOOLSET}} add --tags local,ci,linters go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.2"
-    - "{{.TOOLSET}} upgrade --tags linters"
-    - "{{.TOOLSET}} add --tags formatters --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
-    - "{{.TOOLSET}} add --tags codegen --include git+ssh://git@gist.github.com:c92c40d0e4329c1c2fe9372216474cd7.git:/codegen.json"
-    - "{{.TOOLSET}} add --tags formatters --include git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
-    - "{{.TOOLSET}} list"
-    - "{{.TOOLSET}} sync --tags codegen"
-    - "{{.TOOLSET}} list"
-    - "{{.TOOLSET}} sync"
-    - "{{.TOOLSET}} which buf gt dlv"
-    - "{{.TOOLSET}} upgrade --tags codegen"
-    - "{{.TOOLSET}} upgrade"
-    - "{{.TOOLSET}} sync"
-    - "{{.TOOLSET}} run gt tag last"
-    - "{{.TOOLSET}} list"
-    - "{{.TOOLSET}} run buf --version"
-    - "{{.TOOLSET}} run dlv version"
-    - "{{.TOOLSET}} run swagger version"
-    - "{{.TOOLSET}} run golangci-lint version"
-    - "{{.TOOLSET}} run goreleaser --version"
-    - "{{.TOOLSET}} run revive --version"
-    - "{{.TOOLSET}} run golines --version"
-    - "{{.TOOLSET}} run staticcheck -version"
-    - "{{.TOOLSET}} run gt --version"
-    - "{{.TOOLSET}} run gofumpt --version"
+    dir: temp_tests
+    cmds:
+      - task: "init"
+      - "{{.TOOLSET}} add -tags group1 go golang.org/x/tools/cmd/goimports@v0.24.0"
+      - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
+      - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports@latest"
+      - "{{.TOOLSET}} add go github.com/bufbuild/buf/cmd/buf@v1.47.2"
+      - "{{.TOOLSET}} add go github.com/go-delve/delve/cmd/dlv@latest"
+      - "{{.TOOLSET}} add go github.com/go-swagger/go-swagger/cmd/swagger@latest"
+      - "{{.TOOLSET}} add go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.0"
+      - "{{.TOOLSET}} add go github.com/goreleaser/goreleaser/v2@latest"
+      - "{{.TOOLSET}} add go github.com/kisielk/errcheck@latest"
+      - "{{.TOOLSET}} add --tags group1 go github.com/mgechev/revive@latest"
+      - "{{.TOOLSET}} add --tags group1 go github.com/segmentio/golines@latest"
+      - "{{.TOOLSET}} add --tags group1 go honnef.co/go/tools/cmd/staticcheck@v0.5.1"
+      - "{{.TOOLSET}} sync --tags group1"
+      - "{{.TOOLSET}} add --tags formatter,ci go golang.org/x/tools/cmd/goimports@v0.21.0"
+      - "{{.TOOLSET}} add --tags local,ci go github.com/kazhuravlev/git-tools/cmd/gt"
+      - "{{.TOOLSET}} add --tags local,ci,linters go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.2"
+      - "{{.TOOLSET}} upgrade --tags linters"
+      - "{{.TOOLSET}} add --tags formatters --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
+      - "{{.TOOLSET}} add --tags codegen --include git+ssh://git@gist.github.com:c92c40d0e4329c1c2fe9372216474cd7.git:/codegen.json"
+      - "{{.TOOLSET}} add --tags formatters --include git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
+      - "{{.TOOLSET}} list"
+      - "{{.TOOLSET}} sync --tags codegen"
+      - "{{.TOOLSET}} list"
+      - "{{.TOOLSET}} sync"
+      - "{{.TOOLSET}} which buf gt dlv"
+      - "{{.TOOLSET}} upgrade --tags codegen"
+      - "{{.TOOLSET}} upgrade"
+      - "{{.TOOLSET}} sync"
+      - "{{.TOOLSET}} run gt tag last"
+      - "{{.TOOLSET}} list"
+      - "{{.TOOLSET}} run buf --version"
+      - "{{.TOOLSET}} run dlv version"
+      - "{{.TOOLSET}} run swagger version"
+      - "{{.TOOLSET}} run golangci-lint version"
+      - "{{.TOOLSET}} run goreleaser --version"
+      - "{{.TOOLSET}} run revive --version"
+      - "{{.TOOLSET}} run golines --version"
+      - "{{.TOOLSET}} run staticcheck -version"
+      - "{{.TOOLSET}} run gt --version"
+      - "{{.TOOLSET}} run gofumpt --version"
+      - "{{.TOOLSET}} list"

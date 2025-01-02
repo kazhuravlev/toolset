@@ -5,6 +5,7 @@ go 1.23
 require (
 	github.com/jedib0t/go-pretty/v6 v6.6.5
 	github.com/kazhuravlev/optional v0.2.1
+	github.com/spf13/afero v1.11.0
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.27.5
 	golang.org/x/mod v0.22.0

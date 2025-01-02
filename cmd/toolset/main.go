@@ -7,8 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/kazhuravlev/optional"
+	"github.com/kazhuravlev/toolset/internal/fsh"
+
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/kazhuravlev/toolset/internal/workdir"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	cli "github.com/urfave/cli/v2"
@@ -174,20 +176,21 @@ $ toolset runtime add go@1.22`,
 }
 
 func cmdInit(c *cli.Context) error {
+	fs := fsh.NewRealFS()
+
 	targetDir := c.Args().First()
 	if targetDir == "" {
 		targetDir = "."
 	}
 
-	absSpecName, err := workdir.Init(targetDir)
-	if err != nil {
+	if err := workdir.Init(fs, targetDir); err != nil {
 		return fmt.Errorf("init workdir: %w", err)
 	}
 
-	fmt.Println("Spec created:", absSpecName)
+	fmt.Println("Spec created")
 
 	if val := c.String(keyCopyFrom); val != "" {
-		wd, err := workdir.New(c.Context, targetDir)
+		wd, err := workdir.New(c.Context, fs, targetDir)
 		if err != nil {
 			return fmt.Errorf("new workdir: %w", err)
 		}
@@ -208,9 +211,11 @@ func cmdInit(c *cli.Context) error {
 }
 
 func cmdAdd(c *cli.Context) error {
+	fs := fsh.NewRealFS()
+
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New(c.Context, "./")
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -248,7 +253,13 @@ func cmdAdd(c *cli.Context) error {
 	runtime := c.Args().First()
 	module := c.Args().Get(1)
 
-	wasAdded, mod, err := wd.Add(c.Context, runtime, module, optional.Empty[string](), tags)
+	var alias optional.Val[string]
+	if c.Args().Len() == 3 {
+		aliasStr := c.Args().Get(2)
+		alias.Set(aliasStr)
+	}
+
+	wasAdded, mod, err := wd.Add(c.Context, runtime, module, alias, tags)
 	if err != nil {
 		return fmt.Errorf("add module: %w", err)
 	}
@@ -267,7 +278,9 @@ func cmdAdd(c *cli.Context) error {
 }
 
 func cmdRuntimeAdd(c *cli.Context) error {
-	wd, err := workdir.New(c.Context, "./")
+	fs := fsh.NewRealFS()
+
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -286,7 +299,9 @@ func cmdRuntimeAdd(c *cli.Context) error {
 }
 
 func cmdRuntimeList(c *cli.Context) error {
-	wd, err := workdir.New(c.Context, "./")
+	fs := fsh.NewRealFS()
+
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -312,12 +327,14 @@ func cmdRuntimeList(c *cli.Context) error {
 }
 
 func cmdRun(c *cli.Context) error {
+	fs := fsh.NewRealFS()
+
 	target := c.Args().First()
 	if target == "" {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New(c.Context, "./")
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -348,12 +365,14 @@ func cmdRun(c *cli.Context) error {
 }
 
 func cmdSync(c *cli.Context) error {
+	fs := fsh.NewRealFS()
+
 	ctx := c.Context
 
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New(ctx, "./")
+	wd, err := workdir.New(ctx, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -370,12 +389,14 @@ func cmdSync(c *cli.Context) error {
 }
 
 func cmdUpgrade(c *cli.Context) error {
+	fs := fsh.NewRealFS()
+
 	ctx := c.Context
 
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New(ctx, "./")
+	wd, err := workdir.New(ctx, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -400,11 +421,13 @@ func cmdUpgrade(c *cli.Context) error {
 }
 
 func cmdList(c *cli.Context) error {
+	fs := fsh.NewRealFS()
+
 	ctx := c.Context
 
 	onlyUnused := c.Bool(keyUnused)
 
-	wd, err := workdir.New(ctx, "./")
+	wd, err := workdir.New(ctx, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -415,7 +438,7 @@ func cmdList(c *cli.Context) error {
 	}
 
 	if onlyUnused {
-		tools2 := make([]workdir.ToolState, 0, len(tools))
+		tools2 := make([]structs.ToolState, 0, len(tools))
 		for _, tool := range tools {
 			if tool.LastUse.HasVal() {
 				continue
@@ -437,7 +460,7 @@ func cmdList(c *cli.Context) error {
 		rows = append(rows, table.Row{
 			ts.Tool.Runtime,
 			ts.Module.Name,
-			ts.Module.Version,
+			ts.Module.Mod.Version(),
 			ts.Module.IsInstalled,
 			lastUse,
 			ts.Module.IsPrivate,
@@ -469,12 +492,14 @@ func cmdList(c *cli.Context) error {
 }
 
 func cmdWhich(c *cli.Context) error {
+	fs := fsh.NewRealFS()
+
 	targets := c.Args().Slice()
 	if len(targets) == 0 {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New(c.Context, "./")
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -504,12 +529,14 @@ func cmdWhich(c *cli.Context) error {
 }
 
 func cmdRemove(c *cli.Context) error {
+	fs := fsh.NewRealFS()
+
 	targets := c.Args().Slice()
 	if len(targets) == 0 {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New(c.Context, "./")
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}

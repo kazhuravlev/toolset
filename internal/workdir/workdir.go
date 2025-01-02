@@ -2,14 +2,18 @@ package workdir
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
+
+	runtimes "github.com/kazhuravlev/toolset/internal/workdir/runtimes"
+
+	remotes2 "github.com/kazhuravlev/toolset/internal/workdir/remotes"
+
+	"github.com/kazhuravlev/toolset/internal/fsh"
 
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
@@ -18,12 +22,10 @@ import (
 
 const (
 	// This files is placed in project root
-	specFilename    = ".toolset.json"
-	lockFilename    = ".toolset.lock.json"
-	defaultToolsDir = "./bin/tools"
+	specFilename = ".toolset.json"
+	lockFilename = ".toolset.lock.json"
 	// This file is places in tools directory
-	statsFilename  = ".stats.json"
-	defaultDirPerm = 0o755
+	statsFilename = ".stats.json"
 )
 
 const (
@@ -37,13 +39,14 @@ var (
 
 type Workdir struct {
 	dir      string
-	spec     *Spec
-	lock     *Lock
-	stats    *Stats
-	runtimes *Runtimes
+	spec     *structs.Spec
+	lock     *structs.Lock
+	stats    *structs.Stats
+	runtimes *runtimes.Runtimes
+	fs       fsh.FS
 }
 
-func New(ctx context.Context, dir string) (*Workdir, error) {
+func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 	// Make abs path to spec.
 	toolsetFilename, err := filepath.Abs(filepath.Join(dir, specFilename))
 	if err != nil {
@@ -52,7 +55,7 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 
 	// Check that file is exists in current or parent directories.
 	for {
-		if !isExists(toolsetFilename) {
+		if !fsh.IsExists(fs, toolsetFilename) {
 			parentDir := filepath.Dir(filepath.Dir(toolsetFilename))
 			if filepath.Dir(parentDir) == parentDir {
 				return nil, errors.New("unable to find spec in fs tree")
@@ -65,72 +68,30 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 		break
 	}
 
-	baseDir := filepath.Dir(toolsetFilename)
+	dir = filepath.Dir(toolsetFilename)
+	lockFname := filepath.Join(dir, lockFilename)
 
-	spec, err := readJson[Spec](toolsetFilename)
+	spec, err := fsh.ReadJson[structs.Spec](fs, toolsetFilename)
 	if err != nil {
 		return nil, fmt.Errorf("spec file not found: %w", err)
 	}
 
 	if filepath.IsAbs(spec.Dir) {
-		if !strings.HasPrefix(spec.Dir, baseDir) {
+		if !strings.HasPrefix(spec.Dir, dir) {
 			return nil, fmt.Errorf("'Dir' should contains a relative path, not (%s)", spec.Dir)
 		}
 
-		spec.Dir = strings.TrimPrefix(spec.Dir, baseDir)
+		spec.Dir = strings.TrimPrefix(spec.Dir, dir)
 	}
 
-	var lockFile Lock
-	{
-		bb, err := os.ReadFile(filepath.Join(baseDir, lockFilename))
-		if err != nil {
-			// NOTE(zhuravlev): Migration: add lockfile.
-			{
-				if os.IsNotExist(err) {
-					fmt.Println("Migrate to `lock-based` version...")
-
-					toolsetFilenameBak := toolsetFilename + "_bak"
-					if err := os.Rename(toolsetFilename, toolsetFilenameBak); err != nil {
-						return nil, fmt.Errorf("migrate toolset to lockfile: %w", err)
-					}
-
-					if _, err := Init(baseDir); err != nil {
-						return nil, fmt.Errorf("re-init toolset: %w", err)
-					}
-
-					wd, err := New(ctx, dir)
-					if err != nil {
-						return nil, fmt.Errorf("new context in re-created workdir: %w", err)
-					}
-
-					for _, tool := range spec.Tools {
-						wd.spec.Tools.Add(tool)
-					}
-
-					wd.lock.FromSpec(spec)
-
-					if err := wd.Save(); err != nil {
-						return nil, fmt.Errorf("save lock-based workdir: %w", err)
-					}
-
-					os.Remove(toolsetFilenameBak)
-
-					return wd, nil
-				}
-			}
-
-			return nil, fmt.Errorf("read lock file: %w", err)
-		}
-
-		if err := json.Unmarshal(bb, &lockFile); err != nil {
-			return nil, fmt.Errorf("unmarshal lock: %w", err)
-		}
+	lockFile, err := fsh.ReadJson[structs.Lock](fs, lockFname)
+	if err != nil {
+		return nil, fmt.Errorf("read lock file: %w", err)
 	}
 
-	absToolsDir := filepath.Join(baseDir, spec.Dir)
-
+	absToolsDir := filepath.Join(dir, spec.Dir)
 	statsFName := filepath.Join(absToolsDir, statsFilename)
-	statsFile, err := forceReadJson(statsFName, Stats{
+	statsFile, err := fsh.ReadOrCreateJson(fs, statsFName, structs.Stats{
 		Version: StatsVer1,
 		Tools:   make(map[string]time.Time),
 	})
@@ -138,42 +99,84 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read stats: %w", err)
 	}
 
-	runtimes, err := NewRuntimes(ctx, baseDir, spec.Dir)
+	rnTimes, err := runtimes.New(fs, filepath.Join(dir, spec.Dir))
 	if err != nil {
 		return nil, fmt.Errorf("new runtimes: %w", err)
 	}
 
+	if err := rnTimes.Discover(ctx); err != nil {
+		return nil, fmt.Errorf("discover runtimes: %w", err)
+	}
+
 	return &Workdir{
-		dir:      baseDir,
+		fs:       fs,
+		dir:      dir,
 		spec:     spec,
-		lock:     &lockFile,
+		lock:     lockFile,
 		stats:    statsFile,
-		runtimes: runtimes,
+		runtimes: rnTimes,
 	}, nil
 }
 
-func (c *Workdir) getToolsDir() string {
-	return filepath.Join(c.dir, c.spec.Dir)
-}
+// Init will initialize context in specified directory.
+func Init(fs fsh.FS, dir string) error {
+	const defaultToolsDir = "./bin/tools"
 
-func (c *Workdir) getSpecFilename() string {
-	return filepath.Join(c.dir, specFilename)
-}
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("get abs path: %w", err)
+	}
 
-func (c *Workdir) getLockFilename() string {
-	return filepath.Join(c.dir, lockFilename)
-}
+	absToolsDir := filepath.Join(dir, defaultToolsDir)
+	if err := fs.MkdirAll(absToolsDir, fsh.DefaultDirPerm); err != nil {
+		return fmt.Errorf("create tools dir: %w", err)
+	}
 
-func (c *Workdir) getStatsFilename() string {
-	return filepath.Join(c.getToolsDir(), statsFilename)
+	targetSpecFile := filepath.Join(dir, specFilename)
+	targetLockFile := filepath.Join(dir, lockFilename)
+	targetStatsFile := filepath.Join(absToolsDir, statsFilename)
+
+	switch _, err := fs.Stat(targetSpecFile); {
+	default:
+		return fmt.Errorf("check target spec file exists: %w", err)
+	case err == nil:
+		return errors.New("spec already exists")
+	case os.IsNotExist(err):
+		spec := structs.Spec{
+			Dir:      defaultToolsDir,
+			Tools:    make(structs.Tools, 0),
+			Includes: make([]structs.Include, 0),
+		}
+		if err := fsh.WriteJson(fs, spec, targetSpecFile); err != nil {
+			return fmt.Errorf("write init spec: %w", err)
+		}
+
+		lock := structs.Lock{
+			Tools:   make(structs.Tools, 0),
+			Remotes: make([]structs.RemoteSpec, 0),
+		}
+		if err := fsh.WriteJson(fs, lock, targetLockFile); err != nil {
+			return fmt.Errorf("write init lock: %w", err)
+		}
+
+		_, errStats := fsh.ReadOrCreateJson(fs, targetStatsFile, structs.Stats{
+			Version: StatsVer1,
+			Tools:   make(map[string]time.Time),
+		})
+		if err := errStats; err != nil {
+			return fmt.Errorf("write init stats: %w", err)
+		}
+
+		return nil
+	}
 }
 
 func (c *Workdir) Save() error {
-	if err := writeJson(*c.spec, c.getSpecFilename()); err != nil {
+	if err := fsh.WriteJson(c.fs, *c.spec, c.getSpecFilename()); err != nil {
 		return fmt.Errorf("write spec: %w", err)
 	}
 
-	if err := writeJson(*c.lock, c.getLockFilename()); err != nil {
+	if err := fsh.WriteJson(c.fs, *c.lock, c.getLockFilename()); err != nil {
 		return fmt.Errorf("write lock: %w", err)
 	}
 
@@ -186,12 +189,12 @@ func (c *Workdir) Save() error {
 
 func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) (int, error) {
 	// Check that source is exists and valid.
-	remotes, err := fetchRemoteSpec(ctx, source, tags, nil)
+	remotes, err := remotes2.FetchRemote(ctx, c.fs, source, tags, nil)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
 
-	wasAdded := c.spec.AddInclude(Include{Src: source, Tags: tags})
+	wasAdded := c.spec.AddInclude(structs.Include{Src: source, Tags: tags})
 	if !wasAdded {
 		return 0, nil
 	}
@@ -257,7 +260,7 @@ func (c *Workdir) RemoveTool(ctx context.Context, target string) error {
 	return nil
 }
 
-func (c *Workdir) FindTool(name string) (*ToolState, error) {
+func (c *Workdir) FindTool(name string) (*structs.ToolState, error) {
 	for _, tool := range c.lock.Tools {
 		mod, err := c.getModuleInfo(context.TODO(), tool)
 		if err != nil {
@@ -322,8 +325,8 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 // Sync will read the locked tools and try to install the desired version. It will skip the installation in
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
-	if toolsDir := c.getToolsDir(); !isExists(toolsDir) {
-		if err := os.MkdirAll(toolsDir, defaultDirPerm); err != nil {
+	if toolsDir := c.getToolsDir(); !fsh.IsExists(c.fs, toolsDir) {
+		if err := c.fs.MkdirAll(toolsDir, fsh.DefaultDirPerm); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
 	}
@@ -364,8 +367,8 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 
 			if alias, ok := tool.Alias.Get(); ok {
 				targetPath := filepath.Join(c.getToolsDir(), alias)
-				if isExists(targetPath) {
-					if err := os.Remove(targetPath); err != nil {
+				if fsh.IsExists(c.fs, targetPath) {
+					if err := c.fs.Remove(targetPath); err != nil {
 						errs <- fmt.Errorf("remove alias (%s): %w", targetPath, err)
 						return
 					}
@@ -378,7 +381,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 				}
 
 				installedPath := mod.BinPath
-				if err := os.Symlink(installedPath, targetPath); err != nil {
+				if err := c.fs.SymlinkIfPossible(installedPath, targetPath); err != nil {
 					errs <- fmt.Errorf("symlink %s to %s: %w", installedPath, targetPath, err)
 					return
 				}
@@ -435,9 +438,9 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 		c.lock.Tools.UpsertTool(tool)
 	}
 
-	var resRemotes []RemoteSpec
+	resRemotes := make([]structs.RemoteSpec, 0, len(c.spec.Includes))
 	for _, inc := range c.spec.Includes {
-		remotes, err := fetchRemoteSpec(ctx, inc.Src, inc.Tags, nil)
+		remotes, err := remotes2.FetchRemote(ctx, c.fs, inc.Src, inc.Tags, nil)
 		if err != nil {
 			return fmt.Errorf("fetch remotes: %w", err)
 		}
@@ -459,7 +462,7 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 // CopySource will add all tools from source.
 // Source can be a path to file or a http url or git repo.
 func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) (int, error) {
-	specs, err := fetchRemoteSpec(ctx, source, tags, nil)
+	specs, err := remotes2.FetchRemote(ctx, c.fs, source, tags, nil)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
@@ -480,8 +483,8 @@ func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) 
 	return count, nil
 }
 
-func (c *Workdir) GetTools(ctx context.Context) ([]ToolState, error) {
-	res := make([]ToolState, 0, len(c.lock.Tools))
+func (c *Workdir) GetTools(ctx context.Context) ([]structs.ToolState, error) {
+	res := make([]structs.ToolState, 0, len(c.lock.Tools))
 	for _, tool := range c.lock.Tools {
 		mod, err := c.getModuleInfo(ctx, tool)
 		if err != nil {
@@ -505,14 +508,7 @@ func (c *Workdir) RuntimeAdd(ctx context.Context, runtime string) error {
 }
 
 func (c *Workdir) RuntimeList() []string {
-	keys := make([]string, 0, len(c.runtimes.impls))
-	for k := range c.runtimes.impls {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	return keys
+	return c.runtimes.List()
 }
 
 func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*structs.ModuleInfo, error) {
@@ -530,7 +526,7 @@ func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*struct
 }
 
 func (c *Workdir) saveStats() error {
-	return writeJson(*c.stats, c.getStatsFilename())
+	return fsh.WriteJson(c.fs, *c.stats, c.getStatsFilename())
 }
 
 func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
@@ -541,53 +537,18 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 	return optional.Empty[time.Time]()
 }
 
-// Init will initialize context in specified directory.
-func Init(dir string) (string, error) {
-	dir, err := filepath.Abs(dir)
-	if err != nil {
-		return "", fmt.Errorf("get abs path: %w", err)
-	}
+func (c *Workdir) getToolsDir() string {
+	return filepath.Join(c.dir, c.spec.Dir)
+}
 
-	absToolsDir := filepath.Join(dir, defaultToolsDir)
-	if err := os.MkdirAll(absToolsDir, defaultDirPerm); err != nil {
-		return "", fmt.Errorf("create tools dir: %w", err)
-	}
+func (c *Workdir) getSpecFilename() string {
+	return filepath.Join(c.dir, specFilename)
+}
 
-	targetSpecFile := filepath.Join(dir, specFilename)
-	targetLockFile := filepath.Join(dir, lockFilename)
-	targetStatsFile := filepath.Join(absToolsDir, statsFilename)
+func (c *Workdir) getLockFilename() string {
+	return filepath.Join(c.dir, lockFilename)
+}
 
-	switch _, err := os.Stat(targetSpecFile); {
-	default:
-		return "", fmt.Errorf("check target spec file exists: %w", err)
-	case err == nil:
-		return "", errors.New("spec already exists")
-	case os.IsNotExist(err):
-		spec := Spec{
-			Dir:      defaultToolsDir,
-			Tools:    make(structs.Tools, 0),
-			Includes: make([]Include, 0),
-		}
-		if err := writeJson(spec, targetSpecFile); err != nil {
-			return "", fmt.Errorf("write init spec: %w", err)
-		}
-
-		lock := Lock{
-			Tools:   make(structs.Tools, 0),
-			Remotes: make([]RemoteSpec, 0),
-		}
-		if err := writeJson(lock, targetLockFile); err != nil {
-			return "", fmt.Errorf("write init lock: %w", err)
-		}
-
-		_, errStats := forceReadJson(targetStatsFile, Stats{
-			Version: StatsVer1,
-			Tools:   make(map[string]time.Time),
-		})
-		if err := errStats; err != nil {
-			return "", fmt.Errorf("write init stats: %w", err)
-		}
-
-		return targetSpecFile, nil
-	}
+func (c *Workdir) getStatsFilename() string {
+	return filepath.Join(c.getToolsDir(), statsFilename)
 }

@@ -9,7 +9,7 @@
 		},
 		{
 			"runtime": "go",
-			"module": "github.com/golangci/golangci-lint/cmd/golangci-lint@v1.63.0",
+			"module": "github.com/golangci/golangci-lint/cmd/golangci-lint@v1.63.2",
 			"alias": null,
 			"tags": null
 		},

@@ -52,6 +52,7 @@ Temporary Items
 ### Other
 .idea/
 bin/
+temp_tests/
 
 coverage.txt
 

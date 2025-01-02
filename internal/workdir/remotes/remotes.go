@@ -1,4 +1,4 @@
-package workdir
+package remotes
 
 import (
 	"bytes"
@@ -14,74 +14,13 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
-	"github.com/kazhuravlev/optional"
+	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
+	"github.com/spf13/afero"
 )
 
-func isExists(path string) bool {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return false
-	}
-
-	return true
-}
-
-func readJson[T any](path string) (*T, error) {
-	bb, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read file (%s): %w", path, err)
-	}
-
-	var res T
-	if err := json.Unmarshal(bb, &res); err != nil {
-		return nil, fmt.Errorf("parse file (%s): %w", path, err)
-	}
-
-	return &res, nil
-}
-
-func writeJson(in any, path string) error {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
-	if err != nil {
-		return fmt.Errorf("open file: %w", err)
-	}
-
-	enc := json.NewEncoder(file)
-	enc.SetIndent("", "\t")
-
-	if err := enc.Encode(in); err != nil {
-		return fmt.Errorf("marshal file: %w", err)
-	}
-
-	if err := file.Close(); err != nil {
-		return fmt.Errorf("close file: %w", err)
-	}
-
-	return nil
-}
-
-func forceReadJson[T any](path string, defVal T) (*T, error) {
-	if !isExists(path) {
-		if err := os.MkdirAll(filepath.Dir(path), defaultDirPerm); err != nil {
-			return nil, fmt.Errorf("mkdir: %w", err)
-		}
-
-		if err := writeJson(defVal, path); err != nil {
-			return nil, fmt.Errorf("write json to file: %w", err)
-		}
-	}
-
-	res, err := readJson[T](path)
-	if err != nil {
-		return nil, fmt.Errorf("read json: %w", err)
-	}
-
-	return res, nil
-}
-
-func parseSourceURI(uri string) (SourceUri, error) {
+func ParseRemote(uri string) (SourceUri, error) {
 	sourceURL, err := url.Parse(uri)
 	if err != nil {
 		return nil, fmt.Errorf("parse source uri: %w", err)
@@ -118,16 +57,16 @@ func parseSourceURI(uri string) (SourceUri, error) {
 	}
 }
 
-func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded []string) ([]RemoteSpec, error) {
+func FetchRemote(ctx context.Context, fs fsh.FS, source string, tags []string, excluded []string) ([]structs.RemoteSpec, error) {
 	{
 		if slices.Contains(excluded, source) {
-			return []RemoteSpec{}, nil
+			return []structs.RemoteSpec{}, nil
 		}
 
 		excluded = append(excluded, source)
 	}
 
-	srcURI, err := parseSourceURI(source)
+	srcURI, err := ParseRemote(source)
 	if err != nil {
 		return nil, fmt.Errorf("parse source uri: %w", err)
 	}
@@ -159,7 +98,7 @@ func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded
 	case SourceUriFile:
 		fmt.Println("Include from file:", srcURI.Path)
 
-		bb, err := os.ReadFile(srcURI.Path)
+		bb, err := afero.ReadFile(fs, srcURI.Path)
 		if err != nil {
 			return nil, fmt.Errorf("read file: %w", err)
 		}
@@ -168,7 +107,7 @@ func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded
 	case SourceUriGit:
 		fmt.Println("Include from git:", srcURI.Addr, "file:", srcURI.Path)
 
-		targetDir, err := os.MkdirTemp(os.TempDir(), "toolset")
+		targetDir, err := afero.TempDir(fs, "", "toolset")
 		if err != nil {
 			return nil, fmt.Errorf("create temp dir: %w", err)
 		}
@@ -191,26 +130,26 @@ func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded
 		}
 
 		targetFile := filepath.Join(targetDir, srcURI.Path)
-		bb, err := os.ReadFile(targetFile)
+		bb, err := afero.ReadFile(fs, targetFile)
 		if err != nil {
 			return nil, fmt.Errorf("read file: %w", err)
 		}
 
-		if err := os.RemoveAll(targetDir); err != nil {
+		if err := fs.RemoveAll(targetDir); err != nil {
 			return nil, fmt.Errorf("remove temp dir: %w", err)
 		}
 
 		buf = bb
 	}
 
-	var spec Spec
+	var spec structs.Spec
 	if err := json.Unmarshal(buf, &spec); err != nil {
 		return nil, fmt.Errorf("parse source: %w", err)
 	}
 
-	var res []RemoteSpec
+	var res []structs.RemoteSpec
 	for _, inc := range spec.Includes {
-		remotes, err := fetchRemoteSpec(ctx, inc.Src, append(slices.Clone(tags), inc.Tags...), excluded)
+		remotes, err := FetchRemote(ctx, fs, inc.Src, append(slices.Clone(tags), inc.Tags...), excluded)
 		if err != nil {
 			return nil, fmt.Errorf("fetch one of remotes (%s): %w", inc, err)
 		}
@@ -222,17 +161,32 @@ func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded
 		res = append(res, remotes...)
 	}
 
-	return append(res, RemoteSpec{
+	return append(res, structs.RemoteSpec{
 		Spec:   spec,
 		Source: source,
 		Tags:   tags,
 	}), nil
 }
 
-func adaptToolState(tool structs.Tool, mod *structs.ModuleInfo, lastUse optional.Val[time.Time]) ToolState {
-	return ToolState{
-		Tool:    tool,
-		LastUse: lastUse,
-		Module:  *mod,
-	}
+type SourceUri interface {
+	isSourceUri()
 }
+
+type SourceUriFile struct {
+	Path string
+}
+
+func (SourceUriFile) isSourceUri() {}
+
+type SourceUriUrl struct {
+	URL string
+}
+
+func (SourceUriUrl) isSourceUri() {}
+
+type SourceUriGit struct {
+	Addr string
+	Path string
+}
+
+func (SourceUriGit) isSourceUri() {}
