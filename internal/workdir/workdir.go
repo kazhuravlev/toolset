@@ -24,8 +24,7 @@ const (
 	lockFilename    = ".toolset.lock.json"
 	defaultToolsDir = "./bin/tools"
 	// This file is places in tools directory
-	statsFilename  = ".stats.json"
-	defaultDirPerm = 0o755
+	statsFilename = ".stats.json"
 )
 
 const (
@@ -69,7 +68,7 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 
 	baseDir := filepath.Dir(toolsetFilename)
 
-	spec, err := readJson[Spec](toolsetFilename)
+	spec, err := fsh.ReadJson[Spec](toolsetFilename)
 	if err != nil {
 		return nil, fmt.Errorf("spec file not found: %w", err)
 	}
@@ -132,7 +131,7 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 	absToolsDir := filepath.Join(baseDir, spec.Dir)
 
 	statsFName := filepath.Join(absToolsDir, statsFilename)
-	statsFile, err := forceReadJson(statsFName, Stats{
+	statsFile, err := fsh.ForceReadJson(statsFName, Stats{
 		Version: StatsVer1,
 		Tools:   make(map[string]time.Time),
 	})
@@ -171,11 +170,11 @@ func (c *Workdir) getStatsFilename() string {
 }
 
 func (c *Workdir) Save() error {
-	if err := writeJson(*c.spec, c.getSpecFilename()); err != nil {
+	if err := fsh.WriteJson(*c.spec, c.getSpecFilename()); err != nil {
 		return fmt.Errorf("write spec: %w", err)
 	}
 
-	if err := writeJson(*c.lock, c.getLockFilename()); err != nil {
+	if err := fsh.WriteJson(*c.lock, c.getLockFilename()); err != nil {
 		return fmt.Errorf("write lock: %w", err)
 	}
 
@@ -325,7 +324,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
 	if toolsDir := c.getToolsDir(); !fsh.IsExists(toolsDir) {
-		if err := os.MkdirAll(toolsDir, defaultDirPerm); err != nil {
+		if err := os.MkdirAll(toolsDir, fsh.DefaultDirPerm); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
 	}
@@ -532,7 +531,7 @@ func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*struct
 }
 
 func (c *Workdir) saveStats() error {
-	return writeJson(*c.stats, c.getStatsFilename())
+	return fsh.WriteJson(*c.stats, c.getStatsFilename())
 }
 
 func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
@@ -551,7 +550,7 @@ func Init(dir string) (string, error) {
 	}
 
 	absToolsDir := filepath.Join(dir, defaultToolsDir)
-	if err := os.MkdirAll(absToolsDir, defaultDirPerm); err != nil {
+	if err := os.MkdirAll(absToolsDir, fsh.DefaultDirPerm); err != nil {
 		return "", fmt.Errorf("create tools dir: %w", err)
 	}
 
@@ -570,7 +569,7 @@ func Init(dir string) (string, error) {
 			Tools:    make(structs.Tools, 0),
 			Includes: make([]Include, 0),
 		}
-		if err := writeJson(spec, targetSpecFile); err != nil {
+		if err := fsh.WriteJson(spec, targetSpecFile); err != nil {
 			return "", fmt.Errorf("write init spec: %w", err)
 		}
 
@@ -578,11 +577,11 @@ func Init(dir string) (string, error) {
 			Tools:   make(structs.Tools, 0),
 			Remotes: make([]RemoteSpec, 0),
 		}
-		if err := writeJson(lock, targetLockFile); err != nil {
+		if err := fsh.WriteJson(lock, targetLockFile); err != nil {
 			return "", fmt.Errorf("write init lock: %w", err)
 		}
 
-		_, errStats := forceReadJson(targetStatsFile, Stats{
+		_, errStats := fsh.ForceReadJson(targetStatsFile, Stats{
 			Version: StatsVer1,
 			Tools:   make(map[string]time.Time),
 		})
