@@ -5,40 +5,25 @@ import (
 	"testing"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var _ afero.Linker = (*MemFS)(nil)
-
-type MemFS struct {
-	afero.Fs
-}
-
-func (m *MemFS) SymlinkIfPossible(oldname, newname string) error {
-	return nil
-}
-
-func NewFS() fsh.FS {
-	return &MemFS{afero.NewMemMapFs()}
-}
 
 type SampleJson struct {
 	Field string `json:"field"`
 }
 
 func TestIsExists(t *testing.T) {
-	fs := NewFS()
+	fs := fsh.NewMemFS(map[string]string{
+		"/foo/bar": "foo",
+	})
 	require.False(t, fsh.IsExists(fs, "/not/exists/path"))
-
-	require.NoError(t, afero.WriteFile(fs, "/foo/bar", []byte("foo"), 0o644))
 	require.True(t, fsh.IsExists(fs, "/foo/bar"))
 }
 
 func TestReadJson(t *testing.T) {
 	t.Run("error_on_file_not_exists", func(t *testing.T) {
-		fs := NewFS()
+		fs := fsh.NewMemFS(nil)
 		res, err := fsh.ReadJson[SampleJson](fs, "/not/exists/path")
 		require.Error(t, err)
 		require.ErrorIs(t, err, os.ErrNotExist)
@@ -46,8 +31,9 @@ func TestReadJson(t *testing.T) {
 	})
 
 	t.Run("not_a_json_file", func(t *testing.T) {
-		fs := NewFS()
-		require.NoError(t, afero.WriteFile(fs, "/data.xml", []byte("<xml></xml>"), 0o644))
+		fs := fsh.NewMemFS(map[string]string{
+			"/data.xml": "<xml></xml>",
+		})
 
 		res, err := fsh.ReadJson[SampleJson](fs, "/data.xml")
 		require.Error(t, err)
@@ -55,7 +41,7 @@ func TestReadJson(t *testing.T) {
 	})
 
 	t.Run("valid_file", func(t *testing.T) {
-		fs := NewFS()
+		fs := fsh.NewMemFS(nil)
 		input := SampleJson{Field: "value"}
 		require.NoError(t, fsh.WriteJson(fs, input, "/data.json"))
 
@@ -67,7 +53,7 @@ func TestReadJson(t *testing.T) {
 
 func TestWriteJson(t *testing.T) {
 	t.Run("write_new_file_and_rewrite_it", func(t *testing.T) {
-		fs := NewFS()
+		fs := fsh.NewMemFS(nil)
 		input := SampleJson{Field: "value"}
 		require.NoError(t, fsh.WriteJson(fs, input, "/data.json"))
 		require.NoError(t, fsh.WriteJson(fs, input, "/data.json"))
@@ -75,7 +61,7 @@ func TestWriteJson(t *testing.T) {
 	})
 
 	t.Run("bad_input_structure", func(t *testing.T) {
-		fs := NewFS()
+		fs := fsh.NewMemFS(nil)
 		input := map[struct{}]int{{}: 1}
 		require.Error(t, fsh.WriteJson(fs, input, "/data.json"))
 	})
@@ -83,7 +69,7 @@ func TestWriteJson(t *testing.T) {
 
 func TestReadOrCreateJson(t *testing.T) {
 	t.Run("auto_create_file_when_not_exists", func(t *testing.T) {
-		fs := NewFS()
+		fs := fsh.NewMemFS(nil)
 
 		// 1. file not exists
 		require.False(t, fsh.IsExists(fs, "/data.json"))
