@@ -2,6 +2,7 @@ package runtimes_test
 
 import (
 	"context"
+	"runtime"
 	"testing"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -11,6 +12,10 @@ import (
 )
 
 func TestRuntimes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skip for Windows")
+	}
+
 	ctx := context.Background()
 	fs := fsh.NewRealFS()
 	tmpDir, err := afero.TempDir(fs, "", "bin-tools")
