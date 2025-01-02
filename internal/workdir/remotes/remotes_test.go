@@ -3,6 +3,7 @@ package remotes_test
 import (
 	"context"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/kazhuravlev/toolset/internal/workdir/remotes"
@@ -46,6 +47,10 @@ func TestParseRemote(t *testing.T) {
 
 func TestFetchRemote(t *testing.T) {
 	t.Run("file_src", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("skip for Windows")
+		}
+
 		ctx := context.Background()
 		fs := fsh.NewMemFS(map[string]string{
 			"/.toolset.json": `{
