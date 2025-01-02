@@ -3,12 +3,12 @@ package runtimes
 import (
 	"context"
 	"fmt"
+	"github.com/kazhuravlev/toolset/internal/workdir/runtimes/runtime-go"
 	"sort"
 	"strings"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
 
-	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 )
 
