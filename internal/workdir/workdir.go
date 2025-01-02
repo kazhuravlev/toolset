@@ -112,20 +112,55 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 	}, nil
 }
 
-func (c *Workdir) getToolsDir() string {
-	return filepath.Join(c.dir, c.spec.Dir)
-}
+// Init will initialize context in specified directory.
+func Init(fs fsh.FS, dir string) (string, error) {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("get abs path: %w", err)
+	}
 
-func (c *Workdir) getSpecFilename() string {
-	return filepath.Join(c.dir, specFilename)
-}
+	absToolsDir := filepath.Join(dir, defaultToolsDir)
+	if err := fs.MkdirAll(absToolsDir, fsh.DefaultDirPerm); err != nil {
+		return "", fmt.Errorf("create tools dir: %w", err)
+	}
 
-func (c *Workdir) getLockFilename() string {
-	return filepath.Join(c.dir, lockFilename)
-}
+	targetSpecFile := filepath.Join(dir, specFilename)
+	targetLockFile := filepath.Join(dir, lockFilename)
+	targetStatsFile := filepath.Join(absToolsDir, statsFilename)
 
-func (c *Workdir) getStatsFilename() string {
-	return filepath.Join(c.getToolsDir(), statsFilename)
+	switch _, err := fs.Stat(targetSpecFile); {
+	default:
+		return "", fmt.Errorf("check target spec file exists: %w", err)
+	case err == nil:
+		return "", errors.New("spec already exists")
+	case os.IsNotExist(err):
+		spec := Spec{
+			Dir:      defaultToolsDir,
+			Tools:    make(structs.Tools, 0),
+			Includes: make([]Include, 0),
+		}
+		if err := fsh.WriteJson(fs, spec, targetSpecFile); err != nil {
+			return "", fmt.Errorf("write init spec: %w", err)
+		}
+
+		lock := Lock{
+			Tools:   make(structs.Tools, 0),
+			Remotes: make([]RemoteSpec, 0),
+		}
+		if err := fsh.WriteJson(fs, lock, targetLockFile); err != nil {
+			return "", fmt.Errorf("write init lock: %w", err)
+		}
+
+		_, errStats := fsh.ReadOrCreateJson(fs, targetStatsFile, Stats{
+			Version: StatsVer1,
+			Tools:   make(map[string]time.Time),
+		})
+		if err := errStats; err != nil {
+			return "", fmt.Errorf("write init stats: %w", err)
+		}
+
+		return targetSpecFile, nil
+	}
 }
 
 func (c *Workdir) Save() error {
@@ -501,53 +536,18 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 	return optional.Empty[time.Time]()
 }
 
-// Init will initialize context in specified directory.
-func Init(fs fsh.FS, dir string) (string, error) {
-	dir, err := filepath.Abs(dir)
-	if err != nil {
-		return "", fmt.Errorf("get abs path: %w", err)
-	}
+func (c *Workdir) getToolsDir() string {
+	return filepath.Join(c.dir, c.spec.Dir)
+}
 
-	absToolsDir := filepath.Join(dir, defaultToolsDir)
-	if err := fs.MkdirAll(absToolsDir, fsh.DefaultDirPerm); err != nil {
-		return "", fmt.Errorf("create tools dir: %w", err)
-	}
+func (c *Workdir) getSpecFilename() string {
+	return filepath.Join(c.dir, specFilename)
+}
 
-	targetSpecFile := filepath.Join(dir, specFilename)
-	targetLockFile := filepath.Join(dir, lockFilename)
-	targetStatsFile := filepath.Join(absToolsDir, statsFilename)
+func (c *Workdir) getLockFilename() string {
+	return filepath.Join(c.dir, lockFilename)
+}
 
-	switch _, err := fs.Stat(targetSpecFile); {
-	default:
-		return "", fmt.Errorf("check target spec file exists: %w", err)
-	case err == nil:
-		return "", errors.New("spec already exists")
-	case os.IsNotExist(err):
-		spec := Spec{
-			Dir:      defaultToolsDir,
-			Tools:    make(structs.Tools, 0),
-			Includes: make([]Include, 0),
-		}
-		if err := fsh.WriteJson(fs, spec, targetSpecFile); err != nil {
-			return "", fmt.Errorf("write init spec: %w", err)
-		}
-
-		lock := Lock{
-			Tools:   make(structs.Tools, 0),
-			Remotes: make([]RemoteSpec, 0),
-		}
-		if err := fsh.WriteJson(fs, lock, targetLockFile); err != nil {
-			return "", fmt.Errorf("write init lock: %w", err)
-		}
-
-		_, errStats := fsh.ReadOrCreateJson(fs, targetStatsFile, Stats{
-			Version: StatsVer1,
-			Tools:   make(map[string]time.Time),
-		})
-		if err := errStats; err != nil {
-			return "", fmt.Errorf("write init stats: %w", err)
-		}
-
-		return targetSpecFile, nil
-	}
+func (c *Workdir) getStatsFilename() string {
+	return filepath.Join(c.getToolsDir(), statsFilename)
 }

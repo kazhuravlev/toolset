@@ -51,20 +51,6 @@ func NewRuntimes(ctx context.Context, fs fsh.FS, baseDir, specDir string) (*Runt
 	return runtimes, nil
 }
 
-func (r *Runtimes) discover(ctx context.Context) error {
-	goRuntimes, err := runtimego.Discover(ctx, r.fs, r.binToolDir)
-	if err != nil {
-		return fmt.Errorf("discovering go runtimes: %w", err)
-	}
-
-	r.impls = make(map[string]IRuntime, len(goRuntimes))
-	for _, rt := range goRuntimes {
-		r.impls[rt.Version()] = rt
-	}
-
-	return nil
-}
-
 func (r *Runtimes) Get(runtime string) (IRuntime, error) {
 	rt, ok := r.impls[runtime]
 	if !ok {
@@ -104,6 +90,20 @@ func (r *Runtimes) Install(ctx context.Context, runtime string) error {
 
 	if err := r.discover(ctx); err != nil {
 		return fmt.Errorf("discover tools: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Runtimes) discover(ctx context.Context) error {
+	goRuntimes, err := runtimego.Discover(ctx, r.fs, r.binToolDir)
+	if err != nil {
+		return fmt.Errorf("discovering go runtimes: %w", err)
+	}
+
+	r.impls = make(map[string]IRuntime, len(goRuntimes))
+	for _, rt := range goRuntimes {
+		r.impls[rt.Version()] = rt
 	}
 
 	return nil
