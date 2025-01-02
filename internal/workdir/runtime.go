@@ -3,7 +3,6 @@ package workdir
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -35,9 +34,7 @@ type Runtimes struct {
 	impls      map[string]IRuntime
 }
 
-func NewRuntimes(ctx context.Context, fs fsh.FS, baseDir, specDir string) (*Runtimes, error) {
-	binToolDir := filepath.Join(baseDir, specDir)
-
+func NewRuntimes(ctx context.Context, fs fsh.FS, binToolDir string) (*Runtimes, error) {
 	runtimes := &Runtimes{
 		fs:         fs,
 		binToolDir: binToolDir,

@@ -96,7 +96,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read stats: %w", err)
 	}
 
-	runtimes, err := NewRuntimes(ctx, fs, baseDir, spec.Dir)
+	runtimes, err := NewRuntimes(ctx, fs, filepath.Join(baseDir, spec.Dir))
 	if err != nil {
 		return nil, fmt.Errorf("new runtimes: %w", err)
 	}
