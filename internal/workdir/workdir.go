@@ -68,8 +68,8 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		break
 	}
 
-	baseDir := filepath.Dir(toolsetFilename)
-	lockFname := filepath.Join(baseDir, lockFilename)
+	dir = filepath.Dir(toolsetFilename)
+	lockFname := filepath.Join(dir, lockFilename)
 
 	spec, err := fsh.ReadJson[structs.Spec](fs, toolsetFilename)
 	if err != nil {
@@ -77,11 +77,11 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 	}
 
 	if filepath.IsAbs(spec.Dir) {
-		if !strings.HasPrefix(spec.Dir, baseDir) {
+		if !strings.HasPrefix(spec.Dir, dir) {
 			return nil, fmt.Errorf("'Dir' should contains a relative path, not (%s)", spec.Dir)
 		}
 
-		spec.Dir = strings.TrimPrefix(spec.Dir, baseDir)
+		spec.Dir = strings.TrimPrefix(spec.Dir, dir)
 	}
 
 	lockFile, err := fsh.ReadJson[structs.Lock](fs, lockFname)
@@ -89,7 +89,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read lock file: %w", err)
 	}
 
-	absToolsDir := filepath.Join(baseDir, spec.Dir)
+	absToolsDir := filepath.Join(dir, spec.Dir)
 	statsFName := filepath.Join(absToolsDir, statsFilename)
 	statsFile, err := fsh.ReadOrCreateJson(fs, statsFName, structs.Stats{
 		Version: StatsVer1,
@@ -99,7 +99,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read stats: %w", err)
 	}
 
-	rnTimes, err := runtimes.New(fs, filepath.Join(baseDir, spec.Dir))
+	rnTimes, err := runtimes.New(fs, filepath.Join(dir, spec.Dir))
 	if err != nil {
 		return nil, fmt.Errorf("new runtimes: %w", err)
 	}
@@ -110,7 +110,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 
 	return &Workdir{
 		fs:       fs,
-		dir:      baseDir,
+		dir:      dir,
 		spec:     spec,
 		lock:     lockFile,
 		stats:    statsFile,
