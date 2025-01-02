@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/kazhuravlev/optional"
 	"os"
 	"strings"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	cli "github.com/urfave/cli/v2"
@@ -254,7 +254,13 @@ func cmdAdd(c *cli.Context) error {
 	runtime := c.Args().First()
 	module := c.Args().Get(1)
 
-	wasAdded, mod, err := wd.Add(c.Context, runtime, module, optional.Empty[string](), tags)
+	var alias optional.Val[string]
+	if c.Args().Len() == 3 {
+		aliasStr := c.Args().Get(2)
+		alias.Set(aliasStr)
+	}
+
+	wasAdded, mod, err := wd.Add(c.Context, runtime, module, alias, tags)
 	if err != nil {
 		return fmt.Errorf("add module: %w", err)
 	}

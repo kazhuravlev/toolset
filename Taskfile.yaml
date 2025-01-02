@@ -65,6 +65,15 @@ tasks:
       - "{{.TOOLSET}} remove goimports gofumpt"
       - "{{.TOOLSET}} list"
 
+  test:alias:
+    dir: temp_tests
+    cmds:
+      - task: "init"
+      - "{{.TOOLSET}} add go github.com/vburenin/ifacemaker iface"
+      - "{{.TOOLSET}} sync"
+      - "{{.TOOLSET}} list"
+      - ls -lsa bin/tools | grep iface
+
   test:runtimes:
     dir: temp_tests
     cmds:
@@ -79,6 +88,7 @@ tasks:
       - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
       - "{{.TOOLSET}} sync"
       - "{{.TOOLSET}} remove goimports"
+      - "{{.TOOLSET}} list"
 
   test:
     dir: temp_tests
@@ -124,3 +134,4 @@ tasks:
       - "{{.TOOLSET}} run staticcheck -version"
       - "{{.TOOLSET}} run gt --version"
       - "{{.TOOLSET}} run gofumpt --version"
+      - "{{.TOOLSET}} list"
