@@ -19,9 +19,8 @@ import (
 
 const (
 	// This files is placed in project root
-	specFilename    = ".toolset.json"
-	lockFilename    = ".toolset.lock.json"
-	defaultToolsDir = "./bin/tools"
+	specFilename = ".toolset.json"
+	lockFilename = ".toolset.lock.json"
 	// This file is places in tools directory
 	statsFilename = ".stats.json"
 )
@@ -114,6 +113,8 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 
 // Init will initialize context in specified directory.
 func Init(fs fsh.FS, dir string) error {
+	const defaultToolsDir = "./bin/tools"
+
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return fmt.Errorf("get abs path: %w", err)
