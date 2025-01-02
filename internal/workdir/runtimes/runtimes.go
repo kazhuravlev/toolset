@@ -3,9 +3,10 @@ package runtimes
 import (
 	"context"
 	"fmt"
-	"github.com/kazhuravlev/toolset/internal/workdir/runtimes/runtime-go"
 	"sort"
 	"strings"
+
+	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtimes/runtime-go"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
 
