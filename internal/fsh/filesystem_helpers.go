@@ -16,7 +16,7 @@ type FS interface {
 	afero.Linker
 }
 
-func NewOSFS() FS {
+func NewRealFS() FS {
 	return afero.NewOsFs().(*afero.OsFs)
 }
 

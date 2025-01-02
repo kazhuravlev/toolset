@@ -176,7 +176,7 @@ $ toolset runtime add go@1.22`,
 }
 
 func cmdInit(c *cli.Context) error {
-	fs := fsh.NewOSFS()
+	fs := fsh.NewRealFS()
 
 	targetDir := c.Args().First()
 	if targetDir == "" {
@@ -211,7 +211,7 @@ func cmdInit(c *cli.Context) error {
 }
 
 func cmdAdd(c *cli.Context) error {
-	fs := fsh.NewOSFS()
+	fs := fsh.NewRealFS()
 
 	tags := c.StringSlice(keyTags)
 
@@ -278,7 +278,7 @@ func cmdAdd(c *cli.Context) error {
 }
 
 func cmdRuntimeAdd(c *cli.Context) error {
-	fs := fsh.NewOSFS()
+	fs := fsh.NewRealFS()
 
 	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
@@ -299,7 +299,7 @@ func cmdRuntimeAdd(c *cli.Context) error {
 }
 
 func cmdRuntimeList(c *cli.Context) error {
-	fs := fsh.NewOSFS()
+	fs := fsh.NewRealFS()
 
 	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
@@ -327,7 +327,7 @@ func cmdRuntimeList(c *cli.Context) error {
 }
 
 func cmdRun(c *cli.Context) error {
-	fs := fsh.NewOSFS()
+	fs := fsh.NewRealFS()
 
 	target := c.Args().First()
 	if target == "" {
@@ -365,7 +365,7 @@ func cmdRun(c *cli.Context) error {
 }
 
 func cmdSync(c *cli.Context) error {
-	fs := fsh.NewOSFS()
+	fs := fsh.NewRealFS()
 
 	ctx := c.Context
 
@@ -389,7 +389,7 @@ func cmdSync(c *cli.Context) error {
 }
 
 func cmdUpgrade(c *cli.Context) error {
-	fs := fsh.NewOSFS()
+	fs := fsh.NewRealFS()
 
 	ctx := c.Context
 
@@ -421,7 +421,7 @@ func cmdUpgrade(c *cli.Context) error {
 }
 
 func cmdList(c *cli.Context) error {
-	fs := fsh.NewOSFS()
+	fs := fsh.NewRealFS()
 
 	ctx := c.Context
 
@@ -492,7 +492,7 @@ func cmdList(c *cli.Context) error {
 }
 
 func cmdWhich(c *cli.Context) error {
-	fs := fsh.NewOSFS()
+	fs := fsh.NewRealFS()
 
 	targets := c.Args().Slice()
 	if len(targets) == 0 {
@@ -529,7 +529,7 @@ func cmdWhich(c *cli.Context) error {
 }
 
 func cmdRemove(c *cli.Context) error {
-	fs := fsh.NewOSFS()
+	fs := fsh.NewRealFS()
 
 	targets := c.Args().Slice()
 	if len(targets) == 0 {
