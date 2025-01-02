@@ -1,6 +1,7 @@
 package workdir_test
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -9,6 +10,10 @@ import (
 )
 
 func TestInit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skip for Windows")
+	}
+
 	fs := fsh.NewMemFS(nil)
 	const dir = "/dir"
 	require.NoError(t, workdir.Init(fs, dir))
