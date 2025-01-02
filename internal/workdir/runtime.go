@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kazhuravlev/toolset/internal/fsh"
+
 	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtime-go"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 )
@@ -28,14 +30,16 @@ type IRuntime interface {
 }
 
 type Runtimes struct {
+	fs         fsh.FS
 	binToolDir string
 	impls      map[string]IRuntime
 }
 
-func NewRuntimes(ctx context.Context, baseDir, specDir string) (*Runtimes, error) {
+func NewRuntimes(ctx context.Context, fs fsh.FS, baseDir, specDir string) (*Runtimes, error) {
 	binToolDir := filepath.Join(baseDir, specDir)
 
 	runtimes := &Runtimes{
+		fs:         fs,
 		binToolDir: binToolDir,
 		impls:      make(map[string]IRuntime),
 	}
@@ -48,7 +52,7 @@ func NewRuntimes(ctx context.Context, baseDir, specDir string) (*Runtimes, error
 }
 
 func (r *Runtimes) discover(ctx context.Context) error {
-	goRuntimes, err := runtimego.Discover(ctx, r.binToolDir)
+	goRuntimes, err := runtimego.Discover(ctx, r.fs, r.binToolDir)
 	if err != nil {
 		return fmt.Errorf("discovering go runtimes: %w", err)
 	}

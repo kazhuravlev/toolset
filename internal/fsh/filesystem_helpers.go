@@ -5,18 +5,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/afero"
 )
 
-func IsExists(path string) bool {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+const DefaultDirPerm = 0o755
+
+type FS interface {
+	afero.Fs
+}
+
+func IsExists(fSys FS, path string) bool {
+	if _, err := fSys.Stat(path); os.IsNotExist(err) {
 		return false
 	}
 
 	return true
 }
 
-func ReadJson[T any](path string) (*T, error) {
-	bb, err := os.ReadFile(path)
+func ReadJson[T any](fSys FS, path string) (*T, error) {
+	bb, err := afero.ReadFile(fSys, path)
 	if err != nil {
 		return nil, fmt.Errorf("read file (%s): %w", path, err)
 	}
@@ -29,8 +37,8 @@ func ReadJson[T any](path string) (*T, error) {
 	return &res, nil
 }
 
-func WriteJson(in any, path string) error {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+func WriteJson(fSys FS, in any, path string) error {
+	file, err := fSys.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
 	}
@@ -49,23 +57,21 @@ func WriteJson(in any, path string) error {
 	return nil
 }
 
-func ForceReadJson[T any](path string, defVal T) (*T, error) {
-	if !IsExists(path) {
-		if err := os.MkdirAll(filepath.Dir(path), DefaultDirPerm); err != nil {
+func ForceReadJson[T any](fs FS, path string, defVal T) (*T, error) {
+	if !IsExists(fs, path) {
+		if err := fs.MkdirAll(filepath.Dir(path), DefaultDirPerm); err != nil {
 			return nil, fmt.Errorf("mkdir: %w", err)
 		}
 
-		if err := WriteJson(defVal, path); err != nil {
+		if err := WriteJson(fs, defVal, path); err != nil {
 			return nil, fmt.Errorf("write json to file: %w", err)
 		}
 	}
 
-	res, err := ReadJson[T](path)
+	res, err := ReadJson[T](fs, path)
 	if err != nil {
 		return nil, fmt.Errorf("read json: %w", err)
 	}
 
 	return res, nil
 }
-
-const DefaultDirPerm = 0o755

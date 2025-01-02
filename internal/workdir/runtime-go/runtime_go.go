@@ -22,14 +22,16 @@ const (
 )
 
 type Runtime struct {
+	fs         fsh.FS
 	goBin      string // absolute path to golang binary
 	isGlobal   bool
 	goVersion  string // ex: 1.23
 	binToolDir string
 }
 
-func New(binToolDir, goBin, goVer string) *Runtime {
+func New(fs fsh.FS, binToolDir, goBin, goVer string) *Runtime {
 	return &Runtime{
+		fs:         fs,
 		goBin:      goBin,
 		goVersion:  goVer,
 		binToolDir: binToolDir,
@@ -67,7 +69,7 @@ func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.Module
 		Mod:         mod.Mod,
 		BinDir:      programDir,
 		BinPath:     programBinary,
-		IsInstalled: fsh.IsExists(programBinary),
+		IsInstalled: fsh.IsExists(r.fs, programBinary),
 		IsPrivate:   mod.IsPrivate,
 	}, nil
 }
@@ -169,7 +171,7 @@ func (r *Runtime) Version() string {
 // Discover will find all supported golang runtimes. It can be:
 // - global installation
 // - local ./bin/tools installation
-func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
+func Discover(ctx context.Context, fs fsh.FS, binToolDir string) ([]*Runtime, error) {
 	const golang = "go"
 
 	var res []*Runtime
@@ -186,13 +188,13 @@ func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
 			return res, fmt.Errorf("get go version: %w", err)
 		}
 
-		rt := New(binToolDir, lp, ver)
+		rt := New(fs, binToolDir, lp, ver)
 		rt.isGlobal = true
 		res = append(res, rt)
 	}
 
 	// Discover local installations
-	if fsh.IsExists(binToolDir) {
+	if fsh.IsExists(fs, binToolDir) {
 		entries, err := os.ReadDir(binToolDir)
 		if err != nil {
 			return nil, fmt.Errorf("list dir: %w", err)
@@ -210,7 +212,7 @@ func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
 			ver := strings.TrimPrefix(e.Name(), runtimePrefix)
 
 			goBin := filepath.Join(binToolDir, e.Name(), "go"+ver, "bin", "go")
-			if !fsh.IsExists(goBin) {
+			if !fsh.IsExists(fs, goBin) {
 				_ = os.RemoveAll(filepath.Join(binToolDir, e.Name()))
 				continue
 			}
@@ -220,7 +222,7 @@ func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
 				return res, fmt.Errorf("get go version for (%s): %w", goBin, err)
 			}
 
-			res = append(res, New(binToolDir, goBin, goVer))
+			res = append(res, New(fs, binToolDir, goBin, goVer))
 		}
 	}
 

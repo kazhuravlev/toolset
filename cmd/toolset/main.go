@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/afero"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir"
@@ -174,12 +176,14 @@ $ toolset runtime add go@1.22`,
 }
 
 func cmdInit(c *cli.Context) error {
+	fs := afero.NewOsFs()
+
 	targetDir := c.Args().First()
 	if targetDir == "" {
 		targetDir = "."
 	}
 
-	absSpecName, err := workdir.Init(targetDir)
+	absSpecName, err := workdir.Init(fs, targetDir)
 	if err != nil {
 		return fmt.Errorf("init workdir: %w", err)
 	}
@@ -187,7 +191,7 @@ func cmdInit(c *cli.Context) error {
 	fmt.Println("Spec created:", absSpecName)
 
 	if val := c.String(keyCopyFrom); val != "" {
-		wd, err := workdir.New(c.Context, targetDir)
+		wd, err := workdir.New(c.Context, fs, targetDir)
 		if err != nil {
 			return fmt.Errorf("new workdir: %w", err)
 		}
@@ -208,9 +212,11 @@ func cmdInit(c *cli.Context) error {
 }
 
 func cmdAdd(c *cli.Context) error {
+	fs := afero.NewOsFs()
+
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New(c.Context, "./")
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -267,7 +273,9 @@ func cmdAdd(c *cli.Context) error {
 }
 
 func cmdRuntimeAdd(c *cli.Context) error {
-	wd, err := workdir.New(c.Context, "./")
+	fs := afero.NewOsFs()
+
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -286,7 +294,9 @@ func cmdRuntimeAdd(c *cli.Context) error {
 }
 
 func cmdRuntimeList(c *cli.Context) error {
-	wd, err := workdir.New(c.Context, "./")
+	fs := afero.NewOsFs()
+
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -312,12 +322,14 @@ func cmdRuntimeList(c *cli.Context) error {
 }
 
 func cmdRun(c *cli.Context) error {
+	fs := afero.NewOsFs()
+
 	target := c.Args().First()
 	if target == "" {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New(c.Context, "./")
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -348,12 +360,14 @@ func cmdRun(c *cli.Context) error {
 }
 
 func cmdSync(c *cli.Context) error {
+	fs := afero.NewOsFs()
+
 	ctx := c.Context
 
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New(ctx, "./")
+	wd, err := workdir.New(ctx, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -370,12 +384,14 @@ func cmdSync(c *cli.Context) error {
 }
 
 func cmdUpgrade(c *cli.Context) error {
+	fs := afero.NewOsFs()
+
 	ctx := c.Context
 
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
 
-	wd, err := workdir.New(ctx, "./")
+	wd, err := workdir.New(ctx, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -400,11 +416,13 @@ func cmdUpgrade(c *cli.Context) error {
 }
 
 func cmdList(c *cli.Context) error {
+	fs := afero.NewOsFs()
+
 	ctx := c.Context
 
 	onlyUnused := c.Bool(keyUnused)
 
-	wd, err := workdir.New(ctx, "./")
+	wd, err := workdir.New(ctx, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -469,12 +487,14 @@ func cmdList(c *cli.Context) error {
 }
 
 func cmdWhich(c *cli.Context) error {
+	fs := afero.NewOsFs()
+
 	targets := c.Args().Slice()
 	if len(targets) == 0 {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New(c.Context, "./")
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}
@@ -504,12 +524,14 @@ func cmdWhich(c *cli.Context) error {
 }
 
 func cmdRemove(c *cli.Context) error {
+	fs := afero.NewOsFs()
+
 	targets := c.Args().Slice()
 	if len(targets) == 0 {
 		return fmt.Errorf("target is required")
 	}
 
-	wd, err := workdir.New(c.Context, "./")
+	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
 		return fmt.Errorf("new workdir: %w", err)
 	}

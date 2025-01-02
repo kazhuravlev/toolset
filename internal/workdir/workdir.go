@@ -41,9 +41,10 @@ type Workdir struct {
 	lock     *Lock
 	stats    *Stats
 	runtimes *Runtimes
+	fs       fsh.FS
 }
 
-func New(ctx context.Context, dir string) (*Workdir, error) {
+func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 	// Make abs path to spec.
 	toolsetFilename, err := filepath.Abs(filepath.Join(dir, specFilename))
 	if err != nil {
@@ -52,7 +53,7 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 
 	// Check that file is exists in current or parent directories.
 	for {
-		if !fsh.IsExists(toolsetFilename) {
+		if !fsh.IsExists(fs, toolsetFilename) {
 			parentDir := filepath.Dir(filepath.Dir(toolsetFilename))
 			if filepath.Dir(parentDir) == parentDir {
 				return nil, errors.New("unable to find spec in fs tree")
@@ -68,7 +69,7 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 	baseDir := filepath.Dir(toolsetFilename)
 	lockFname := filepath.Join(baseDir, lockFilename)
 
-	spec, err := fsh.ReadJson[Spec](toolsetFilename)
+	spec, err := fsh.ReadJson[Spec](fs, toolsetFilename)
 	if err != nil {
 		return nil, fmt.Errorf("spec file not found: %w", err)
 	}
@@ -81,14 +82,14 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 		spec.Dir = strings.TrimPrefix(spec.Dir, baseDir)
 	}
 
-	lockFile, err := fsh.ReadJson[Lock](lockFname)
+	lockFile, err := fsh.ReadJson[Lock](fs, lockFname)
 	if err != nil {
 		return nil, fmt.Errorf("read lock file: %w", err)
 	}
 
 	absToolsDir := filepath.Join(baseDir, spec.Dir)
 	statsFName := filepath.Join(absToolsDir, statsFilename)
-	statsFile, err := fsh.ForceReadJson(statsFName, Stats{
+	statsFile, err := fsh.ForceReadJson(fs, statsFName, Stats{
 		Version: StatsVer1,
 		Tools:   make(map[string]time.Time),
 	})
@@ -96,12 +97,13 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read stats: %w", err)
 	}
 
-	runtimes, err := NewRuntimes(ctx, baseDir, spec.Dir)
+	runtimes, err := NewRuntimes(ctx, fs, baseDir, spec.Dir)
 	if err != nil {
 		return nil, fmt.Errorf("new runtimes: %w", err)
 	}
 
 	return &Workdir{
+		fs:       fs,
 		dir:      baseDir,
 		spec:     spec,
 		lock:     lockFile,
@@ -127,11 +129,11 @@ func (c *Workdir) getStatsFilename() string {
 }
 
 func (c *Workdir) Save() error {
-	if err := fsh.WriteJson(*c.spec, c.getSpecFilename()); err != nil {
+	if err := fsh.WriteJson(c.fs, *c.spec, c.getSpecFilename()); err != nil {
 		return fmt.Errorf("write spec: %w", err)
 	}
 
-	if err := fsh.WriteJson(*c.lock, c.getLockFilename()); err != nil {
+	if err := fsh.WriteJson(c.fs, *c.lock, c.getLockFilename()); err != nil {
 		return fmt.Errorf("write lock: %w", err)
 	}
 
@@ -280,7 +282,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 // Sync will read the locked tools and try to install the desired version. It will skip the installation in
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
-	if toolsDir := c.getToolsDir(); !fsh.IsExists(toolsDir) {
+	if toolsDir := c.getToolsDir(); !fsh.IsExists(c.fs, toolsDir) {
 		if err := os.MkdirAll(toolsDir, fsh.DefaultDirPerm); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
@@ -322,7 +324,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 
 			if alias, ok := tool.Alias.Get(); ok {
 				targetPath := filepath.Join(c.getToolsDir(), alias)
-				if fsh.IsExists(targetPath) {
+				if fsh.IsExists(c.fs, targetPath) {
 					if err := os.Remove(targetPath); err != nil {
 						errs <- fmt.Errorf("remove alias (%s): %w", targetPath, err)
 						return
@@ -488,7 +490,7 @@ func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*struct
 }
 
 func (c *Workdir) saveStats() error {
-	return fsh.WriteJson(*c.stats, c.getStatsFilename())
+	return fsh.WriteJson(c.fs, *c.stats, c.getStatsFilename())
 }
 
 func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
@@ -500,7 +502,7 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 }
 
 // Init will initialize context in specified directory.
-func Init(dir string) (string, error) {
+func Init(fs fsh.FS, dir string) (string, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return "", fmt.Errorf("get abs path: %w", err)
@@ -526,7 +528,7 @@ func Init(dir string) (string, error) {
 			Tools:    make(structs.Tools, 0),
 			Includes: make([]Include, 0),
 		}
-		if err := fsh.WriteJson(spec, targetSpecFile); err != nil {
+		if err := fsh.WriteJson(fs, spec, targetSpecFile); err != nil {
 			return "", fmt.Errorf("write init spec: %w", err)
 		}
 
@@ -534,11 +536,11 @@ func Init(dir string) (string, error) {
 			Tools:   make(structs.Tools, 0),
 			Remotes: make([]RemoteSpec, 0),
 		}
-		if err := fsh.WriteJson(lock, targetLockFile); err != nil {
+		if err := fsh.WriteJson(fs, lock, targetLockFile); err != nil {
 			return "", fmt.Errorf("write init lock: %w", err)
 		}
 
-		_, errStats := fsh.ForceReadJson(targetStatsFile, Stats{
+		_, errStats := fsh.ForceReadJson(fs, targetStatsFile, Stats{
 			Version: StatsVer1,
 			Tools:   make(map[string]time.Time),
 		})
