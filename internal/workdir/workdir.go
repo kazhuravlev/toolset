@@ -2,7 +2,6 @@ package workdir
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -67,6 +66,7 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 	}
 
 	baseDir := filepath.Dir(toolsetFilename)
+	lockFname := filepath.Join(baseDir, lockFilename)
 
 	spec, err := fsh.ReadJson[Spec](toolsetFilename)
 	if err != nil {
@@ -81,55 +81,12 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 		spec.Dir = strings.TrimPrefix(spec.Dir, baseDir)
 	}
 
-	var lockFile Lock
-	{
-		bb, err := os.ReadFile(filepath.Join(baseDir, lockFilename))
-		if err != nil {
-			// NOTE(zhuravlev): Migration: add lockfile.
-			{
-				if os.IsNotExist(err) {
-					fmt.Println("Migrate to `lock-based` version...")
-
-					toolsetFilenameBak := toolsetFilename + "_bak"
-					if err := os.Rename(toolsetFilename, toolsetFilenameBak); err != nil {
-						return nil, fmt.Errorf("migrate toolset to lockfile: %w", err)
-					}
-
-					if _, err := Init(baseDir); err != nil {
-						return nil, fmt.Errorf("re-init toolset: %w", err)
-					}
-
-					wd, err := New(ctx, dir)
-					if err != nil {
-						return nil, fmt.Errorf("new context in re-created workdir: %w", err)
-					}
-
-					for _, tool := range spec.Tools {
-						wd.spec.Tools.Add(tool)
-					}
-
-					wd.lock.FromSpec(spec)
-
-					if err := wd.Save(); err != nil {
-						return nil, fmt.Errorf("save lock-based workdir: %w", err)
-					}
-
-					os.Remove(toolsetFilenameBak)
-
-					return wd, nil
-				}
-			}
-
-			return nil, fmt.Errorf("read lock file: %w", err)
-		}
-
-		if err := json.Unmarshal(bb, &lockFile); err != nil {
-			return nil, fmt.Errorf("unmarshal lock: %w", err)
-		}
+	lockFile, err := fsh.ReadJson[Lock](lockFname)
+	if err != nil {
+		return nil, fmt.Errorf("read lock file: %w", err)
 	}
 
 	absToolsDir := filepath.Join(baseDir, spec.Dir)
-
 	statsFName := filepath.Join(absToolsDir, statsFilename)
 	statsFile, err := fsh.ForceReadJson(statsFName, Stats{
 		Version: StatsVer1,
@@ -147,7 +104,7 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 	return &Workdir{
 		dir:      baseDir,
 		spec:     spec,
-		lock:     &lockFile,
+		lock:     lockFile,
 		stats:    statsFile,
 		runtimes: runtimes,
 	}, nil
