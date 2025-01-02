@@ -2,10 +2,11 @@ package workdir
 
 import (
 	"context"
+	"testing"
+
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
-	"testing"
 
 	"github.com/stretchr/testify/require"
 )
