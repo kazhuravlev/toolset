@@ -36,18 +36,12 @@ type Runtimes struct {
 	impls      map[string]IRuntime
 }
 
-func New(ctx context.Context, fs fsh.FS, binToolDir string) (*Runtimes, error) {
-	runtimes := &Runtimes{
+func New(fs fsh.FS, binToolDir string) (*Runtimes, error) {
+	return &Runtimes{
 		fs:         fs,
 		binToolDir: binToolDir,
 		impls:      make(map[string]IRuntime),
-	}
-
-	if err := runtimes.discover(ctx); err != nil {
-		return nil, err
-	}
-
-	return runtimes, nil
+	}, nil
 }
 
 func (r *Runtimes) Get(runtime string) (IRuntime, error) {
@@ -87,7 +81,7 @@ func (r *Runtimes) Install(ctx context.Context, runtime string) error {
 		return fmt.Errorf("install tool runtime (%s): %w", runtime, err)
 	}
 
-	if err := r.discover(ctx); err != nil {
+	if err := r.Discover(ctx); err != nil {
 		return fmt.Errorf("discover tools: %w", err)
 	}
 
@@ -105,7 +99,7 @@ func (r *Runtimes) List() []string {
 	return keys
 }
 
-func (r *Runtimes) discover(ctx context.Context) error {
+func (r *Runtimes) Discover(ctx context.Context) error {
 	goRuntimes, err := runtimego.Discover(ctx, r.fs, r.binToolDir)
 	if err != nil {
 		return fmt.Errorf("discovering go runtimes: %w", err)

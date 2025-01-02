@@ -99,9 +99,13 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read stats: %w", err)
 	}
 
-	rnTimes, err := runtimes.New(ctx, fs, filepath.Join(baseDir, spec.Dir))
+	rnTimes, err := runtimes.New(fs, filepath.Join(baseDir, spec.Dir))
 	if err != nil {
 		return nil, fmt.Errorf("new runtimes: %w", err)
+	}
+
+	if err := rnTimes.Discover(ctx); err != nil {
+		return nil, fmt.Errorf("discover runtimes: %w", err)
 	}
 
 	return &Workdir{
