@@ -588,5 +588,9 @@ func duration(d time.Duration) string {
 		result += fmt.Sprintf("%ds ", seconds)
 	}
 
+	if result == "" {
+		return "1s"
+	}
+
 	return result
 }
