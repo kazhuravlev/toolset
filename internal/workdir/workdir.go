@@ -89,7 +89,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 
 	absToolsDir := filepath.Join(baseDir, spec.Dir)
 	statsFName := filepath.Join(absToolsDir, statsFilename)
-	statsFile, err := fsh.ForceReadJson(fs, statsFName, Stats{
+	statsFile, err := fsh.ReadOrCreateJson(fs, statsFName, Stats{
 		Version: StatsVer1,
 		Tools:   make(map[string]time.Time),
 	})
@@ -540,7 +540,7 @@ func Init(fs fsh.FS, dir string) (string, error) {
 			return "", fmt.Errorf("write init lock: %w", err)
 		}
 
-		_, errStats := fsh.ForceReadJson(fs, targetStatsFile, Stats{
+		_, errStats := fsh.ReadOrCreateJson(fs, targetStatsFile, Stats{
 			Version: StatsVer1,
 			Tools:   make(map[string]time.Time),
 		})
