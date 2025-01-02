@@ -210,3 +210,24 @@ func (r *RemoteSpec) UnmarshalJSON(bb []byte) error {
 
 	return nil
 }
+
+type Lock struct {
+	Tools   Tools        `json:"tools"`
+	Remotes []RemoteSpec `json:"remotes"`
+}
+
+func (l *Lock) FromSpec(spec *Spec) {
+	l.Tools = make(Tools, 0, len(spec.Tools))
+	for _, tool := range spec.Tools {
+		l.Tools.Add(tool)
+	}
+
+	// TODO(zhuravlev): should we refresh remotes from spec?
+
+	for _, remote := range l.Remotes {
+		for _, tool := range remote.Spec.Tools {
+			tool.Tags = append(tool.Tags, remote.Tags...)
+			l.Tools.Add(tool)
+		}
+	}
+}

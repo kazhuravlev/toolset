@@ -39,7 +39,7 @@ var (
 type Workdir struct {
 	dir      string
 	spec     *structs.Spec
-	lock     *Lock
+	lock     *structs.Lock
 	stats    *structs.Stats
 	runtimes *Runtimes
 	fs       fsh.FS
@@ -83,7 +83,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		spec.Dir = strings.TrimPrefix(spec.Dir, baseDir)
 	}
 
-	lockFile, err := fsh.ReadJson[Lock](fs, lockFname)
+	lockFile, err := fsh.ReadJson[structs.Lock](fs, lockFname)
 	if err != nil {
 		return nil, fmt.Errorf("read lock file: %w", err)
 	}
@@ -146,7 +146,7 @@ func Init(fs fsh.FS, dir string) error {
 			return fmt.Errorf("write init spec: %w", err)
 		}
 
-		lock := Lock{
+		lock := structs.Lock{
 			Tools:   make(structs.Tools, 0),
 			Remotes: make([]structs.RemoteSpec, 0),
 		}
@@ -553,25 +553,4 @@ func (c *Workdir) getLockFilename() string {
 
 func (c *Workdir) getStatsFilename() string {
 	return filepath.Join(c.getToolsDir(), statsFilename)
-}
-
-type Lock struct {
-	Tools   structs.Tools        `json:"tools"`
-	Remotes []structs.RemoteSpec `json:"remotes"`
-}
-
-func (l *Lock) FromSpec(spec *structs.Spec) {
-	l.Tools = make(structs.Tools, 0, len(spec.Tools))
-	for _, tool := range spec.Tools {
-		l.Tools.Add(tool)
-	}
-
-	// TODO(zhuravlev): should we refresh remotes from spec?
-
-	for _, remote := range l.Remotes {
-		for _, tool := range remote.Spec.Tools {
-			tool.Tags = append(tool.Tags, remote.Tags...)
-			l.Tools.Add(tool)
-		}
-	}
 }
