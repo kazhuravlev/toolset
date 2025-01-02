@@ -13,7 +13,7 @@ const DefaultDirPerm = 0o755
 
 type FS interface {
 	afero.Fs
-	afero.Symlinker
+	afero.Linker
 }
 
 func NewOSFS() FS {
