@@ -2,12 +2,13 @@ package workdir_test
 
 import (
 	"context"
+	"runtime"
+	"testing"
+
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/workdir"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"github.com/stretchr/testify/require"
-	"runtime"
-	"testing"
 )
 
 func TestInit(t *testing.T) {

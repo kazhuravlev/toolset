@@ -2,10 +2,11 @@ package runtimego
 
 import (
 	"context"
-	"github.com/kazhuravlev/toolset/internal/prog"
-	"github.com/stretchr/testify/require"
 	"os/exec"
 	"testing"
+
+	"github.com/kazhuravlev/toolset/internal/prog"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_parse(t *testing.T) {
