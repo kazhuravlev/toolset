@@ -4,14 +4,18 @@ import (
 	"context"
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/workdir/runtimes"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
-func TestRuntimes_Discover(t *testing.T) {
+func TestRuntimes(t *testing.T) {
 	ctx := context.Background()
-	fs := fsh.NewMemFS(nil)
-	rt, err := runtimes.New(fs, "/tmp/tools")
+	fs := fsh.NewRealFS()
+	tmpDir, err := afero.TempDir(fs, "", "bin-tools")
+	require.NoError(t, err)
+
+	rt, err := runtimes.New(fs, tmpDir)
 	require.NoError(t, err)
 	require.NotNil(t, rt)
 
@@ -31,4 +35,10 @@ func TestRuntimes_Discover(t *testing.T) {
 	res, err = rt.GetInstall(ctx, "go")
 	require.NoError(t, err)
 	require.NotEmpty(t, res)
+
+	res, err = rt.GetInstall(ctx, "go@1.22.10")
+	require.NoError(t, err)
+	require.NotEmpty(t, res)
+
+	require.Equal(t, []string{"go", "go@1.22.10"}, rt.List())
 }
