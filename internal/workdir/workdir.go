@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kazhuravlev/toolset/internal/fsh"
+
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"golang.org/x/sync/semaphore"
@@ -52,7 +54,7 @@ func New(ctx context.Context, dir string) (*Workdir, error) {
 
 	// Check that file is exists in current or parent directories.
 	for {
-		if !isExists(toolsetFilename) {
+		if !fsh.IsExists(toolsetFilename) {
 			parentDir := filepath.Dir(filepath.Dir(toolsetFilename))
 			if filepath.Dir(parentDir) == parentDir {
 				return nil, errors.New("unable to find spec in fs tree")
@@ -322,7 +324,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 // Sync will read the locked tools and try to install the desired version. It will skip the installation in
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
-	if toolsDir := c.getToolsDir(); !isExists(toolsDir) {
+	if toolsDir := c.getToolsDir(); !fsh.IsExists(toolsDir) {
 		if err := os.MkdirAll(toolsDir, defaultDirPerm); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
@@ -364,7 +366,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 
 			if alias, ok := tool.Alias.Get(); ok {
 				targetPath := filepath.Join(c.getToolsDir(), alias)
-				if isExists(targetPath) {
+				if fsh.IsExists(targetPath) {
 					if err := os.Remove(targetPath); err != nil {
 						errs <- fmt.Errorf("remove alias (%s): %w", targetPath, err)
 						return

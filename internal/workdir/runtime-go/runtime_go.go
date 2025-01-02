@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kazhuravlev/toolset/internal/fsh"
+
 	"github.com/kazhuravlev/toolset/internal/version"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 )
@@ -65,7 +67,7 @@ func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.Module
 		Mod:         mod.Mod,
 		BinDir:      programDir,
 		BinPath:     programBinary,
-		IsInstalled: isExists(programBinary),
+		IsInstalled: fsh.IsExists(programBinary),
 		IsPrivate:   mod.IsPrivate,
 	}, nil
 }
@@ -190,7 +192,7 @@ func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
 	}
 
 	// Discover local installations
-	if isExists(binToolDir) {
+	if fsh.IsExists(binToolDir) {
 		entries, err := os.ReadDir(binToolDir)
 		if err != nil {
 			return nil, fmt.Errorf("list dir: %w", err)
@@ -208,7 +210,7 @@ func Discover(ctx context.Context, binToolDir string) ([]*Runtime, error) {
 			ver := strings.TrimPrefix(e.Name(), runtimePrefix)
 
 			goBin := filepath.Join(binToolDir, e.Name(), "go"+ver, "bin", "go")
-			if !isExists(goBin) {
+			if !fsh.IsExists(goBin) {
 				_ = os.RemoveAll(filepath.Join(binToolDir, e.Name()))
 				continue
 			}

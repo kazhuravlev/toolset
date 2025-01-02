@@ -163,14 +163,6 @@ func fetchModule(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 	return nil, errors.New("unknown module")
 }
 
-func isExists(path string) bool {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return false
-	}
-
-	return true
-}
-
 // fetchPrivate is a hack around golang tooling. This function do next steps:
 // - Creates a temp dir
 // - Init module in this dir

@@ -16,17 +16,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kazhuravlev/toolset/internal/fsh"
+
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 )
-
-func isExists(path string) bool {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return false
-	}
-
-	return true
-}
 
 func readJson[T any](path string) (*T, error) {
 	bb, err := os.ReadFile(path)
@@ -63,7 +57,7 @@ func writeJson(in any, path string) error {
 }
 
 func forceReadJson[T any](path string, defVal T) (*T, error) {
-	if !isExists(path) {
+	if !fsh.IsExists(path) {
 		if err := os.MkdirAll(filepath.Dir(path), defaultDirPerm); err != nil {
 			return nil, fmt.Errorf("mkdir: %w", err)
 		}
