@@ -99,14 +99,14 @@ type fetchedMod struct {
 // @ => @latest
 // @latest => @vX.X.X
 // @vX.X.X => @vX.X.X
-func fetchModule(ctx context.Context, fSys fsh.FS, goBin, link string) (*moduleInfo, error) {
+func fetchModule(ctx context.Context, fs fsh.FS, goBin, link string) (*moduleInfo, error) {
 	mod, err := parse(ctx, goBin, link)
 	if err != nil {
 		return nil, fmt.Errorf("parse module (%s) string: %w", link, err)
 	}
 
 	if mod.IsPrivate {
-		privateMod, err := fetchPrivate(ctx, fSys, goBin, *mod)
+		privateMod, err := fetchPrivate(ctx, fs, goBin, *mod)
 		if err != nil {
 			return nil, fmt.Errorf("fetch private module: %w", err)
 		}
