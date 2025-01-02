@@ -2,6 +2,7 @@ package runtimes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -14,6 +15,8 @@ import (
 )
 
 const runtimeGo = "go"
+
+var ErrNotFound = errors.New("not found")
 
 type IRuntime interface {
 	// Parse will parse string with module name. It is used only on `toolset add` step.
@@ -47,7 +50,7 @@ func New(fs fsh.FS, binToolDir string) (*Runtimes, error) {
 func (r *Runtimes) Get(runtime string) (IRuntime, error) {
 	rt, ok := r.impls[runtime]
 	if !ok {
-		return nil, fmt.Errorf("unsupported runtime: %s", runtime)
+		return nil, ErrNotFound
 	}
 
 	return rt, nil
@@ -55,10 +58,6 @@ func (r *Runtimes) Get(runtime string) (IRuntime, error) {
 
 // GetInstall will get installed runtime or try to install it in other case.
 func (r *Runtimes) GetInstall(ctx context.Context, runtime string) (IRuntime, error) {
-	if rt, err := r.Get(runtime); err == nil {
-		return rt, nil
-	}
-
 	if err := r.Install(ctx, runtime); err != nil {
 		return nil, err
 	}
