@@ -16,6 +16,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kazhuravlev/toolset/internal/fsh"
+	"github.com/spf13/afero"
+
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 )
@@ -57,7 +60,7 @@ func parseSourceURI(uri string) (SourceUri, error) {
 	}
 }
 
-func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded []string) ([]RemoteSpec, error) {
+func fetchRemoteSpec(ctx context.Context, fSys fsh.FS, source string, tags []string, excluded []string) ([]RemoteSpec, error) {
 	{
 		if slices.Contains(excluded, source) {
 			return []RemoteSpec{}, nil
@@ -98,7 +101,7 @@ func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded
 	case SourceUriFile:
 		fmt.Println("Include from file:", srcURI.Path)
 
-		bb, err := os.ReadFile(srcURI.Path)
+		bb, err := afero.ReadFile(fSys, srcURI.Path)
 		if err != nil {
 			return nil, fmt.Errorf("read file: %w", err)
 		}
@@ -107,7 +110,7 @@ func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded
 	case SourceUriGit:
 		fmt.Println("Include from git:", srcURI.Addr, "file:", srcURI.Path)
 
-		targetDir, err := os.MkdirTemp(os.TempDir(), "toolset")
+		targetDir, err := afero.TempDir(fSys, "", "toolset")
 		if err != nil {
 			return nil, fmt.Errorf("create temp dir: %w", err)
 		}
@@ -130,12 +133,12 @@ func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded
 		}
 
 		targetFile := filepath.Join(targetDir, srcURI.Path)
-		bb, err := os.ReadFile(targetFile)
+		bb, err := afero.ReadFile(fSys, targetFile)
 		if err != nil {
 			return nil, fmt.Errorf("read file: %w", err)
 		}
 
-		if err := os.RemoveAll(targetDir); err != nil {
+		if err := fSys.RemoveAll(targetDir); err != nil {
 			return nil, fmt.Errorf("remove temp dir: %w", err)
 		}
 
@@ -149,7 +152,7 @@ func fetchRemoteSpec(ctx context.Context, source string, tags []string, excluded
 
 	var res []RemoteSpec
 	for _, inc := range spec.Includes {
-		remotes, err := fetchRemoteSpec(ctx, inc.Src, append(slices.Clone(tags), inc.Tags...), excluded)
+		remotes, err := fetchRemoteSpec(ctx, fSys, inc.Src, append(slices.Clone(tags), inc.Tags...), excluded)
 		if err != nil {
 			return nil, fmt.Errorf("fetch one of remotes (%s): %w", inc, err)
 		}

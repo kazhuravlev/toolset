@@ -146,7 +146,7 @@ func (c *Workdir) Save() error {
 
 func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) (int, error) {
 	// Check that source is exists and valid.
-	remotes, err := fetchRemoteSpec(ctx, source, tags, nil)
+	remotes, err := fetchRemoteSpec(ctx, c.fs, source, tags, nil)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
@@ -325,7 +325,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 			if alias, ok := tool.Alias.Get(); ok {
 				targetPath := filepath.Join(c.getToolsDir(), alias)
 				if fsh.IsExists(c.fs, targetPath) {
-					if err := os.Remove(targetPath); err != nil {
+					if err := c.fs.Remove(targetPath); err != nil {
 						errs <- fmt.Errorf("remove alias (%s): %w", targetPath, err)
 						return
 					}
@@ -338,7 +338,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 				}
 
 				installedPath := mod.BinPath
-				if err := os.Symlink(installedPath, targetPath); err != nil {
+				if err := c.fs.SymlinkIfPossible(installedPath, targetPath); err != nil {
 					errs <- fmt.Errorf("symlink %s to %s: %w", installedPath, targetPath, err)
 					return
 				}
@@ -397,7 +397,7 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 
 	var resRemotes []RemoteSpec
 	for _, inc := range c.spec.Includes {
-		remotes, err := fetchRemoteSpec(ctx, inc.Src, inc.Tags, nil)
+		remotes, err := fetchRemoteSpec(ctx, c.fs, inc.Src, inc.Tags, nil)
 		if err != nil {
 			return fmt.Errorf("fetch remotes: %w", err)
 		}
@@ -419,7 +419,7 @@ func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
 // CopySource will add all tools from source.
 // Source can be a path to file or a http url or git repo.
 func (c *Workdir) CopySource(ctx context.Context, source string, tags []string) (int, error) {
-	specs, err := fetchRemoteSpec(ctx, source, tags, nil)
+	specs, err := fetchRemoteSpec(ctx, c.fs, source, tags, nil)
 	if err != nil {
 		return 0, fmt.Errorf("fetch spec: %w", err)
 	}
@@ -517,7 +517,7 @@ func Init(fs fsh.FS, dir string) (string, error) {
 	targetLockFile := filepath.Join(dir, lockFilename)
 	targetStatsFile := filepath.Join(absToolsDir, statsFilename)
 
-	switch _, err := os.Stat(targetSpecFile); {
+	switch _, err := fs.Stat(targetSpecFile); {
 	default:
 		return "", fmt.Errorf("check target spec file exists: %w", err)
 	case err == nil:

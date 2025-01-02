@@ -3,12 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/optional"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/spf13/afero"
+	"github.com/kazhuravlev/optional"
+	"github.com/kazhuravlev/toolset/internal/fsh"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/kazhuravlev/toolset/internal/workdir"
@@ -176,7 +176,7 @@ $ toolset runtime add go@1.22`,
 }
 
 func cmdInit(c *cli.Context) error {
-	fs := afero.NewOsFs()
+	fs := fsh.NewOSFS()
 
 	targetDir := c.Args().First()
 	if targetDir == "" {
@@ -212,7 +212,7 @@ func cmdInit(c *cli.Context) error {
 }
 
 func cmdAdd(c *cli.Context) error {
-	fs := afero.NewOsFs()
+	fs := fsh.NewOSFS()
 
 	tags := c.StringSlice(keyTags)
 
@@ -279,7 +279,7 @@ func cmdAdd(c *cli.Context) error {
 }
 
 func cmdRuntimeAdd(c *cli.Context) error {
-	fs := afero.NewOsFs()
+	fs := fsh.NewOSFS()
 
 	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
@@ -300,7 +300,7 @@ func cmdRuntimeAdd(c *cli.Context) error {
 }
 
 func cmdRuntimeList(c *cli.Context) error {
-	fs := afero.NewOsFs()
+	fs := fsh.NewOSFS()
 
 	wd, err := workdir.New(c.Context, fs, "./")
 	if err != nil {
@@ -328,7 +328,7 @@ func cmdRuntimeList(c *cli.Context) error {
 }
 
 func cmdRun(c *cli.Context) error {
-	fs := afero.NewOsFs()
+	fs := fsh.NewOSFS()
 
 	target := c.Args().First()
 	if target == "" {
@@ -366,7 +366,7 @@ func cmdRun(c *cli.Context) error {
 }
 
 func cmdSync(c *cli.Context) error {
-	fs := afero.NewOsFs()
+	fs := fsh.NewOSFS()
 
 	ctx := c.Context
 
@@ -390,7 +390,7 @@ func cmdSync(c *cli.Context) error {
 }
 
 func cmdUpgrade(c *cli.Context) error {
-	fs := afero.NewOsFs()
+	fs := fsh.NewOSFS()
 
 	ctx := c.Context
 
@@ -422,7 +422,7 @@ func cmdUpgrade(c *cli.Context) error {
 }
 
 func cmdList(c *cli.Context) error {
-	fs := afero.NewOsFs()
+	fs := fsh.NewOSFS()
 
 	ctx := c.Context
 
@@ -493,7 +493,7 @@ func cmdList(c *cli.Context) error {
 }
 
 func cmdWhich(c *cli.Context) error {
-	fs := afero.NewOsFs()
+	fs := fsh.NewOSFS()
 
 	targets := c.Args().Slice()
 	if len(targets) == 0 {
@@ -530,7 +530,7 @@ func cmdWhich(c *cli.Context) error {
 }
 
 func cmdRemove(c *cli.Context) error {
-	fs := afero.NewOsFs()
+	fs := fsh.NewOSFS()
 
 	targets := c.Args().Slice()
 	if len(targets) == 0 {

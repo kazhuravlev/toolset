@@ -98,7 +98,7 @@ func (r *Runtimes) Install(ctx context.Context, runtime string) error {
 	}
 
 	ver := strings.TrimPrefix(runtime, runtimeGo+"@")
-	if err := runtimego.Install(ctx, r.binToolDir, ver); err != nil {
+	if err := runtimego.Install(ctx, r.fs, r.binToolDir, ver); err != nil {
 		return fmt.Errorf("install tool runtime (%s): %w", runtime, err)
 	}
 

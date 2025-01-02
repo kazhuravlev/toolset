@@ -13,6 +13,11 @@ const DefaultDirPerm = 0o755
 
 type FS interface {
 	afero.Fs
+	afero.Symlinker
+}
+
+func NewOSFS() FS {
+	return afero.NewOsFs().(*afero.OsFs)
 }
 
 func IsExists(fSys FS, path string) bool {

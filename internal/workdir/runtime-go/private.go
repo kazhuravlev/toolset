@@ -14,6 +14,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/kazhuravlev/toolset/internal/fsh"
+	"github.com/spf13/afero"
+
 	"github.com/kazhuravlev/toolset/internal/prog"
 
 	"golang.org/x/mod/modfile"
@@ -96,14 +99,14 @@ type fetchedMod struct {
 // @ => @latest
 // @latest => @vX.X.X
 // @vX.X.X => @vX.X.X
-func fetchModule(ctx context.Context, goBin, link string) (*moduleInfo, error) {
+func fetchModule(ctx context.Context, fSys fsh.FS, goBin, link string) (*moduleInfo, error) {
 	mod, err := parse(ctx, goBin, link)
 	if err != nil {
 		return nil, fmt.Errorf("parse module (%s) string: %w", link, err)
 	}
 
 	if mod.IsPrivate {
-		privateMod, err := fetchPrivate(ctx, goBin, *mod)
+		privateMod, err := fetchPrivate(ctx, fSys, goBin, *mod)
 		if err != nil {
 			return nil, fmt.Errorf("fetch private module: %w", err)
 		}
@@ -169,12 +172,12 @@ func fetchModule(ctx context.Context, goBin, link string) (*moduleInfo, error) {
 // - Add dependency
 // - Get dep info
 // - Remove temp dir
-func fetchPrivate(ctx context.Context, goBin string, mod moduleInfo) (*moduleInfo, error) {
-	tmpDir, err := os.MkdirTemp("", "gomodtemp")
+func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo) (*moduleInfo, error) {
+	tmpDir, err := afero.TempDir(fSys, "", "gomodtemp")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer fSys.RemoveAll(tmpDir) //nolint:errcheck
 
 	{
 		cmd := exec.CommandContext(ctx, goBin, "mod", "init", "sample")
@@ -199,7 +202,7 @@ func fetchPrivate(ctx context.Context, goBin string, mod moduleInfo) (*moduleInf
 	}
 
 	goModFilename := filepath.Join(tmpDir, "go.mod")
-	bb, err := os.ReadFile(goModFilename)
+	bb, err := afero.ReadFile(fSys, goModFilename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read go.mod: %w", err)
 	}
