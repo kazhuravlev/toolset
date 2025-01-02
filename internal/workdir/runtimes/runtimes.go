@@ -1,8 +1,9 @@
-package workdir
+package runtimes
 
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -34,7 +35,7 @@ type Runtimes struct {
 	impls      map[string]IRuntime
 }
 
-func NewRuntimes(ctx context.Context, fs fsh.FS, binToolDir string) (*Runtimes, error) {
+func New(ctx context.Context, fs fsh.FS, binToolDir string) (*Runtimes, error) {
 	runtimes := &Runtimes{
 		fs:         fs,
 		binToolDir: binToolDir,
@@ -90,6 +91,17 @@ func (r *Runtimes) Install(ctx context.Context, runtime string) error {
 	}
 
 	return nil
+}
+
+func (r *Runtimes) List() []string {
+	keys := make([]string, 0, len(r.impls))
+	for k := range r.impls {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
 }
 
 func (r *Runtimes) discover(ctx context.Context) error {

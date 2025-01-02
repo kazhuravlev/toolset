@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
+
+	runtimes "github.com/kazhuravlev/toolset/internal/workdir/runtimes"
 
 	remotes2 "github.com/kazhuravlev/toolset/internal/workdir/remotes"
 
@@ -41,7 +42,7 @@ type Workdir struct {
 	spec     *structs.Spec
 	lock     *structs.Lock
 	stats    *structs.Stats
-	runtimes *Runtimes
+	runtimes *runtimes.Runtimes
 	fs       fsh.FS
 }
 
@@ -98,7 +99,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read stats: %w", err)
 	}
 
-	runtimes, err := NewRuntimes(ctx, fs, filepath.Join(baseDir, spec.Dir))
+	rnTimes, err := runtimes.New(ctx, fs, filepath.Join(baseDir, spec.Dir))
 	if err != nil {
 		return nil, fmt.Errorf("new runtimes: %w", err)
 	}
@@ -109,7 +110,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		spec:     spec,
 		lock:     lockFile,
 		stats:    statsFile,
-		runtimes: runtimes,
+		runtimes: rnTimes,
 	}, nil
 }
 
@@ -503,14 +504,7 @@ func (c *Workdir) RuntimeAdd(ctx context.Context, runtime string) error {
 }
 
 func (c *Workdir) RuntimeList() []string {
-	keys := make([]string, 0, len(c.runtimes.impls))
-	for k := range c.runtimes.impls {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	return keys
+	return c.runtimes.List()
 }
 
 func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*structs.ModuleInfo, error) {
