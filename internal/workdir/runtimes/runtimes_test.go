@@ -2,11 +2,12 @@ package runtimes_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/workdir/runtimes"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestRuntimes(t *testing.T) {

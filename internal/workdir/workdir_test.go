@@ -1,10 +1,11 @@
 package workdir_test
 
 import (
+	"testing"
+
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/workdir"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestInit(t *testing.T) {
