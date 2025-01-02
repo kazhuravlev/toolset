@@ -283,7 +283,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
 	if toolsDir := c.getToolsDir(); !fsh.IsExists(c.fs, toolsDir) {
-		if err := os.MkdirAll(toolsDir, fsh.DefaultDirPerm); err != nil {
+		if err := c.fs.MkdirAll(toolsDir, fsh.DefaultDirPerm); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
 	}
@@ -509,7 +509,7 @@ func Init(fs fsh.FS, dir string) (string, error) {
 	}
 
 	absToolsDir := filepath.Join(dir, defaultToolsDir)
-	if err := os.MkdirAll(absToolsDir, fsh.DefaultDirPerm); err != nil {
+	if err := fs.MkdirAll(absToolsDir, fsh.DefaultDirPerm); err != nil {
 		return "", fmt.Errorf("create tools dir: %w", err)
 	}
 

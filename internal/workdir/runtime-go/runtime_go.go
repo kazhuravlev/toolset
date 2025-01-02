@@ -80,7 +80,7 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 		return fmt.Errorf("get go module (%s): %w", program, err)
 	}
 
-	if err := os.MkdirAll(mod.BinDir, 0o755); err != nil {
+	if err := r.fs.MkdirAll(mod.BinDir, 0o755); err != nil {
 		return fmt.Errorf("create mod dir (%s): %w", mod.BinDir, err)
 	}
 
