@@ -2,6 +2,7 @@ package remotes_test
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/kazhuravlev/toolset/internal/workdir/remotes"
@@ -22,8 +23,10 @@ func TestParseRemote(t *testing.T) {
 			require.Equal(t, exp, res)
 		}
 
+		// NOTE: on Windows it looks like D:\path\to\file.txt
+		pp, _ := filepath.Abs("/path/to/file.txt")
 		f("/path/to/file.txt",
-			remotes.SourceUriFile{Path: "/path/to/file.txt"})
+			remotes.SourceUriFile{Path: pp})
 		f("http://127.0.0.1:8000/path/to/file.txt",
 			remotes.SourceUriUrl{URL: "http://127.0.0.1:8000/path/to/file.txt"})
 		f("https://127.0.0.1:8000/path/to/file.txt",
