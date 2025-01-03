@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kazhuravlev/toolset/internal/timeh"
+
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/fsh"
 
@@ -69,7 +71,7 @@ func main() {
 At this point tool will not be installed. In order to install added tool please run
 
 	$ toolset sync`,
-				Action: cmdAdd,
+				Action: withWorkdir(cmdAdd),
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     keyCopyFrom,
@@ -92,7 +94,7 @@ At this point tool will not be installed. In order to install added tool please 
 			{
 				Name:   "sync",
 				Usage:  "install all required tools from toolset file",
-				Action: cmdSync,
+				Action: withWorkdir(cmdSync),
 				Flags: []cli.Flag{
 					flagParallel,
 					&cli.StringSliceFlag{
@@ -105,13 +107,13 @@ At this point tool will not be installed. In order to install added tool please 
 			{
 				Name:   "run",
 				Usage:  "run installed tool by its name",
-				Action: cmdRun,
+				Action: withWorkdir(cmdRun),
 				Args:   true,
 			},
 			{
 				Name:   "upgrade",
 				Usage:  "upgrade deps to the latest versions",
-				Action: cmdUpgrade,
+				Action: withWorkdir(cmdUpgrade),
 				Flags: []cli.Flag{
 					flagParallel,
 					&cli.StringSliceFlag{
@@ -132,18 +134,18 @@ At this point tool will not be installed. In order to install added tool please 
 						Value: false,
 					},
 				},
-				Action: cmdList,
+				Action: withWorkdir(cmdList),
 			},
 			{
 				Name:   "which",
 				Usage:  "show path to the actual binary",
-				Action: cmdWhich,
+				Action: withWorkdir(cmdWhich),
 				Args:   true,
 			},
 			{
 				Name:   "remove",
 				Usage:  "remove tool",
-				Action: cmdRemove,
+				Action: withWorkdir(cmdRemove),
 				Args:   true,
 			},
 			{
@@ -156,13 +158,13 @@ At this point tool will not be installed. In order to install added tool please 
 						Description: `Install runtime in local project dir. 
 
 $ toolset runtime add go@1.22`,
-						Action: cmdRuntimeAdd,
+						Action: withWorkdir(cmdRuntimeAdd),
 						Args:   true,
 					},
 					{
 						Name:   "list",
 						Usage:  "list all runtimes",
-						Action: cmdRuntimeList,
+						Action: withWorkdir(cmdRuntimeList),
 					},
 				},
 			},
@@ -210,15 +212,21 @@ func cmdInit(c *cli.Context) error {
 	return nil
 }
 
-func cmdAdd(c *cli.Context) error {
-	fs := fsh.NewRealFS()
+func withWorkdir(fn func(c *cli.Context, wd *workdir.Workdir) error) func(c *cli.Context) error {
+	return func(c *cli.Context) error {
+		fs := fsh.NewRealFS()
 
-	tags := c.StringSlice(keyTags)
+		wd, err := workdir.New(c.Context, fs, "./")
+		if err != nil {
+			return fmt.Errorf("new workdir: %w", err)
+		}
 
-	wd, err := workdir.New(c.Context, fs, "./")
-	if err != nil {
-		return fmt.Errorf("new workdir: %w", err)
+		return fn(c, wd)
 	}
+}
+
+func cmdAdd(c *cli.Context, wd *workdir.Workdir) error {
+	tags := c.StringSlice(keyTags)
 
 	if val := c.String(keyCopyFrom); val != "" {
 		count, err := wd.CopySource(c.Context, val, tags)
@@ -277,14 +285,7 @@ func cmdAdd(c *cli.Context) error {
 	return nil
 }
 
-func cmdRuntimeAdd(c *cli.Context) error {
-	fs := fsh.NewRealFS()
-
-	wd, err := workdir.New(c.Context, fs, "./")
-	if err != nil {
-		return fmt.Errorf("new workdir: %w", err)
-	}
-
+func cmdRuntimeAdd(c *cli.Context, wd *workdir.Workdir) error {
 	runtime := c.Args().First()
 
 	if err := wd.RuntimeAdd(c.Context, runtime); err != nil {
@@ -298,14 +299,7 @@ func cmdRuntimeAdd(c *cli.Context) error {
 	return nil
 }
 
-func cmdRuntimeList(c *cli.Context) error {
-	fs := fsh.NewRealFS()
-
-	wd, err := workdir.New(c.Context, fs, "./")
-	if err != nil {
-		return fmt.Errorf("new workdir: %w", err)
-	}
-
+func cmdRuntimeList(c *cli.Context, wd *workdir.Workdir) error {
 	t := table.NewWriter()
 	t.AppendHeader(table.Row{
 		"Runtime",
@@ -326,17 +320,10 @@ func cmdRuntimeList(c *cli.Context) error {
 	return nil
 }
 
-func cmdRun(c *cli.Context) error {
-	fs := fsh.NewRealFS()
-
+func cmdRun(c *cli.Context, wd *workdir.Workdir) error {
 	target := c.Args().First()
 	if target == "" {
 		return fmt.Errorf("target is required")
-	}
-
-	wd, err := workdir.New(c.Context, fs, "./")
-	if err != nil {
-		return fmt.Errorf("new workdir: %w", err)
 	}
 
 	if err := wd.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
@@ -364,18 +351,11 @@ func cmdRun(c *cli.Context) error {
 	return nil
 }
 
-func cmdSync(c *cli.Context) error {
-	fs := fsh.NewRealFS()
-
+func cmdSync(c *cli.Context, wd *workdir.Workdir) error {
 	ctx := c.Context
 
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
-
-	wd, err := workdir.New(ctx, fs, "./")
-	if err != nil {
-		return fmt.Errorf("new workdir: %w", err)
-	}
 
 	if err := wd.Sync(ctx, maxWorkers, tags); err != nil {
 		return fmt.Errorf("sync: %w", err)
@@ -388,18 +368,11 @@ func cmdSync(c *cli.Context) error {
 	return nil
 }
 
-func cmdUpgrade(c *cli.Context) error {
-	fs := fsh.NewRealFS()
-
+func cmdUpgrade(c *cli.Context, wd *workdir.Workdir) error {
 	ctx := c.Context
 
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
-
-	wd, err := workdir.New(ctx, fs, "./")
-	if err != nil {
-		return fmt.Errorf("new workdir: %w", err)
-	}
 
 	if err := wd.Upgrade(c.Context, tags); err != nil {
 		return fmt.Errorf("upgrade: %w", err)
@@ -420,17 +393,10 @@ func cmdUpgrade(c *cli.Context) error {
 	return nil
 }
 
-func cmdList(c *cli.Context) error {
-	fs := fsh.NewRealFS()
-
+func cmdList(c *cli.Context, wd *workdir.Workdir) error {
 	ctx := c.Context
 
 	onlyUnused := c.Bool(keyUnused)
-
-	wd, err := workdir.New(ctx, fs, "./")
-	if err != nil {
-		return fmt.Errorf("new workdir: %w", err)
-	}
 
 	tools, err := wd.GetTools(ctx)
 	if err != nil {
@@ -454,7 +420,7 @@ func cmdList(c *cli.Context) error {
 	for _, ts := range tools {
 		lastUse := "---"
 		if val, ok := ts.LastUse.Get(); ok {
-			lastUse = duration(time.Since(val))
+			lastUse = timeh.Duration(time.Since(val))
 		}
 
 		rows = append(rows, table.Row{
@@ -491,17 +457,10 @@ func cmdList(c *cli.Context) error {
 	return nil
 }
 
-func cmdWhich(c *cli.Context) error {
-	fs := fsh.NewRealFS()
-
+func cmdWhich(c *cli.Context, wd *workdir.Workdir) error {
 	targets := c.Args().Slice()
 	if len(targets) == 0 {
 		return fmt.Errorf("target is required")
-	}
-
-	wd, err := workdir.New(c.Context, fs, "./")
-	if err != nil {
-		return fmt.Errorf("new workdir: %w", err)
 	}
 
 	for _, target := range targets {
@@ -528,17 +487,10 @@ func cmdWhich(c *cli.Context) error {
 	return nil
 }
 
-func cmdRemove(c *cli.Context) error {
-	fs := fsh.NewRealFS()
-
+func cmdRemove(c *cli.Context, wd *workdir.Workdir) error {
 	targets := c.Args().Slice()
 	if len(targets) == 0 {
 		return fmt.Errorf("target is required")
-	}
-
-	wd, err := workdir.New(c.Context, fs, "./")
-	if err != nil {
-		return fmt.Errorf("new workdir: %w", err)
 	}
 
 	for _, target := range targets {
@@ -552,45 +504,4 @@ func cmdRemove(c *cli.Context) error {
 	}
 
 	return nil
-}
-
-func duration(d time.Duration) string {
-	if d == 0 {
-		return "0s"
-	}
-
-	days := d / (24 * time.Hour)
-	d -= days * 24 * time.Hour
-
-	hours := d / time.Hour
-	d -= hours * time.Hour
-
-	minutes := d / time.Minute
-	d -= minutes * time.Minute
-
-	seconds := d / time.Second
-
-	// Build the human-readable string
-	var result string
-	if days > 0 {
-		result += fmt.Sprintf("%dd ", days)
-	}
-
-	if hours > 0 {
-		result += fmt.Sprintf("%dh ", hours)
-	}
-
-	if minutes > 0 {
-		result += fmt.Sprintf("%dm ", minutes)
-	}
-
-	if seconds > 0 {
-		result += fmt.Sprintf("%ds ", seconds)
-	}
-
-	if result == "" {
-		return "1s"
-	}
-
-	return result
 }
