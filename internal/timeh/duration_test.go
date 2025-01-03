@@ -8,9 +8,6 @@ import (
 )
 
 func TestDuration(t *testing.T) {
-	type args struct {
-		d time.Duration
-	}
 	tests := []struct {
 		name string
 		in   time.Duration
@@ -20,6 +17,11 @@ func TestDuration(t *testing.T) {
 			name: "negative_duration",
 			in:   -1 * time.Second,
 			exp:  "-1s",
+		},
+		{
+			name: "negative_duration_2",
+			in:   -1 * time.Hour,
+			exp:  "-1h",
 		},
 		{
 			name: "zero_duration",

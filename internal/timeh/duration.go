@@ -2,6 +2,7 @@ package timeh
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -9,6 +10,11 @@ import (
 func Duration(d time.Duration) string {
 	if d == 0 {
 		return "0s"
+	}
+
+	isNegative := math.Signbit(float64(d))
+	if isNegative {
+		d = -d
 	}
 
 	days := d / (24 * time.Hour)
@@ -41,7 +47,7 @@ func Duration(d time.Duration) string {
 	}
 
 	if result == "" {
-		if d < 0 {
+		if isNegative {
 			return "-1s"
 		}
 
@@ -50,7 +56,7 @@ func Duration(d time.Duration) string {
 
 	result = strings.TrimSpace(result)
 
-	if d < 0 {
+	if isNegative {
 		return "-" + result
 	}
 
