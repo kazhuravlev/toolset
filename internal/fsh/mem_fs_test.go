@@ -1,6 +1,7 @@
 package fsh_test
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -8,6 +9,10 @@ import (
 )
 
 func TestMemFS_GetTree(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skip for Windows")
+	}
+
 	fs := fsh.NewMemFS(map[string]string{
 		"/dir/file1.txt":      `Hello 1!`,
 		"/dir/file2.txt":      `Hello 2!`,
@@ -26,6 +31,10 @@ func TestMemFS_GetTree(t *testing.T) {
 }
 
 func TestMemFS_SymlinkIfPossible(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skip for Windows")
+	}
+
 	fs := fsh.NewMemFS(nil)
 
 	require.NoError(t, fs.SymlinkIfPossible("/tmp/a", "/tmp/a"))
