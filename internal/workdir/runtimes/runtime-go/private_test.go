@@ -3,6 +3,7 @@ package runtimego
 import (
 	"context"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -72,4 +73,15 @@ func Test_fetchModule(t *testing.T) {
 		Program:   "goreleaser",
 		IsPrivate: false,
 	})
+}
+
+func Test_getGoVersion(t *testing.T) {
+	goBin, err := exec.LookPath("go")
+	require.NoError(t, err, "install go")
+
+	ctx := context.Background()
+	goVersion, err := getGoVersion(ctx, goBin)
+	require.NoError(t, err)
+	require.NotEmpty(t, goVersion)
+	require.True(t, strings.HasPrefix(goVersion, "1.")) // NOTE(zhuravlev): should looks like 1.23.4
 }
