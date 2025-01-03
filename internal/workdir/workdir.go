@@ -500,7 +500,7 @@ func (c *Workdir) GetTools(ctx context.Context) ([]structs.ToolState, error) {
 }
 
 func (c *Workdir) RuntimeAdd(ctx context.Context, runtime string) error {
-	if err := c.runtimes.Install(ctx, runtime); err != nil {
+	if err := c.runtimes.EnsureInstalled(ctx, runtime); err != nil {
 		return fmt.Errorf("install runtime: %w", err)
 	}
 
