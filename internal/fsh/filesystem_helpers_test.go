@@ -2,6 +2,7 @@ package fsh_test
 
 import (
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -69,6 +70,10 @@ func TestWriteJson(t *testing.T) {
 
 func TestReadOrCreateJson(t *testing.T) {
 	t.Run("auto_create_file_when_not_exists", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("skip for Windows")
+		}
+
 		fs := fsh.NewMemFS(nil)
 
 		// 1. file not exists
