@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kazhuravlev/toolset/internal/timeh"
+
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/fsh"
 
@@ -454,7 +456,7 @@ func cmdList(c *cli.Context) error {
 	for _, ts := range tools {
 		lastUse := "---"
 		if val, ok := ts.LastUse.Get(); ok {
-			lastUse = duration(time.Since(val))
+			lastUse = timeh.Duration(time.Since(val))
 		}
 
 		rows = append(rows, table.Row{
@@ -552,45 +554,4 @@ func cmdRemove(c *cli.Context) error {
 	}
 
 	return nil
-}
-
-func duration(d time.Duration) string {
-	if d == 0 {
-		return "0s"
-	}
-
-	days := d / (24 * time.Hour)
-	d -= days * 24 * time.Hour
-
-	hours := d / time.Hour
-	d -= hours * time.Hour
-
-	minutes := d / time.Minute
-	d -= minutes * time.Minute
-
-	seconds := d / time.Second
-
-	// Build the human-readable string
-	var result string
-	if days > 0 {
-		result += fmt.Sprintf("%dd ", days)
-	}
-
-	if hours > 0 {
-		result += fmt.Sprintf("%dh ", hours)
-	}
-
-	if minutes > 0 {
-		result += fmt.Sprintf("%dm ", minutes)
-	}
-
-	if seconds > 0 {
-		result += fmt.Sprintf("%ds ", seconds)
-	}
-
-	if result == "" {
-		return "1s"
-	}
-
-	return result
 }
