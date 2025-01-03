@@ -112,6 +112,35 @@ func TestTools(t *testing.T) {
 	})
 }
 
+func TestLock_FromSpec(t *testing.T) {
+	spec := structs.Spec{
+		Dir: "/tmp",
+		Tools: structs.Tools{
+			{
+				Runtime: "sample",
+				Module:  "example",
+				Alias:   optional.New("hello"),
+				Tags:    []string{"tag1"},
+			},
+		},
+		Includes: nil,
+	}
+	lock := structs.Lock{}
+	lock.FromSpec(&spec)
+
+	require.Equal(t, structs.Lock{
+		Tools: structs.Tools{
+			{
+				Runtime: "sample",
+				Module:  "example",
+				Alias:   optional.New("hello"),
+				Tags:    []string{"tag1"},
+			},
+		},
+		Remotes: []structs.RemoteSpec{},
+	}, lock)
+}
+
 func Tool(runtime, module string, alias optional.Val[string], tags []string) structs.Tool {
 	return structs.Tool{
 		Runtime: runtime,
