@@ -217,6 +217,10 @@ type Lock struct {
 }
 
 func (l *Lock) FromSpec(spec *Spec) {
+	if l.Remotes == nil {
+		l.Remotes = make([]RemoteSpec, 0)
+	}
+
 	l.Tools = make(Tools, 0, len(spec.Tools))
 	for _, tool := range spec.Tools {
 		l.Tools.Add(tool)
