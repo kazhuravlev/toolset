@@ -1,9 +1,10 @@
 package fsh_test
 
 import (
+	"testing"
+
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestMemFS_GetTree(t *testing.T) {
