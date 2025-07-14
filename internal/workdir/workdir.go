@@ -291,6 +291,8 @@ func (c *Workdir) FindTool(name string) (*structs.ToolState, error) {
 
 // RunTool will run a tool by its name and args.
 func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error {
+	const autoInstallProgram = true
+
 	ts, err := c.FindTool(str)
 	if err != nil {
 		return err
@@ -306,8 +308,17 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return fmt.Errorf("save stats: %w", err)
 	}
 
+RunProgram:
 	if err := rt.Run(ctx, ts.Tool.Module, args...); err != nil {
 		if errors.Is(err, structs.ErrToolNotInstalled) {
+			if autoInstallProgram {
+				if err := rt.Install(ctx, ts.Tool.Module); err != nil {
+					return fmt.Errorf("auto-install not-installed program (%s) before run: %w", ts.Tool.Module, err)
+				}
+
+				goto RunProgram
+			}
+
 			return fmt.Errorf("run tool: %w", errors.Join(err, ErrToolNotInstalled))
 		}
 
