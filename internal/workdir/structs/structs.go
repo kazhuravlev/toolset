@@ -169,8 +169,8 @@ func (i *Include) UnmarshalJSON(bb []byte) error {
 }
 
 type Stats struct {
-	Version string               `json:"version"`
-	Tools   map[string]time.Time `json:"tools"`
+	Version        string                          `json:"version"`
+	ToolsByWorkdir map[string]map[string]time.Time `json:"tools"`
 }
 
 // ToolState describe a state of this tool.

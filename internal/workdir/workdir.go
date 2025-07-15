@@ -91,8 +91,8 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 
 	statsFName := filepath.Join(cacheDir, statsFilename)
 	statsFile, err := fsh.ReadOrCreateJson(fs, statsFName, structs.Stats{
-		Version: StatsVer1,
-		Tools:   make(map[string]time.Time),
+		Version:        StatsVer1,
+		ToolsByWorkdir: make(map[string]map[string]time.Time),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("read stats: %w", err)
@@ -113,8 +113,10 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		projectRoot: dir,
 		spec:        spec,
 		lock:        lockFile,
-		stats:       statsFile,
-		runtimes:    rnTimes,
+		// TODO(zhuravlev): prevent simultaneous access to stats file by several programs.
+		// 	Use github.com/gofrs/flock or similar.
+		stats:    statsFile,
+		runtimes: rnTimes,
 	}, nil
 }
 
@@ -162,8 +164,8 @@ func Init(fs fsh.FS, dir string) error {
 		}
 
 		_, errStats := fsh.ReadOrCreateJson(fs, targetStatsFile, structs.Stats{
-			Version: StatsVer1,
-			Tools:   make(map[string]time.Time),
+			Version:        StatsVer1,
+			ToolsByWorkdir: make(map[string]map[string]time.Time),
 		})
 		if err := errStats; err != nil {
 			return fmt.Errorf("write init stats: %w", err)
@@ -257,7 +259,7 @@ func (c *Workdir) RemoveTool(ctx context.Context, target string) error {
 
 	_ = c.lock.Tools.Remove(ts.Tool)
 	_ = c.spec.Tools.Remove(ts.Tool)
-	delete(c.stats.Tools, ts.Tool.ID())
+	delete(c.stats.ToolsByWorkdir[c.projectRoot], ts.Tool.ID())
 
 	return nil
 }
@@ -305,7 +307,11 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return fmt.Errorf("get or install runtime: %w", err)
 	}
 
-	c.stats.Tools[ts.Tool.ID()] = time.Now()
+	if _, ok := c.stats.ToolsByWorkdir[c.projectRoot]; !ok {
+		c.stats.ToolsByWorkdir[c.projectRoot] = make(map[string]time.Time)
+	}
+
+	c.stats.ToolsByWorkdir[c.projectRoot][ts.Tool.ID()] = time.Now()
 	if err := c.saveStats(); err != nil {
 		return fmt.Errorf("save stats: %w", err)
 	}
@@ -539,12 +545,14 @@ func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*struct
 }
 
 func (c *Workdir) saveStats() error {
-	return fsh.WriteJson(c.fs, *c.stats, c.getStatsFilename())
+	return fsh.WriteJson(c.fs, *c.stats, filepath.Join(c.cacheDir, statsFilename))
 }
 
 func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
-	if val, ok := c.stats.Tools[id]; ok {
-		return optional.New(val)
+	if tools, ok := c.stats.ToolsByWorkdir[c.projectRoot]; ok {
+		if val, ok := tools[id]; ok {
+			return optional.New(val)
+		}
 	}
 
 	return optional.Empty[time.Time]()
@@ -556,8 +564,4 @@ func (c *Workdir) getSpecFilename() string {
 
 func (c *Workdir) getLockFilename() string {
 	return filepath.Join(c.projectRoot, lockFilename)
-}
-
-func (c *Workdir) getStatsFilename() string {
-	return filepath.Join(c.cacheDir, statsFilename)
 }
