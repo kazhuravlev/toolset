@@ -112,7 +112,7 @@ toolset add --include git+https://gist.github.com/3f16049ce3f9f478e6b917237b2c0d
 Add one or more tags to each tool. It will allow you to install only selected tools. Tools that have a tag can be
 filtered in `toolset sync` and `toolset upgrade`. See the docs bellow.
 
-```shell 
+```shell
 # Add linter to group `linters` and `ci`
 toolset add --tags linters,ci go github.com/golangci/golangci-lint/cmd/golangci-lint
 # Add tools to group `ci`
@@ -133,7 +133,7 @@ toolset runtime list
 
 And install tool with specific version:
 
-```shell 
+```shell
 toolset add go@1.22.10 github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0
 toolset sync
 toolset list
@@ -150,7 +150,7 @@ toolset sync
 toolset sync --tags linters
 ```
 
-By default, tools are installed into ./bin/tools.
+By default, tools are installed into `~/.cache/toolset`.
 
 ### Run a tool
 
@@ -188,7 +188,7 @@ toolset which goimports
 This command returns an abs path to goimports like that:
 
 ```
-/abs/path/to/project/bin/tools/.goimports___v0.21.0/goimports
+/Users/username/.cache/toolset/.goimports___v0.21.0/goimports
 ```
 
 ### Remove installed tool
@@ -216,7 +216,7 @@ cd toolset/example
 # Install all tools
 toolset sync
 # ... and check installed tools
-ls ./bin/tools
+ls ~/.cache/toolset
 # Run installed tool
 toolset run gt --repo ../ tag last
 # List installed tools
@@ -235,7 +235,6 @@ Contributions are welcome! Feel free to open issues or submit pull requests to i
 
 - `.toolset.json` should be added into git index. This is like `go.mod` or `package.json`.
 - `.toolset.lock.json` should be added into git index. This is like `go.sum` or another lock files.
-- `bin/tools` dir should be excluded from index, because this dir will contain a binaries.
 
 **Is that possible to change directory that contains a binary files?**
 
@@ -245,3 +244,11 @@ Yes. You can change it in your `.toolset.json`.
 
 Main command - `toolset sync`. This should fix the all problems. In case when it is not fixed - create an issue.
 
+**Where toolset store tools?**
+
+All tools and stats file stored into `~/.cache/toolset` directory. You can delete this directory any time. Toolset will
+download necessary tools at the next run.
+
+**How to change directory where tools stored?**
+
+Just export variable like that `export TOOLSET_CACHE_DIR=/tmp/some-directory`.
