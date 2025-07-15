@@ -38,7 +38,7 @@ var (
 )
 
 type Workdir struct {
-	dir      string
+	workdir  string
 	spec     *structs.Spec
 	lock     *structs.Lock
 	stats    *structs.Stats
@@ -110,7 +110,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 
 	return &Workdir{
 		fs:       fs,
-		dir:      dir,
+		workdir:  dir,
 		spec:     spec,
 		lock:     lockFile,
 		stats:    statsFile,
@@ -549,15 +549,15 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 }
 
 func (c *Workdir) getToolsDir() string {
-	return filepath.Join(c.dir, c.spec.Dir)
+	return filepath.Join(c.projectRoot, c.spec.Dir)
 }
 
 func (c *Workdir) getSpecFilename() string {
-	return filepath.Join(c.dir, specFilename)
+	return filepath.Join(c.projectRoot, specFilename)
 }
 
 func (c *Workdir) getLockFilename() string {
-	return filepath.Join(c.dir, lockFilename)
+	return filepath.Join(c.projectRoot, lockFilename)
 }
 
 func (c *Workdir) getStatsFilename() string {
