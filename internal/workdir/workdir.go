@@ -20,7 +20,7 @@ const (
 	specFilename = ".toolset.json"
 	lockFilename = ".toolset.lock.json"
 	// This file is places in tools directory
-	statsFilename = ".stats.json"
+	statsFilename = "stats.json"
 
 	defaultCacheDir = "~/.cache/toolset"
 )
