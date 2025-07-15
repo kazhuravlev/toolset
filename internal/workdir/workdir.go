@@ -298,9 +298,9 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return err
 	}
 
-	rt, err := c.runtimes.Get(ts.Tool.Runtime)
+	rt, err := c.runtimes.GetInstall(ctx, ts.Tool.Runtime)
 	if err != nil {
-		return fmt.Errorf("get runtime: %w", err)
+		return fmt.Errorf("get or install runtime: %w", err)
 	}
 
 	c.stats.Tools[ts.Tool.ID()] = time.Now()
