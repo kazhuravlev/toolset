@@ -21,6 +21,9 @@ const (
 	lockFilename = ".toolset.lock.json"
 	// This file is places in tools directory
 	statsFilename = ".stats.json"
+
+	defaultToolsDir = "./bin/tools"
+	defaultCacheDir = "~/.cache/toolset"
 )
 
 const (
@@ -43,7 +46,7 @@ type Workdir struct {
 }
 
 func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
-	cacheDir := "~/.cache/toolset"
+	cacheDir := defaultCacheDir
 	if cacheDirEnv := os.Getenv("TOOLSET_CACHE_DIR"); cacheDirEnv != "" {
 		cacheDir = cacheDirEnv
 	}
@@ -123,8 +126,6 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 
 // Init will initialize context in specified directory.
 func Init(fs fsh.FS, dir string) error {
-	const defaultToolsDir = "./bin/tools"
-
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return fmt.Errorf("get abs path: %w", err)
