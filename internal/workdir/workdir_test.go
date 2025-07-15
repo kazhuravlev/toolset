@@ -30,9 +30,6 @@ func TestInit(t *testing.T) {
 		"/dir",
 		"/dir/.toolset.json",
 		"/dir/.toolset.lock.json",
-		"/dir/bin",
-		"/dir/bin/tools",
-		"/dir/bin/tools/.stats.json",
 	}, tree)
 
 	wd, err := workdir.New(ctx, fs, dir)

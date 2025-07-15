@@ -120,6 +120,7 @@ type ModuleInfo struct {
 type Spec struct {
 	// This dir is store all toolset-related files.
 	// This directory should be managed by toolset only.
+	// Deprecated: do not use this field. All tools stored into global cache directory.
 	Dir      string    `json:"dir,omitempty"`
 	Tools    Tools     `json:"tools"`
 	Includes []Include `json:"includes"`
