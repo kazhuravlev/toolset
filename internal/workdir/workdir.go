@@ -22,7 +22,6 @@ const (
 	// This file is places in tools directory
 	statsFilename = ".stats.json"
 
-	defaultToolsDir = "./bin/tools"
 	defaultCacheDir = "~/.cache/toolset"
 )
 
@@ -46,12 +45,7 @@ type Workdir struct {
 }
 
 func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
-	cacheDir := defaultCacheDir
-	if cacheDirEnv := os.Getenv("TOOLSET_CACHE_DIR"); cacheDirEnv != "" {
-		cacheDir = cacheDirEnv
-	}
-
-	cacheDir, err := filepath.Abs(cacheDir)
+	cacheDir, err := getCacheDir()
 	if err != nil {
 		return nil, fmt.Errorf("resolve cache dir: %w", err)
 	}
@@ -131,14 +125,18 @@ func Init(fs fsh.FS, dir string) error {
 		return fmt.Errorf("get abs path: %w", err)
 	}
 
-	absToolsDir := filepath.Join(dir, defaultToolsDir)
-	if err := fs.MkdirAll(absToolsDir, fsh.DefaultDirPerm); err != nil {
+	cacheDir, err := getCacheDir()
+	if err != nil {
+		return fmt.Errorf("resolve cache dir: %w", err)
+	}
+
+	if err := fs.MkdirAll(cacheDir, fsh.DefaultDirPerm); err != nil {
 		return fmt.Errorf("create tools dir: %w", err)
 	}
 
 	targetSpecFile := filepath.Join(dir, specFilename)
 	targetLockFile := filepath.Join(dir, lockFilename)
-	targetStatsFile := filepath.Join(absToolsDir, statsFilename)
+	targetStatsFile := filepath.Join(cacheDir, statsFilename)
 
 	switch _, err := fs.Stat(targetSpecFile); {
 	default:
@@ -147,7 +145,7 @@ func Init(fs fsh.FS, dir string) error {
 		return errors.New("spec already exists")
 	case os.IsNotExist(err):
 		spec := structs.Spec{
-			Dir:      defaultToolsDir,
+			Dir:      "",
 			Tools:    make(structs.Tools, 0),
 			Includes: make([]structs.Include, 0),
 		}
@@ -340,7 +338,7 @@ RunProgram:
 // Sync will read the locked tools and try to install the desired version. It will skip the installation in
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
-	if toolsDir := c.getToolsDir(); !fsh.IsExists(c.fs, toolsDir) {
+	if toolsDir := c.cacheDir; !fsh.IsExists(c.fs, toolsDir) {
 		if err := c.fs.MkdirAll(toolsDir, fsh.DefaultDirPerm); err != nil {
 			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
 		}
@@ -381,7 +379,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 			}
 
 			if alias, ok := tool.Alias.Get(); ok {
-				targetPath := filepath.Join(c.getToolsDir(), alias)
+				targetPath := filepath.Join(c.cacheDir, alias)
 				if fsh.IsExists(c.fs, targetPath) {
 					if err := c.fs.Remove(targetPath); err != nil {
 						errs <- fmt.Errorf("remove alias (%s): %w", targetPath, err)
@@ -527,7 +525,7 @@ func (c *Workdir) RuntimeList() []string {
 }
 
 func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*structs.ModuleInfo, error) {
-	rt, err := c.runtimes.Get(tool.Runtime)
+	rt, err := c.runtimes.GetInstall(ctx, tool.Runtime)
 	if err != nil {
 		return nil, fmt.Errorf("get runtime: %w", err)
 	}
@@ -552,10 +550,6 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 	return optional.Empty[time.Time]()
 }
 
-func (c *Workdir) getToolsDir() string {
-	return filepath.Join(c.projectRoot, c.spec.Dir)
-}
-
 func (c *Workdir) getSpecFilename() string {
 	return filepath.Join(c.projectRoot, specFilename)
 }
@@ -565,5 +559,5 @@ func (c *Workdir) getLockFilename() string {
 }
 
 func (c *Workdir) getStatsFilename() string {
-	return filepath.Join(c.getToolsDir(), statsFilename)
+	return filepath.Join(c.cacheDir, statsFilename)
 }
