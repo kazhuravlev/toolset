@@ -4,20 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
-
-	runtimes "github.com/kazhuravlev/toolset/internal/workdir/runtimes"
-
-	remotes2 "github.com/kazhuravlev/toolset/internal/workdir/remotes"
-
-	"github.com/kazhuravlev/toolset/internal/fsh"
-
 	"github.com/kazhuravlev/optional"
+	"github.com/kazhuravlev/toolset/internal/fsh"
+	remotes2 "github.com/kazhuravlev/toolset/internal/workdir/remotes"
+	runtimes "github.com/kazhuravlev/toolset/internal/workdir/runtimes"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 	"golang.org/x/sync/semaphore"
+	"os"
+	"path/filepath"
+	"time"
 )
 
 const (
@@ -38,16 +33,27 @@ var (
 )
 
 type Workdir struct {
-	workdir  string
-	spec     *structs.Spec
-	lock     *structs.Lock
-	stats    *structs.Stats
-	runtimes *runtimes.Runtimes
-	fs       fsh.FS
+	cacheDir    string
+	projectRoot string
+	spec        *structs.Spec
+	lock        *structs.Lock
+	stats       *structs.Stats
+	runtimes    *runtimes.Runtimes
+	fs          fsh.FS
 }
 
 func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
-	// Make abs path to spec.
+	cacheDir := "~/.cache/toolset"
+	if cacheDirEnv := os.Getenv("TOOLSET_CACHE_DIR"); cacheDirEnv != "" {
+		cacheDir = cacheDirEnv
+	}
+
+	cacheDir, err := filepath.Abs(cacheDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve cache dir: %w", err)
+	}
+
+	// Make an abs path to spec.
 	toolsetFilename, err := filepath.Abs(filepath.Join(dir, specFilename))
 	if err != nil {
 		return nil, fmt.Errorf("get abs spec path: %w", err)
@@ -76,12 +82,9 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("spec file not found: %w", err)
 	}
 
-	if filepath.IsAbs(spec.Dir) {
-		if !strings.HasPrefix(spec.Dir, dir) {
-			return nil, fmt.Errorf("'Dir' should contains a relative path, not (%s)", spec.Dir)
-		}
-
-		spec.Dir = strings.TrimPrefix(spec.Dir, dir)
+	if spec.Dir != "" {
+		fmt.Println("'dir' parameter is deprecated. It will be removed automatically. toolset@v0.27.0 store all downloads into one global cache directory. Check TOOLSET_CACHE_DIR env.")
+		spec.Dir = ""
 	}
 
 	lockFile, err := fsh.ReadJson[structs.Lock](fs, lockFname)
@@ -89,8 +92,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read lock file: %w", err)
 	}
 
-	absToolsDir := filepath.Join(dir, spec.Dir)
-	statsFName := filepath.Join(absToolsDir, statsFilename)
+	statsFName := filepath.Join(cacheDir, statsFilename)
 	statsFile, err := fsh.ReadOrCreateJson(fs, statsFName, structs.Stats{
 		Version: StatsVer1,
 		Tools:   make(map[string]time.Time),
@@ -99,7 +101,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read stats: %w", err)
 	}
 
-	rnTimes, err := runtimes.New(fs, filepath.Join(dir, spec.Dir))
+	rnTimes, err := runtimes.New(fs, cacheDir)
 	if err != nil {
 		return nil, fmt.Errorf("new runtimes: %w", err)
 	}
@@ -109,12 +111,13 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 	}
 
 	return &Workdir{
-		fs:       fs,
-		workdir:  dir,
-		spec:     spec,
-		lock:     lockFile,
-		stats:    statsFile,
-		runtimes: rnTimes,
+		fs:          fs,
+		cacheDir:    cacheDir,
+		projectRoot: dir,
+		spec:        spec,
+		lock:        lockFile,
+		stats:       statsFile,
+		runtimes:    rnTimes,
 	}, nil
 }
 
