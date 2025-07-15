@@ -120,7 +120,7 @@ type ModuleInfo struct {
 type Spec struct {
 	// This dir is store all toolset-related files.
 	// This directory should be managed by toolset only.
-	Dir      string    `json:"dir"`
+	Dir      string    `json:"dir,omitempty"`
 	Tools    Tools     `json:"tools"`
 	Includes []Include `json:"includes"`
 }
