@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	runtimePrefix = ".rtgo__"
+	runtimePrefix = "rtgo__"
 	at            = "@"
 )
 
