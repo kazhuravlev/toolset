@@ -120,7 +120,8 @@ type ModuleInfo struct {
 type Spec struct {
 	// This dir is store all toolset-related files.
 	// This directory should be managed by toolset only.
-	Dir      string    `json:"dir"`
+	// Deprecated: do not use this field. All tools stored into global cache directory.
+	Dir      string    `json:"dir,omitempty"`
 	Tools    Tools     `json:"tools"`
 	Includes []Include `json:"includes"`
 }
@@ -168,8 +169,8 @@ func (i *Include) UnmarshalJSON(bb []byte) error {
 }
 
 type Stats struct {
-	Version string               `json:"version"`
-	Tools   map[string]time.Time `json:"tools"`
+	Version        string                          `json:"version"`
+	ToolsByWorkdir map[string]map[string]time.Time `json:"tools"`
 }
 
 // ToolState describe a state of this tool.

@@ -15,10 +15,8 @@ import (
 	"strings"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
-	"github.com/spf13/afero"
-
 	"github.com/kazhuravlev/toolset/internal/prog"
-
+	"github.com/spf13/afero"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 )

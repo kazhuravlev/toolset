@@ -10,16 +10,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/afero"
-
 	"github.com/kazhuravlev/toolset/internal/fsh"
-
 	"github.com/kazhuravlev/toolset/internal/version"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
+	"github.com/spf13/afero"
 )
 
 const (
-	runtimePrefix = ".rtgo__"
+	runtimePrefix = "rtgo__"
 	at            = "@"
 )
 
@@ -63,7 +61,7 @@ func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.Module
 		return nil, fmt.Errorf("parse module (%s): %w", module, err)
 	}
 
-	programDir := filepath.Join(r.binToolDir, fmt.Sprintf(".%s___%s", mod.Program, mod.Mod.Version()))
+	programDir := filepath.Join(r.binToolDir, fmt.Sprintf("%s___%s", mod.Program, mod.Mod.Version()))
 	programBinary := filepath.Join(programDir, mod.Program)
 
 	return &structs.ModuleInfo{
