@@ -5,14 +5,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/toolset/internal/fsh"
-	"github.com/kazhuravlev/toolset/internal/version"
-	"github.com/kazhuravlev/toolset/internal/workdir/structs"
-	"github.com/spf13/afero"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/kazhuravlev/toolset/internal/fsh"
+	"github.com/kazhuravlev/toolset/internal/version"
+	"github.com/kazhuravlev/toolset/internal/workdir/structs"
+	"github.com/spf13/afero"
 )
 
 const (

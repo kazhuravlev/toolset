@@ -6,11 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/toolset/internal/fsh"
-	"github.com/kazhuravlev/toolset/internal/prog"
-	"github.com/spf13/afero"
-	"golang.org/x/mod/modfile"
-	"golang.org/x/mod/module"
 	"io"
 	"net/http"
 	"os"
@@ -18,6 +13,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/kazhuravlev/toolset/internal/fsh"
+	"github.com/kazhuravlev/toolset/internal/prog"
+	"github.com/spf13/afero"
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 )
 
 var reVersion = regexp.MustCompile(`^go version go(\d+\.\d+(?:\.\d+)?)(?: .*|$)`)
