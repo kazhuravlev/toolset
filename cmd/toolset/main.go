@@ -63,10 +63,10 @@ func main() {
 			{
 				Name:  "add",
 				Usage: "add tool to .toolset.json",
-				Description: `Add tools to local configuration to fix the using version. 
+				Description: `Add tools to local configuration to fix the using version.
 
 	$ toolset add <RUNTIME> <TOOL>
-	$ toolset add go 				github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0 
+	$ toolset add go 				github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
 
 At this point tool will not be installed. In order to install added tool please run
 
@@ -149,13 +149,19 @@ At this point tool will not be installed. In order to install added tool please 
 				Args:   true,
 			},
 			{
+				Name:   "info",
+				Usage:  "show information and stats",
+				Action: withWorkdir(cmdInfo),
+				Args:   false,
+			},
+			{
 				Name:  "runtime",
 				Usage: "manage runtimes",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "add",
 						Usage: "add new",
-						Description: `Install runtime in local project dir. 
+						Description: `Install runtime in local project dir.
 
 $ toolset runtime add go@1.22`,
 						Action: withWorkdir(cmdRuntimeAdd),
@@ -503,5 +509,13 @@ func cmdRemove(c *cli.Context, wd *workdir.Workdir) error {
 		return fmt.Errorf("save: %w", err)
 	}
 
+	return nil
+}
+
+func cmdInfo(c *cli.Context, wd *workdir.Workdir) error {
+	fmt.Println("version:", version)
+	fmt.Println("cache dir:", wd.GetCacheDir())
+	fmt.Println("project root:", wd.ProjectRoot())
+	
 	return nil
 }

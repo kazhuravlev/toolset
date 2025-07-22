@@ -566,3 +566,11 @@ func (c *Workdir) getSpecFilename() string {
 func (c *Workdir) getLockFilename() string {
 	return filepath.Join(c.projectRoot, lockFilename)
 }
+
+func (c *Workdir) GetCacheDir() string {
+	return c.cacheDir
+}
+
+func (c *Workdir) ProjectRoot() string {
+	return c.projectRoot
+}
