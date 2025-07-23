@@ -58,7 +58,7 @@ func TestCustomDir(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	const dir = "/dir"
+	const dir = "./project"
 
 	fs := fsh.NewMemFS(nil)
 
@@ -73,13 +73,27 @@ func TestCustomDir(t *testing.T) {
 		"/",
 		"/cache",
 		"/cache/stats.json",
-		"/dir",
-		"/dir/.some-local-dir",
-		"/dir/.some-local-dir/.toolset.json",
-		"/dir/.some-local-dir/.toolset.lock.json",
+		"/project",
+		"/project/.some-local-dir",
+		"/project/.some-local-dir/.toolset.json",
+		"/project/.some-local-dir/.toolset.lock.json",
 	}, tree)
 
-	wd, err := workdir.New(ctx, fs, dir)
+	wd, err := workdir.New(ctx, fs, dir+"/sub-dir/example")
 	require.NoError(t, err)
 	require.NotEmpty(t, wd)
+
+	{
+		tree, err := fs.GetTree("/")
+		require.NoError(t, err)
+		require.Equal(t, []string{
+			"/",
+			"/cache",
+			"/cache/stats.json",
+			"/project",
+			"/project/.some-local-dir",
+			"/project/.some-local-dir/.toolset.json",
+			"/project/.some-local-dir/.toolset.lock.json",
+		}, tree)
+	}
 }
