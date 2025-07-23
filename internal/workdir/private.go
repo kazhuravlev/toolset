@@ -2,8 +2,8 @@ package workdir
 
 import (
 	"fmt"
+	"github.com/kazhuravlev/toolset/internal/fsh"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -26,15 +26,19 @@ func expandTilde(path string) (string, error) {
 	return path, nil
 }
 
-func getCacheDir() (string, error) {
-	return getDirFromEnv("TOOLSET_CACHE_DIR", defaultCacheDir)
+func getCacheDir(fs fsh.FS) (string, error) {
+	return getDirFromEnv(fs, "TOOLSET_CACHE_DIR", defaultCacheDir)
 }
 
-func getSpecDir() (string, error) {
-	return getDirFromEnv("TOOLSET_SPEC_DIR", defaultSpecDir)
+func getSpecDir() string {
+	if specDirEnv := os.Getenv("TOOLSET_SPEC_DIR"); specDirEnv != "" {
+		return specDirEnv
+	}
+
+	return defaultSpecDir
 }
 
-func getDirFromEnv(envName, defaultDir string) (string, error) {
+func getDirFromEnv(fs fsh.FS, envName, defaultDir string) (string, error) {
 	dir := defaultDir
 	if specDirEnv := os.Getenv(envName); specDirEnv != "" {
 		dir = specDirEnv
@@ -45,7 +49,7 @@ func getDirFromEnv(envName, defaultDir string) (string, error) {
 		return "", fmt.Errorf("expand tilde: %w", err)
 	}
 
-	absResDir, err := filepath.Abs(dir)
+	absResDir, err := fsh.Abs(fs, dir)
 	if err != nil {
 		return "", fmt.Errorf("resolve dir: %w", err)
 	}

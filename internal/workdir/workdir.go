@@ -24,6 +24,7 @@ const (
 	statsFilename = "stats.json"
 
 	defaultCacheDir = "~/.cache/toolset"
+	defaultSpecDir  = "."
 )
 
 const (
@@ -46,26 +47,28 @@ type Workdir struct {
 }
 
 func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
-	cacheDir, err := getCacheDir()
+	cacheDir, err := getCacheDir(fs)
 	if err != nil {
 		return nil, fmt.Errorf("resolve cache dir: %w", err)
 	}
 
+	pathToSpec := filepath.Join(dir, getSpecDir(), specFilename)
 	// Make an abs path to spec.
-	toolsetFilename, err := filepath.Abs(filepath.Join(dir, specFilename))
+	baseDir, err := fsh.Abs(fs, ".")
 	if err != nil {
-		return nil, fmt.Errorf("get abs spec path: %w", err)
+		return nil, fmt.Errorf("get abs curdir: %w", err)
 	}
 
+	var toolsetFilename string
 	// Check that file is exists in current or parent directories.
 	for {
+		toolsetFilename = filepath.Join(baseDir, pathToSpec)
 		if !fsh.IsExists(fs, toolsetFilename) {
-			parentDir := filepath.Dir(filepath.Dir(toolsetFilename))
-			if filepath.Dir(parentDir) == parentDir {
+			baseDir = filepath.Dir(baseDir)
+			if filepath.Dir(baseDir) == baseDir {
 				return nil, errors.New("unable to find spec in fs tree")
 			}
 
-			toolsetFilename = filepath.Join(parentDir, specFilename)
 			continue
 		}
 
@@ -123,12 +126,12 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 
 // Init will initialize context in specified directory.
 func Init(fs fsh.FS, dir string) error {
-	dir, err := filepath.Abs(dir)
+	dir, err := fsh.Abs(fs, dir)
 	if err != nil {
 		return fmt.Errorf("get abs path: %w", err)
 	}
 
-	cacheDir, err := getCacheDir()
+	cacheDir, err := getCacheDir(fs)
 	if err != nil {
 		return fmt.Errorf("resolve cache dir: %w", err)
 	}
