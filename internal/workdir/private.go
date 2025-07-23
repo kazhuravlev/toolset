@@ -27,20 +27,28 @@ func expandTilde(path string) (string, error) {
 }
 
 func getCacheDir() (string, error) {
-	cacheDir := defaultCacheDir
-	if cacheDirEnv := os.Getenv("TOOLSET_CACHE_DIR"); cacheDirEnv != "" {
-		cacheDir = cacheDirEnv
+	return getDirFromEnv("TOOLSET_CACHE_DIR", defaultCacheDir)
+}
+
+func getSpecDir() (string, error) {
+	return getDirFromEnv("TOOLSET_SPEC_DIR", defaultSpecDir)
+}
+
+func getDirFromEnv(envName, defaultDir string) (string, error) {
+	dir := defaultDir
+	if specDirEnv := os.Getenv(envName); specDirEnv != "" {
+		dir = specDirEnv
 	}
 
-	cacheDir, err := expandTilde(cacheDir)
+	dir, err := expandTilde(dir)
 	if err != nil {
 		return "", fmt.Errorf("expand tilde: %w", err)
 	}
 
-	cacheDirAbs, err := filepath.Abs(cacheDir)
+	absResDir, err := filepath.Abs(dir)
 	if err != nil {
-		return "", fmt.Errorf("resolve cache dir: %w", err)
+		return "", fmt.Errorf("resolve dir: %w", err)
 	}
 
-	return cacheDirAbs, nil
+	return absResDir, nil
 }
