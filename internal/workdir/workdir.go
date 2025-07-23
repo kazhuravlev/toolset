@@ -533,7 +533,7 @@ func (c *Workdir) GetSystemInfo() (*SystemInfo, error) {
 	return &SystemInfo{
 		Locations: *c.locations,
 		Envs: [][2]string{
-			{EnvCacheDir, os.Getenv(EnvSpecDir)},
+			{EnvCacheDir, os.Getenv(EnvCacheDir)},
 			{EnvSpecDir, os.Getenv(EnvSpecDir)},
 		},
 		Storage: Storage{
