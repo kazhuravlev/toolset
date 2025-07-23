@@ -1,8 +1,9 @@
 package fsh
 
 import (
-	"github.com/spf13/afero"
 	"path/filepath"
+
+	"github.com/spf13/afero"
 )
 
 type FS interface {
