@@ -56,6 +56,11 @@ type Locations struct {
 }
 
 func getLocations(fs fsh.FS, currentDir string, discovery bool) (*Locations, error) {
+	currentDir, err := fsh.Abs(fs, currentDir)
+	if err != nil {
+		return nil, fmt.Errorf("absolute current dir: %w", err)
+	}
+
 	cacheDir, err := getCacheDir(fs)
 	if err != nil {
 		return nil, fmt.Errorf("resolve cache dir: %w", err)
