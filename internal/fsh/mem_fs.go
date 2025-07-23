@@ -26,6 +26,10 @@ func (m *MemFS) GetCurrentDir() string {
 	return "/"
 }
 
+func (m *MemFS) GetHomeDir() (string, error) {
+	return "/home-dir", nil
+}
+
 func (m *MemFS) SymlinkIfPossible(oldname, newname string) error {
 	return nil
 }

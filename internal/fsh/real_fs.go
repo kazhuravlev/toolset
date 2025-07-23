@@ -1,6 +1,7 @@
 package fsh
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -51,6 +52,15 @@ func (r *RealFs) GetCurrentDir() string {
 	}
 
 	return dir
+}
+
+func (r *RealFs) GetHomeDir() (string, error) {
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("get home dir: %w", err)
+	}
+
+	return dir, nil
 }
 
 func (r *RealFs) Name() string {

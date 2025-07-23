@@ -6,4 +6,5 @@ type FS interface {
 	afero.Fs
 	afero.Linker
 	GetCurrentDir() string
+	GetHomeDir() (string, error)
 }
