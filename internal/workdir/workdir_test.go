@@ -24,12 +24,17 @@ func TestInit(t *testing.T) {
 	fs := fsh.NewMemFS(nil)
 	require.NoError(t, workdir.Init(fs, dir))
 
-	tree, err := fs.GetTree(dir)
+	tree, err := fs.GetTree("/")
 	require.NoError(t, err)
 	require.Equal(t, []string{
+		"/",
 		"/dir",
 		"/dir/.toolset.json",
 		"/dir/.toolset.lock.json",
+		"/home-dir",
+		"/home-dir/.cache",
+		"/home-dir/.cache/toolset",
+		"/home-dir/.cache/toolset/stats.json",
 	}, tree)
 
 	wd, err := workdir.New(ctx, fs, dir)
