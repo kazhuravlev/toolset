@@ -3,6 +3,7 @@ package fsh
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/afero"
 )
@@ -28,6 +29,10 @@ func (m *MemFS) GetCurrentDir() string {
 
 func (m *MemFS) GetHomeDir() (string, error) {
 	return "/home-dir", nil
+}
+
+func (m *MemFS) Walk(root string, fn filepath.WalkFunc) error {
+	return afero.Walk(m.Fs, root, fn)
 }
 
 func (m *MemFS) SymlinkIfPossible(oldname, newname string) error {

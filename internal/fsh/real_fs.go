@@ -3,6 +3,7 @@ package fsh
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/afero"
@@ -61,6 +62,10 @@ func (r *RealFs) GetHomeDir() (string, error) {
 	}
 
 	return dir, nil
+}
+
+func (r *RealFs) Walk(root string, fn filepath.WalkFunc) error {
+	return afero.Walk(r.fs, root, fn)
 }
 
 func (r *RealFs) Name() string {
