@@ -513,3 +513,31 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 
 	return optional.Empty[time.Time]()
 }
+
+type SystemInfo struct {
+	Locations Locations
+	Envs      [][2]string
+	Storage   Storage
+}
+
+type Storage struct {
+	TotalBytes int64
+}
+
+func (c *Workdir) GetSystemInfo() (*SystemInfo, error) {
+	size, err := fsh.DirSize(c.fs, c.locations.CacheDir)
+	if err != nil {
+		return nil, fmt.Errorf("get project root size: %w", err)
+	}
+
+	return &SystemInfo{
+		Locations: *c.locations,
+		Envs: [][2]string{
+			{EnvCacheDir, os.Getenv(EnvSpecDir)},
+			{EnvSpecDir, os.Getenv(EnvSpecDir)},
+		},
+		Storage: Storage{
+			TotalBytes: size,
+		},
+	}, nil
+}

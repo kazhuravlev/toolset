@@ -3,6 +3,7 @@ package fsh
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,4 +98,22 @@ func ExpandTilde(fs FS, path string) (string, error) {
 	}
 
 	return path, nil
+}
+
+func DirSize(fSys FS, path string) (int64, error) {
+	var size int64
+
+	err := fSys.Walk(path, func(path string, d fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !d.IsDir() {
+			size += d.Size()
+		}
+
+		return nil
+	})
+
+	return size, err
 }

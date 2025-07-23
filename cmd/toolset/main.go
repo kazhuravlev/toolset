@@ -149,6 +149,12 @@ At this point tool will not be installed. In order to install added tool please 
 				Args:   true,
 			},
 			{
+				Name:   "info",
+				Usage:  "show information and stats",
+				Action: withWorkdir(cmdInfo),
+				Args:   false,
+			},
+			{
 				Name:  "runtime",
 				Usage: "manage runtimes",
 				Subcommands: []*cli.Command{
@@ -504,4 +510,53 @@ func cmdRemove(c *cli.Context, wd *workdir.Workdir) error {
 	}
 
 	return nil
+}
+
+func cmdInfo(c *cli.Context, wd *workdir.Workdir) error {
+	info, err := wd.GetSystemInfo()
+	if err != nil {
+		return fmt.Errorf("get system info: %w", err)
+	}
+
+	t := table.NewWriter()
+	t.AppendHeader(table.Row{
+		"Property",
+		"Value",
+	})
+
+	rows := []table.Row{
+		{"Version:", version},
+		{"Cache Size:", humanizeBytes(info.Storage.TotalBytes)},
+		{"Cache dir:", info.Locations.CacheDir},
+		{"Toolset File:", info.Locations.ToolsetFile},
+		{"Toolset Lock File:", info.Locations.ToolsetLockFile},
+		{"Cache Dir:", info.Locations.CacheDir},
+		{"Project Root Dir:", info.Locations.ProjectRootDir},
+		{"Current Dir:", info.Locations.CurrentDir},
+		{"Stats File:", info.Locations.StatsFile},
+	}
+
+	for _, env := range info.Envs {
+		rows = append(rows, table.Row{"ENV:" + env[0], env[1]})
+	}
+
+	t.AppendRows(rows)
+
+	res := t.Render()
+	fmt.Println(res)
+
+	return nil
+}
+
+func humanizeBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
