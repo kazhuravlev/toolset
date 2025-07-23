@@ -2,6 +2,7 @@ package workdir_test
 
 import (
 	"context"
+	"os"
 	"runtime"
 	"testing"
 
@@ -24,12 +25,17 @@ func TestInit(t *testing.T) {
 	fs := fsh.NewMemFS(nil)
 	require.NoError(t, workdir.Init(fs, dir))
 
-	tree, err := fs.GetTree(dir)
+	tree, err := fs.GetTree("/")
 	require.NoError(t, err)
 	require.Equal(t, []string{
+		"/",
 		"/dir",
 		"/dir/.toolset.json",
 		"/dir/.toolset.lock.json",
+		"/home-dir",
+		"/home-dir/.cache",
+		"/home-dir/.cache/toolset",
+		"/home-dir/.cache/toolset/stats.json",
 	}, tree)
 
 	wd, err := workdir.New(ctx, fs, dir)
@@ -44,4 +50,36 @@ func TestInit(t *testing.T) {
 	require.Equal(t, []structs.ToolState{}, tools)
 
 	require.ErrorIs(t, wd.RemoveTool(ctx, "unknown-tool"), workdir.ErrToolNotFoundInSpec)
+}
+
+func TestCustomDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skip for Windows")
+	}
+
+	ctx := context.Background()
+	const dir = "/dir"
+
+	fs := fsh.NewMemFS(nil)
+
+	require.NoError(t, os.Setenv(workdir.EnvCacheDir, "/cache"))
+	require.NoError(t, os.Setenv(workdir.EnvSpecDir, ".some-local-dir/"))
+
+	require.NoError(t, workdir.Init(fs, dir))
+
+	tree, err := fs.GetTree("/")
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"/",
+		"/cache",
+		"/cache/stats.json",
+		"/dir",
+		"/dir/.some-local-dir",
+		"/dir/.some-local-dir/.toolset.json",
+		"/dir/.some-local-dir/.toolset.lock.json",
+	}, tree)
+
+	wd, err := workdir.New(ctx, fs, dir)
+	require.NoError(t, err)
+	require.NotEmpty(t, wd)
 }

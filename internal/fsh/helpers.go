@@ -5,20 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/afero"
 )
-
-const DefaultDirPerm = 0o755
-
-type FS interface {
-	afero.Fs
-	afero.Linker
-}
-
-func NewRealFS() FS {
-	return afero.NewOsFs().(*afero.OsFs)
-}
 
 func IsExists(fSys FS, path string) bool {
 	exists, err := afero.Exists(fSys, path)
@@ -27,6 +17,14 @@ func IsExists(fSys FS, path string) bool {
 	}
 
 	return exists
+}
+
+func Abs(fSys FS, path string) (string, error) {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path), nil
+	}
+
+	return filepath.Join(fSys.GetCurrentDir(), path), nil
 }
 
 func ReadJson[T any](fs FS, path string) (*T, error) {
@@ -80,4 +78,23 @@ func ReadOrCreateJson[T any](fs FS, path string, defaultVal T) (*T, error) {
 	}
 
 	return res, nil
+}
+
+func ExpandTilde(fs FS, path string) (string, error) {
+	if strings.HasPrefix(path, "~") {
+		home, err := fs.GetHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("get user hoeme dir: %w", err)
+		}
+
+		if path == "~" {
+			return home, nil
+		}
+
+		if strings.HasPrefix(path, "~/") {
+			return home + path[1:], nil
+		}
+	}
+
+	return path, nil
 }
