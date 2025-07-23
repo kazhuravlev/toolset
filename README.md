@@ -252,3 +252,8 @@ download necessary tools at the next run.
 **How to change directory where tools stored?**
 
 Just export variable like that `export TOOLSET_CACHE_DIR=/tmp/some-directory`.
+
+**How to change directory where `.toolset.json` and `.toolset.lock.json` stored?**
+
+Just export variable like that `export TOOLSET_SPEC_DIR=.some/directory`. Toolset will try to find spec files into this
+dir.
