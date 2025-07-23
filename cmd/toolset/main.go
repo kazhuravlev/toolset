@@ -535,6 +535,10 @@ func cmdInfo(c *cli.Context, wd *workdir.Workdir) error {
 		{"Stats File:", info.Locations.StatsFile},
 	}
 
+	for _, env := range info.Envs {
+		rows = append(rows, table.Row{"ENV:" + env[0], env[1]})
+	}
+
 	t.AppendRows(rows)
 
 	res := t.Render()

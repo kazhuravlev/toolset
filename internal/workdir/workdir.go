@@ -516,10 +516,15 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 
 type SystemInfo struct {
 	Locations Locations
+	Envs      [][2]string
 }
 
 func (c *Workdir) GetSystemInfo() (*SystemInfo, error) {
 	return &SystemInfo{
 		Locations: *c.locations,
+		Envs: [][2]string{
+			{EnvCacheDir, os.Getenv(EnvSpecDir)},
+			{EnvSpecDir, os.Getenv(EnvSpecDir)},
+		},
 	}, nil
 }
