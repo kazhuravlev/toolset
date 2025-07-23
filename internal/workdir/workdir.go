@@ -24,6 +24,7 @@ const (
 	statsFilename = "stats.json"
 
 	defaultCacheDir = "~/.cache/toolset"
+	defaultSpecDir  = "."
 )
 
 const (
@@ -36,46 +37,21 @@ var (
 )
 
 type Workdir struct {
-	cacheDir    string
-	projectRoot string
-	spec        *structs.Spec
-	lock        *structs.Lock
-	stats       *structs.Stats
-	runtimes    *runtimes.Runtimes
-	fs          fsh.FS
+	spec      *structs.Spec
+	lock      *structs.Lock
+	stats     *structs.Stats
+	runtimes  *runtimes.Runtimes
+	fs        fsh.FS
+	locations *Locations
 }
 
 func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
-	cacheDir, err := getCacheDir()
+	locations, err := getLocations(fs, dir, true)
 	if err != nil {
-		return nil, fmt.Errorf("resolve cache dir: %w", err)
+		return nil, fmt.Errorf("get locations: %w", err)
 	}
 
-	// Make an abs path to spec.
-	toolsetFilename, err := filepath.Abs(filepath.Join(dir, specFilename))
-	if err != nil {
-		return nil, fmt.Errorf("get abs spec path: %w", err)
-	}
-
-	// Check that file is exists in current or parent directories.
-	for {
-		if !fsh.IsExists(fs, toolsetFilename) {
-			parentDir := filepath.Dir(filepath.Dir(toolsetFilename))
-			if filepath.Dir(parentDir) == parentDir {
-				return nil, errors.New("unable to find spec in fs tree")
-			}
-
-			toolsetFilename = filepath.Join(parentDir, specFilename)
-			continue
-		}
-
-		break
-	}
-
-	dir = filepath.Dir(toolsetFilename)
-	lockFname := filepath.Join(dir, lockFilename)
-
-	spec, err := fsh.ReadJson[structs.Spec](fs, toolsetFilename)
+	spec, err := fsh.ReadJson[structs.Spec](fs, locations.ToolsetFile)
 	if err != nil {
 		return nil, fmt.Errorf("spec file not found: %w", err)
 	}
@@ -85,13 +61,12 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		spec.Dir = ""
 	}
 
-	lockFile, err := fsh.ReadJson[structs.Lock](fs, lockFname)
+	lockFile, err := fsh.ReadJson[structs.Lock](fs, locations.ToolsetLockFile)
 	if err != nil {
 		return nil, fmt.Errorf("read lock file: %w", err)
 	}
 
-	statsFName := filepath.Join(cacheDir, statsFilename)
-	statsFile, err := fsh.ReadOrCreateJson(fs, statsFName, structs.Stats{
+	statsFile, err := fsh.ReadOrCreateJson(fs, locations.StatsFile, structs.Stats{
 		Version:        StatsVer1,
 		ToolsByWorkdir: make(map[string]map[string]time.Time),
 	})
@@ -99,7 +74,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("read stats: %w", err)
 	}
 
-	rnTimes, err := runtimes.New(fs, cacheDir)
+	rnTimes, err := runtimes.New(fs, locations.CacheDir)
 	if err != nil {
 		return nil, fmt.Errorf("new runtimes: %w", err)
 	}
@@ -109,11 +84,10 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 	}
 
 	return &Workdir{
-		fs:          fs,
-		cacheDir:    cacheDir,
-		projectRoot: dir,
-		spec:        spec,
-		lock:        lockFile,
+		fs:        fs,
+		locations: locations,
+		spec:      spec,
+		lock:      lockFile,
 		// TODO(zhuravlev): prevent simultaneous access to stats file by several programs.
 		// 	Use github.com/gofrs/flock or similar.
 		stats:    statsFile,
@@ -123,25 +97,12 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 
 // Init will initialize context in specified directory.
 func Init(fs fsh.FS, dir string) error {
-	dir, err := filepath.Abs(dir)
+	locations, err := getLocations(fs, dir, false)
 	if err != nil {
-		return fmt.Errorf("get abs path: %w", err)
+		return fmt.Errorf("get locations: %w", err)
 	}
 
-	cacheDir, err := getCacheDir()
-	if err != nil {
-		return fmt.Errorf("resolve cache dir: %w", err)
-	}
-
-	if err := fs.MkdirAll(cacheDir, fsh.DefaultDirPerm); err != nil {
-		return fmt.Errorf("create tools dir: %w", err)
-	}
-
-	targetSpecFile := filepath.Join(dir, specFilename)
-	targetLockFile := filepath.Join(dir, lockFilename)
-	targetStatsFile := filepath.Join(cacheDir, statsFilename)
-
-	switch _, err := fs.Stat(targetSpecFile); {
+	switch _, err := fs.Stat(locations.ToolsetFile); {
 	default:
 		return fmt.Errorf("check target spec file exists: %w", err)
 	case err == nil:
@@ -152,7 +113,7 @@ func Init(fs fsh.FS, dir string) error {
 			Tools:    make(structs.Tools, 0),
 			Includes: make([]structs.Include, 0),
 		}
-		if err := fsh.WriteJson(fs, spec, targetSpecFile); err != nil {
+		if err := fsh.WriteJson(fs, spec, locations.ToolsetFile); err != nil {
 			return fmt.Errorf("write init spec: %w", err)
 		}
 
@@ -160,11 +121,11 @@ func Init(fs fsh.FS, dir string) error {
 			Tools:   make(structs.Tools, 0),
 			Remotes: make([]structs.RemoteSpec, 0),
 		}
-		if err := fsh.WriteJson(fs, lock, targetLockFile); err != nil {
+		if err := fsh.WriteJson(fs, lock, locations.ToolsetLockFile); err != nil {
 			return fmt.Errorf("write init lock: %w", err)
 		}
 
-		_, errStats := fsh.ReadOrCreateJson(fs, targetStatsFile, structs.Stats{
+		_, errStats := fsh.ReadOrCreateJson(fs, locations.StatsFile, structs.Stats{
 			Version:        StatsVer1,
 			ToolsByWorkdir: make(map[string]map[string]time.Time),
 		})
@@ -177,11 +138,11 @@ func Init(fs fsh.FS, dir string) error {
 }
 
 func (c *Workdir) Save() error {
-	if err := fsh.WriteJson(c.fs, *c.spec, c.getSpecFilename()); err != nil {
+	if err := fsh.WriteJson(c.fs, *c.spec, c.locations.ToolsetFile); err != nil {
 		return fmt.Errorf("write spec: %w", err)
 	}
 
-	if err := fsh.WriteJson(c.fs, *c.lock, c.getLockFilename()); err != nil {
+	if err := fsh.WriteJson(c.fs, *c.lock, c.locations.ToolsetLockFile); err != nil {
 		return fmt.Errorf("write lock: %w", err)
 	}
 
@@ -260,7 +221,7 @@ func (c *Workdir) RemoveTool(ctx context.Context, target string) error {
 
 	_ = c.lock.Tools.Remove(ts.Tool)
 	_ = c.spec.Tools.Remove(ts.Tool)
-	delete(c.stats.ToolsByWorkdir[c.projectRoot], ts.Tool.ID())
+	delete(c.stats.ToolsByWorkdir[c.locations.ProjectRootDir], ts.Tool.ID())
 
 	return nil
 }
@@ -308,11 +269,11 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 		return fmt.Errorf("get or install runtime: %w", err)
 	}
 
-	if _, ok := c.stats.ToolsByWorkdir[c.projectRoot]; !ok {
-		c.stats.ToolsByWorkdir[c.projectRoot] = make(map[string]time.Time)
+	if _, ok := c.stats.ToolsByWorkdir[c.locations.ProjectRootDir]; !ok {
+		c.stats.ToolsByWorkdir[c.locations.ProjectRootDir] = make(map[string]time.Time)
 	}
 
-	c.stats.ToolsByWorkdir[c.projectRoot][ts.Tool.ID()] = time.Now()
+	c.stats.ToolsByWorkdir[c.locations.ProjectRootDir][ts.Tool.ID()] = time.Now()
 	if err := c.saveStats(); err != nil {
 		return fmt.Errorf("save stats: %w", err)
 	}
@@ -345,12 +306,6 @@ RunProgram:
 // Sync will read the locked tools and try to install the desired version. It will skip the installation in
 // case when we have a desired version.
 func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error {
-	if toolsDir := c.cacheDir; !fsh.IsExists(c.fs, toolsDir) {
-		if err := c.fs.MkdirAll(toolsDir, fsh.DefaultDirPerm); err != nil {
-			return fmt.Errorf("create target dir (%s): %w", toolsDir, err)
-		}
-	}
-
 	c.lock.FromSpec(c.spec)
 
 	errs := make(chan error, len(c.spec.Tools))
@@ -386,7 +341,7 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 			}
 
 			if alias, ok := tool.Alias.Get(); ok {
-				targetPath := filepath.Join(c.cacheDir, alias)
+				targetPath := filepath.Join(c.locations.CacheDir, alias)
 				if fsh.IsExists(c.fs, targetPath) {
 					if err := c.fs.Remove(targetPath); err != nil {
 						errs <- fmt.Errorf("remove alias (%s): %w", targetPath, err)
@@ -546,11 +501,11 @@ func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*struct
 }
 
 func (c *Workdir) saveStats() error {
-	return fsh.WriteJson(c.fs, *c.stats, filepath.Join(c.cacheDir, statsFilename))
+	return fsh.WriteJson(c.fs, *c.stats, c.locations.StatsFile)
 }
 
 func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
-	if tools, ok := c.stats.ToolsByWorkdir[c.projectRoot]; ok {
+	if tools, ok := c.stats.ToolsByWorkdir[c.locations.ProjectRootDir]; ok {
 		if val, ok := tools[id]; ok {
 			return optional.New(val)
 		}
@@ -559,18 +514,9 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 	return optional.Empty[time.Time]()
 }
 
-func (c *Workdir) getSpecFilename() string {
-	return filepath.Join(c.projectRoot, specFilename)
+type SystemInfo struct {
 }
 
-func (c *Workdir) getLockFilename() string {
-	return filepath.Join(c.projectRoot, lockFilename)
-}
-
-func (c *Workdir) GetCacheDir() string {
-	return c.cacheDir
-}
-
-func (c *Workdir) ProjectRoot() string {
-	return c.projectRoot
+func (c *Workdir) GetSystemInfo() (*SystemInfo, error) {
+	return nil, nil
 }

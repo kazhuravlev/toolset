@@ -13,6 +13,23 @@ type MemFS struct {
 	afero.Fs
 }
 
+func NewMemFS(files map[string]string) *MemFS {
+	fs := afero.NewMemMapFs()
+	for path, content := range files {
+		_ = afero.WriteFile(fs, path, []byte(content), 0o644)
+	}
+
+	return &MemFS{fs}
+}
+
+func (m *MemFS) GetCurrentDir() string {
+	return "/"
+}
+
+func (m *MemFS) GetHomeDir() (string, error) {
+	return "/home-dir", nil
+}
+
 func (m *MemFS) SymlinkIfPossible(oldname, newname string) error {
 	return nil
 }
@@ -28,13 +45,4 @@ func (m *MemFS) GetTree(dir string) ([]string, error) {
 	}
 
 	return res, nil
-}
-
-func NewMemFS(files map[string]string) *MemFS {
-	fs := afero.NewMemMapFs()
-	for path, content := range files {
-		_ = afero.WriteFile(fs, path, []byte(content), 0o644)
-	}
-
-	return &MemFS{fs}
 }

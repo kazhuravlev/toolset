@@ -513,9 +513,13 @@ func cmdRemove(c *cli.Context, wd *workdir.Workdir) error {
 }
 
 func cmdInfo(c *cli.Context, wd *workdir.Workdir) error {
+	info, err := wd.GetSystemInfo()
+	if err != nil {
+		return fmt.Errorf("get system info: %w", err)
+	}
+
 	fmt.Println("version:", version)
-	fmt.Println("cache dir:", wd.GetCacheDir())
-	fmt.Println("project root:", wd.ProjectRoot())
-	
+	fmt.Println("info:", info)
+
 	return nil
 }
