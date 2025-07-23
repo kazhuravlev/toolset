@@ -63,10 +63,10 @@ func main() {
 			{
 				Name:  "add",
 				Usage: "add tool to .toolset.json",
-				Description: `Add tools to local configuration to fix the using version. 
+				Description: `Add tools to local configuration to fix the using version.
 
 	$ toolset add <RUNTIME> <TOOL>
-	$ toolset add go 				github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0 
+	$ toolset add go 				github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
 
 At this point tool will not be installed. In order to install added tool please run
 
@@ -155,7 +155,7 @@ At this point tool will not be installed. In order to install added tool please 
 					{
 						Name:  "add",
 						Usage: "add new",
-						Description: `Install runtime in local project dir. 
+						Description: `Install runtime in local project dir.
 
 $ toolset runtime add go@1.22`,
 						Action: withWorkdir(cmdRuntimeAdd),

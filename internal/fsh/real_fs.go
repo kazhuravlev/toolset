@@ -13,7 +13,7 @@ type RealFs struct {
 	fs *afero.OsFs
 }
 
-func NewRealFs() FS {
+func NewRealFS() FS {
 	return &RealFs{
 		fs: afero.NewOsFs().(*afero.OsFs),
 	}
