@@ -3,9 +3,11 @@ package fsh
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/afero"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/spf13/afero"
 )
 
 func IsExists(fSys FS, path string) bool {
@@ -96,4 +98,3 @@ func ExpandTilde(fs FS, path string) (string, error) {
 
 	return path, nil
 }
-

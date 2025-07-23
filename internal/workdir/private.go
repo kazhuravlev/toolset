@@ -3,9 +3,10 @@ package workdir
 import (
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/toolset/internal/fsh"
 	"os"
 	"path/filepath"
+
+	"github.com/kazhuravlev/toolset/internal/fsh"
 )
 
 const (
