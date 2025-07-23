@@ -3,22 +3,10 @@ package fsh
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/spf13/afero"
 	"os"
 	"path/filepath"
-
-	"github.com/spf13/afero"
 )
-
-const DefaultDirPerm = 0o755
-
-type FS interface {
-	afero.Fs
-	afero.Linker
-}
-
-func NewRealFS() FS {
-	return afero.NewOsFs().(*afero.OsFs)
-}
 
 func IsExists(fSys FS, path string) bool {
 	exists, err := afero.Exists(fSys, path)
@@ -27,6 +15,14 @@ func IsExists(fSys FS, path string) bool {
 	}
 
 	return exists
+}
+
+func Abs(fSys FS, path string) (string, error) {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path), nil
+	}
+
+	return filepath.Join(fSys.GetCurrentDir(), path), nil
 }
 
 func ReadJson[T any](fs FS, path string) (*T, error) {
