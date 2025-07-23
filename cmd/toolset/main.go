@@ -518,8 +518,27 @@ func cmdInfo(c *cli.Context, wd *workdir.Workdir) error {
 		return fmt.Errorf("get system info: %w", err)
 	}
 
-	fmt.Println("version:", version)
-	fmt.Println("info:", info)
+	t := table.NewWriter()
+	t.AppendHeader(table.Row{
+		"Property",
+		"Value",
+	})
+
+	rows := []table.Row{
+		{"Version:", version},
+		{"Cache dir:", info.Locations.CacheDir},
+		{"Toolset File:", info.Locations.ToolsetFile},
+		{"Toolset Lock File:", info.Locations.ToolsetLockFile},
+		{"Cache Dir:", info.Locations.CacheDir},
+		{"Project Root Dir:", info.Locations.ProjectRootDir},
+		{"Current Dir:", info.Locations.CurrentDir},
+		{"Stats File:", info.Locations.StatsFile},
+	}
+
+	t.AppendRows(rows)
+
+	res := t.Render()
+	fmt.Println(res)
 
 	return nil
 }

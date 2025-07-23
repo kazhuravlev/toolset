@@ -515,8 +515,11 @@ func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
 }
 
 type SystemInfo struct {
+	Locations Locations
 }
 
 func (c *Workdir) GetSystemInfo() (*SystemInfo, error) {
-	return nil, nil
+	return &SystemInfo{
+		Locations: *c.locations,
+	}, nil
 }
