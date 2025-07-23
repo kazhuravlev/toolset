@@ -2,9 +2,10 @@ package workdir
 
 import (
 	"fmt"
-	"github.com/kazhuravlev/toolset/internal/fsh"
 	"os"
 	"strings"
+
+	"github.com/kazhuravlev/toolset/internal/fsh"
 )
 
 func expandTilde(path string) (string, error) {
