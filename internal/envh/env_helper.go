@@ -47,6 +47,10 @@ func Unique(envs [][2]string) []string {
 			continue
 		}
 
+		if strings.HasPrefix(key, "GO") {
+			continue
+		}
+
 		saw[key] = struct{}{}
 		out = append(out, fmt.Sprintf("%s=%s", key, val))
 	}
