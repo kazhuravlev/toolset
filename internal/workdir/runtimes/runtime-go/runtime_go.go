@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/kazhuravlev/toolset/internal/envh"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -85,7 +86,7 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 	}
 
 	cmd := exec.CommandContext(ctx, r.goBin, "install", program)
-	cmd.Env = append(os.Environ(), "GOBIN="+mod.BinDir, "GOTOOLCHAIN=local")
+	cmd.Env = envh.Unique([][2]string{{"GOTOOLCHAIN", "local"}, {"GOBIN", mod.BinDir}})
 
 	var stdout bytes.Buffer
 	cmd.Stderr = &stdout
