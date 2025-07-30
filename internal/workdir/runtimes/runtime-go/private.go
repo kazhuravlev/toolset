@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/kazhuravlev/toolset/internal/envh"
 	"io"
 	"net/http"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -65,7 +65,7 @@ func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 	buf := bytes.NewBuffer(nil)
 	{
 		cmd := exec.CommandContext(ctx, goBin, "env", "GOPRIVATE")
-		cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
+		cmd.Env = envh.Unique([][2]string{{"GOTOOLCHAIN", "local"}})
 		cmd.Stdout = buf
 		cmd.Stderr = io.Discard
 		if err := cmd.Run(); err != nil {
@@ -179,7 +179,7 @@ func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo
 
 	{
 		cmd := exec.CommandContext(ctx, goBin, "mod", "init", "sample")
-		cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
+		cmd.Env = envh.Unique([][2]string{{"GOTOOLCHAIN", "local"}})
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -190,7 +190,7 @@ func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo
 
 	{
 		cmd := exec.CommandContext(ctx, goBin, "get", mod.Mod.S())
-		cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
+		cmd.Env = envh.Unique([][2]string{{"GOTOOLCHAIN", "local"}})
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -221,7 +221,7 @@ func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo
 
 func getGoVersion(ctx context.Context, bin string) (string, error) {
 	cmd := exec.CommandContext(ctx, bin, "version")
-	cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
+	cmd.Env = envh.Unique([][2]string{{"GOTOOLCHAIN", "local"}})
 
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
