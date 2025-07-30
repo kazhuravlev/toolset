@@ -43,18 +43,13 @@ func Unique(envs [][2]string) []string {
 
 	for _, kv := range sysEnvs {
 		key, val, _ := strings.Cut(kv, "=")
-		fmt.Println("env", key)
 		if _, ok := saw[key]; ok {
-			fmt.Println("    ", "ignored")
 			continue
 		}
 
 		if strings.HasPrefix(key, "GO") {
-			fmt.Println("    ", "ignored")
 			continue
 		}
-
-		fmt.Println("    ", val)
 
 		saw[key] = struct{}{}
 		out = append(out, fmt.Sprintf("%s=%s", key, val))
