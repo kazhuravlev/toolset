@@ -6,26 +6,6 @@ import (
 	"strings"
 )
 
-func dedupEnv(env []string) []string {
-	out := make([]string, 0, len(env))
-	saw := map[string]int{} // to index in the array
-	for _, kv := range env {
-		eq := strings.Index(kv, "=")
-		if eq < 1 {
-			out = append(out, kv)
-			continue
-		}
-		k := kv[:eq]
-		if dupIdx, isDup := saw[k]; isDup {
-			out[dupIdx] = kv
-		} else {
-			saw[k] = len(out)
-			out = append(out, kv)
-		}
-	}
-	return out
-}
-
 func Unique(envs [][2]string) []string {
 	sysEnvs := os.Environ()
 	out := make([]string, 0, len(envs)+len(sysEnvs))
