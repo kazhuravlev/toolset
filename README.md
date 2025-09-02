@@ -188,7 +188,7 @@ toolset which goimports
 This command returns an abs path to goimports like that:
 
 ```
-/Users/username/.cache/toolset/.goimports___v0.21.0/goimports
+/Users/username/.cache/toolset/go1.23/.goimports___v0.21.0/goimports
 ```
 
 ### Remove installed tool

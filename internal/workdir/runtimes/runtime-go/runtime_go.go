@@ -5,16 +5,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/kazhuravlev/toolset/internal/envh"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/afero"
+
+	"github.com/kazhuravlev/toolset/internal/envh"
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/version"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
-	"github.com/spf13/afero"
 )
 
 const (
@@ -62,7 +63,7 @@ func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.Module
 		return nil, fmt.Errorf("parse module (%s): %w", module, err)
 	}
 
-	programDir := filepath.Join(r.binToolDir, fmt.Sprintf("%s___%s", mod.Program, mod.Mod.Version()))
+	programDir := filepath.Join(r.binToolDir, fmt.Sprintf("go%s/%s___%s", r.goVersion, mod.Program, mod.Mod.Version()))
 	programBinary := filepath.Join(programDir, mod.Program)
 
 	return &structs.ModuleInfo{
@@ -113,6 +114,7 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
 	if err := cmd.Run(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
