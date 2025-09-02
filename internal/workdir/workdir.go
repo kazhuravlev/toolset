@@ -203,6 +203,30 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 	return wasAdded, program, nil
 }
 
+// Ensure will 'upsert' the tool. It removes current version of mentioned tool and install the specific one.
+func (c *Workdir) Ensure(ctx context.Context, runtime, program string, alias optional.Val[string], tags []string) (string, error) {
+	rt, err := c.runtimes.GetInstall(ctx, runtime)
+	if err != nil {
+		return "", fmt.Errorf("get runtime: %w", err)
+	}
+
+	program, err = rt.Parse(ctx, program)
+	if err != nil {
+		return "", fmt.Errorf("parse program: %w", err)
+	}
+
+	tool := structs.Tool{
+		Runtime: runtime,
+		Module:  program,
+		Alias:   alias,
+		Tags:    tags,
+	}
+	c.spec.Tools.UpsertTool(tool)
+	c.lock.FromSpec(c.spec)
+
+	return program, nil
+}
+
 func (c *Workdir) RemoveTool(ctx context.Context, target string) error {
 	ts, err := c.FindTool(target)
 	if err != nil {
