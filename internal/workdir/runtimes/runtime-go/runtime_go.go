@@ -63,7 +63,7 @@ func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.Module
 		return nil, fmt.Errorf("parse module (%s): %w", module, err)
 	}
 
-	programDir := filepath.Join(r.binToolDir, fmt.Sprintf("%s___%s", mod.Program, mod.Mod.Version()))
+	programDir := filepath.Join(r.binToolDir, fmt.Sprintf("go%s/%s___%s", r.goVersion, mod.Program, mod.Mod.Version()))
 	programBinary := filepath.Join(programDir, mod.Program)
 
 	return &structs.ModuleInfo{
@@ -99,27 +99,6 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 	return nil
 }
 
-// setupGolangCILintCache sets up a version-specific cache directory for golangci-lint
-func (r *Runtime) setupGolangCILintCache() []string {
-	// Check if the user has already set GOLANGCI_LINT_CACHE
-	if userCache := os.Getenv("GOLANGCI_LINT_CACHE"); userCache != "" {
-		// User has set a custom cache, append Go version to the end of the path
-		versionedCacheDir := filepath.Join(userCache, "go-"+r.goVersion)
-		return envh.Unique([][2]string{{"GOLANGCI_LINT_CACHE", versionedCacheDir}})
-	}
-
-	// Use default cache directory with Go version
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return envh.Unique([][2]string{})
-	}
-
-	defaultCacheDir := filepath.Join(homeDir, ".cache", "golangci-lint")
-	versionedCacheDir := filepath.Join(defaultCacheDir, "go-"+r.goVersion)
-
-	return envh.Unique([][2]string{{"GOLANGCI_LINT_CACHE", versionedCacheDir}})
-}
-
 func (r *Runtime) Run(ctx context.Context, program string, args ...string) error {
 	mod, err := r.GetModule(ctx, program)
 	if err != nil {
@@ -135,14 +114,6 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
-	// Set up environment variables for golangci-lint cache isolation by Go version
-	env := envh.Unique([][2]string{})
-	if strings.Contains(program, "golangci-lint") {
-		env = r.setupGolangCILintCache()
-	}
-
-	cmd.Env = env
 
 	if err := cmd.Run(); err != nil {
 		var exitErr *exec.ExitError
