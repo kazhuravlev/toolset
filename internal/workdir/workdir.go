@@ -271,7 +271,7 @@ func (c *Workdir) FindTool(name string) (*structs.ToolState, error) {
 		}
 
 		// ...by canonical binary from module
-		if mod.Name != name || mod.Name != mName {
+		if mod.Name == name || mod.Name == mName {
 			lastUse := c.getToolLastUse(tool.ID())
 			res := adaptToolState(tool, mod, lastUse)
 
