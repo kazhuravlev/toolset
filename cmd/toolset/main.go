@@ -448,6 +448,10 @@ func cmdList(c *cli.Context, wd *workdir.Workdir) error {
 		tools = tools2
 	}
 
+	sort.SliceStable(tools, func(i, j int) bool {
+		return tools[i].Tool.ModuleName() < tools[j].Tool.ModuleName()
+	})
+
 	rows := make([]table.Row, 0, len(tools))
 	for _, ts := range tools {
 		lastUse := "---"
