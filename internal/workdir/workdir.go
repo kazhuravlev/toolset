@@ -385,8 +385,20 @@ func (c *Workdir) Sync(ctx context.Context, maxWorkers int, tags []string) error
 }
 
 // Upgrade will upgrade only spec tools. and re-fetch latest versions of includes.
-func (c *Workdir) Upgrade(ctx context.Context, tags []string) error {
-	for _, tool := range c.spec.Tools.Filter(tags) {
+func (c *Workdir) Upgrade(ctx context.Context, filter func(structs.Tool) bool) error {
+	targetTools := make([]structs.Tool, 0, len(c.spec.Tools))
+	for _, tool := range c.spec.Tools {
+		if !filter(tool) {
+			continue
+		}
+		targetTools = append(targetTools, tool)
+	}
+
+	if len(targetTools) == 0 {
+		return fmt.Errorf("no tools to upgrade")
+	}
+
+	for _, tool := range targetTools {
 		fmt.Println("Checking:", tool.Module, "...")
 
 		// FIXME(zhuravlev): remove all "is runtime supported" checks by checking it once at spec load.
