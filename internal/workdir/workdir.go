@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/kazhuravlev/optional"
@@ -227,6 +228,7 @@ func (c *Workdir) RemoveTool(ctx context.Context, target string) error {
 }
 
 func (c *Workdir) FindTool(name string) (*structs.ToolState, error) {
+	mName, _, _ := strings.Cut(name, "@")
 	for _, tool := range c.lock.Tools {
 		mod, err := c.getModuleInfo(context.TODO(), tool)
 		if err != nil {
@@ -234,22 +236,23 @@ func (c *Workdir) FindTool(name string) (*structs.ToolState, error) {
 		}
 
 		// ...by alias
-		if tool.Alias.HasVal() && tool.Alias.Val() == name {
+		if tool.Alias.HasVal() {
+			switch tool.Alias.Val() {
+			case name, mName:
+				lastUse := c.getToolLastUse(tool.ID())
+				res := adaptToolState(tool, mod, lastUse)
+
+				return &res, nil
+			}
+		}
+
+		// ...by canonical binary from module
+		if mod.Name != name || mod.Name != mName {
 			lastUse := c.getToolLastUse(tool.ID())
 			res := adaptToolState(tool, mod, lastUse)
 
 			return &res, nil
 		}
-
-		// ...by canonical binary from module
-		if mod.Name != name {
-			continue
-		}
-
-		lastUse := c.getToolLastUse(tool.ID())
-		res := adaptToolState(tool, mod, lastUse)
-
-		return &res, nil
 	}
 
 	return nil, fmt.Errorf("tool (%s) not found: %w", name, ErrToolNotFoundInSpec)
