@@ -35,6 +35,10 @@ func (t Tool) ID() string {
 	return fmt.Sprintf("%s:%s", t.Runtime, t.Module)
 }
 
+func (t Tool) ModuleName() string {
+	return strings.Split(t.Module, "@")[0]
+}
+
 // IsSame returns true when it detects that this is the same tools. It does not check tool version.
 func (t Tool) IsSame(tool Tool) bool {
 	if t.Runtime != tool.Runtime {
@@ -43,8 +47,8 @@ func (t Tool) IsSame(tool Tool) bool {
 
 	// FIXME(zhuravlev): make it runtime-agnostic
 
-	m1 := strings.Split(t.Module, "@")[0]
-	m2 := strings.Split(tool.Module, "@")[0]
+	m1 := t.ModuleName()
+	m2 := tool.ModuleName()
 
 	return m1 == m2
 }

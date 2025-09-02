@@ -379,8 +379,34 @@ func cmdUpgrade(c *cli.Context, wd *workdir.Workdir) error {
 
 	maxWorkers := c.Int(keyParallel)
 	tags := c.StringSlice(keyTags)
+	module := c.Args().First()
 
-	if err := wd.Upgrade(c.Context, tags); err != nil {
+	if module != "" && len(tags) != 0 {
+		return fmt.Errorf("can't use both module and tags")
+	}
+
+	filter := func(tool structs.Tool) bool { return true }
+	if module != "" {
+		fmt.Println("upgrade module:", module)
+		filter = func(tool structs.Tool) bool { return tool.ModuleName() == module }
+	}
+
+	if len(tags) != 0 {
+		fmt.Println("upgrade modules by tags:", tags)
+		filter = func(tool structs.Tool) bool {
+			for _, tag := range tool.Tags {
+				for _, tag2 := range tags {
+					if tag == tag2 {
+						return true
+					}
+				}
+			}
+
+			return false
+		}
+	}
+
+	if err := wd.Upgrade(c.Context, filter); err != nil {
 		return fmt.Errorf("upgrade: %w", err)
 	}
 
