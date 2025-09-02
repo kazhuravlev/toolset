@@ -39,13 +39,15 @@ func (t Tool) ModuleName() string {
 	return strings.Split(t.Module, "@")[0]
 }
 
+func (t Tool) RuntimeName() string {
+	return strings.Split(t.Runtime, "@")[0]
+}
+
 // IsSame returns true when it detects that this is the same tools. It does not check tool version.
 func (t Tool) IsSame(tool Tool) bool {
-	if t.Runtime != tool.Runtime {
+	if t.RuntimeName() != tool.RuntimeName() { // go != js
 		return false
 	}
-
-	// FIXME(zhuravlev): make it runtime-agnostic
 
 	m1 := t.ModuleName()
 	m2 := tool.ModuleName()

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -116,6 +117,19 @@ At this point tool will not be installed. In order to install added tool please 
 				Action: withWorkdir(cmdUpgrade),
 				Flags: []cli.Flag{
 					flagParallel,
+					&cli.StringSliceFlag{
+						Name:     keyTags,
+						Usage:    "filter tools by tags",
+						Required: false,
+					},
+				},
+				Args: true,
+			},
+			{
+				Name:   "ensure",
+				Usage:  "ensure concrete version is exists. work like upsert semantic",
+				Action: withWorkdir(cmdEnsureModuleVersion),
+				Flags: []cli.Flag{
 					&cli.StringSliceFlag{
 						Name:     keyTags,
 						Usage:    "filter tools by tags",
@@ -448,6 +462,10 @@ func cmdList(c *cli.Context, wd *workdir.Workdir) error {
 		tools = tools2
 	}
 
+	sort.SliceStable(tools, func(i, j int) bool {
+		return tools[i].Tool.ModuleName() < tools[j].Tool.ModuleName()
+	})
+
 	rows := make([]table.Row, 0, len(tools))
 	for _, ts := range tools {
 		lastUse := "---"
@@ -570,6 +588,37 @@ func cmdInfo(c *cli.Context, wd *workdir.Workdir) error {
 
 	res := t.Render()
 	fmt.Println(res)
+
+	return nil
+}
+
+func cmdEnsureModuleVersion(c *cli.Context, wd *workdir.Workdir) error {
+	ctx := c.Context
+
+	tags := c.StringSlice(keyTags)
+	runtime := c.Args().First()
+	module := c.Args().Get(1)
+
+	if runtime == "" || module == "" {
+		return fmt.Errorf("runtime and module is required")
+	}
+
+	var alias optional.Val[string]
+	if c.Args().Len() == 3 {
+		aliasStr := c.Args().Get(2)
+		alias.Set(aliasStr)
+	}
+
+	mod, err := wd.Ensure(ctx, runtime, module, alias, tags)
+	if err != nil {
+		return fmt.Errorf("ensure module: %w", err)
+	}
+
+	fmt.Println("Module added:", runtime, mod)
+
+	if err := wd.Save(); err != nil {
+		return fmt.Errorf("save workdir: %w", err)
+	}
 
 	return nil
 }
