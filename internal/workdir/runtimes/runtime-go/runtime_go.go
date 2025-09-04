@@ -87,7 +87,7 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 	}
 
 	cmd := exec.CommandContext(ctx, r.goBin, "install", program)
-	cmd.Env = envh.Unique([][2]string{{"GOTOOLCHAIN", "local"}, {"GOBIN", mod.BinDir}})
+	cmd.Env = envh.GetAllOverride([][2]string{{"GOTOOLCHAIN", "local"}, {"GOBIN", mod.BinDir}})
 
 	var stdout bytes.Buffer
 	cmd.Stderr = &stdout
