@@ -1,17 +1,20 @@
 package fsh
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/spf13/afero"
 )
 
-var _ afero.Linker = (*MemFS)(nil)
+var _ FS = (*MemFS)(nil)
 
 type MemFS struct {
 	afero.Fs
+	lockMu *sync.Mutex
 }
 
 func NewMemFS(files map[string]string) *MemFS {
@@ -20,7 +23,10 @@ func NewMemFS(files map[string]string) *MemFS {
 		_ = afero.WriteFile(fs, path, []byte(content), 0o644)
 	}
 
-	return &MemFS{fs}
+	return &MemFS{
+		Fs:     fs,
+		lockMu: new(sync.Mutex),
+	}
 }
 
 func (m *MemFS) GetCurrentDir() string {
@@ -50,4 +56,14 @@ func (m *MemFS) GetTree(dir string) ([]string, error) {
 	}
 
 	return res, nil
+}
+
+func (m *MemFS) RLock(_ context.Context, _ string) (func(), error) {
+	m.lockMu.Lock()
+	return m.lockMu.Unlock, nil
+}
+
+func (m *MemFS) Lock(_ context.Context, _ string) (func(), error) {
+	m.lockMu.Lock()
+	return m.lockMu.Unlock, nil
 }

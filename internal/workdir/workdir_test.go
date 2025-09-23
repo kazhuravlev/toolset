@@ -23,7 +23,7 @@ func TestInit(t *testing.T) {
 	const dir = "/dir"
 
 	fs := fsh.NewMemFS(nil)
-	require.NoError(t, workdir.Init(fs, dir))
+	require.NoError(t, workdir.Init(ctx, fs, dir))
 
 	tree, err := fs.GetTree("/")
 	require.NoError(t, err)
@@ -42,7 +42,7 @@ func TestInit(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, wd)
 
-	require.NoError(t, wd.Save())
+	require.NoError(t, wd.Save(ctx))
 	require.Equal(t, []string{"go"}, wd.RuntimeList())
 
 	tools, err := wd.GetTools(ctx)
@@ -65,7 +65,7 @@ func TestCustomDir(t *testing.T) {
 	require.NoError(t, os.Setenv(workdir.EnvCacheDir, "/cache"))
 	require.NoError(t, os.Setenv(workdir.EnvSpecDir, ".some-local-dir/"))
 
-	require.NoError(t, workdir.Init(fs, dir))
+	require.NoError(t, workdir.Init(ctx, fs, dir))
 
 	tree, err := fs.GetTree("/")
 	require.NoError(t, err)

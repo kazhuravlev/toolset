@@ -198,6 +198,8 @@ $ toolset runtime add go@1.22`,
 }
 
 func cmdInit(c *cli.Context) error {
+	ctx := c.Context
+
 	fs := fsh.NewRealFS()
 
 	targetDir := c.Args().First()
@@ -205,24 +207,24 @@ func cmdInit(c *cli.Context) error {
 		targetDir = "."
 	}
 
-	if err := workdir.Init(fs, targetDir); err != nil {
+	if err := workdir.Init(ctx, fs, targetDir); err != nil {
 		return fmt.Errorf("init workdir: %w", err)
 	}
 
 	fmt.Println("Spec created")
 
 	if val := c.String(keyCopyFrom); val != "" {
-		wd, err := workdir.New(c.Context, fs, targetDir)
+		wd, err := workdir.New(ctx, fs, targetDir)
 		if err != nil {
 			return fmt.Errorf("new workdir: %w", err)
 		}
 
-		count, err := wd.CopySource(c.Context, val, nil)
+		count, err := wd.CopySource(ctx, val, nil)
 		if err != nil {
 			return fmt.Errorf("copy: %w", err)
 		}
 
-		if err := wd.Save(); err != nil {
+		if err := wd.Save(ctx); err != nil {
 			return fmt.Errorf("save workdir: %w", err)
 		}
 
@@ -246,15 +248,17 @@ func withWorkdir(fn func(c *cli.Context, wd *workdir.Workdir) error) func(c *cli
 }
 
 func cmdAdd(c *cli.Context, wd *workdir.Workdir) error {
+	ctx := c.Context
+
 	tags := c.StringSlice(keyTags)
 
 	if val := c.String(keyCopyFrom); val != "" {
-		count, err := wd.CopySource(c.Context, val, tags)
+		count, err := wd.CopySource(ctx, val, tags)
 		if err != nil {
 			return fmt.Errorf("copy: %w", err)
 		}
 
-		if err := wd.Save(); err != nil {
+		if err := wd.Save(ctx); err != nil {
 			return fmt.Errorf("save workdir: %w", err)
 		}
 
@@ -264,12 +268,12 @@ func cmdAdd(c *cli.Context, wd *workdir.Workdir) error {
 	}
 
 	if val := c.String(keyInclude); val != "" {
-		count, err := wd.AddInclude(c.Context, val, tags)
+		count, err := wd.AddInclude(ctx, val, tags)
 		if err != nil {
 			return fmt.Errorf("include: %w", err)
 		}
 
-		if err := wd.Save(); err != nil {
+		if err := wd.Save(ctx); err != nil {
 			return fmt.Errorf("save workdir: %w", err)
 		}
 
@@ -287,12 +291,12 @@ func cmdAdd(c *cli.Context, wd *workdir.Workdir) error {
 		alias.Set(aliasStr)
 	}
 
-	wasAdded, mod, err := wd.Add(c.Context, runtime, module, alias, tags)
+	wasAdded, mod, err := wd.Add(ctx, runtime, module, alias, tags)
 	if err != nil {
 		return fmt.Errorf("add module: %w", err)
 	}
 
-	if err := wd.Save(); err != nil {
+	if err := wd.Save(ctx); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
 
@@ -306,20 +310,22 @@ func cmdAdd(c *cli.Context, wd *workdir.Workdir) error {
 }
 
 func cmdRuntimeAdd(c *cli.Context, wd *workdir.Workdir) error {
+	ctx := c.Context
+
 	runtime := c.Args().First()
 
-	if err := wd.RuntimeAdd(c.Context, runtime); err != nil {
+	if err := wd.RuntimeAdd(ctx, runtime); err != nil {
 		return fmt.Errorf("add runtime: %w", err)
 	}
 
-	if err := wd.Save(); err != nil {
+	if err := wd.Save(ctx); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
 
 	return nil
 }
 
-func cmdRuntimeList(c *cli.Context, wd *workdir.Workdir) error {
+func cmdRuntimeList(_ *cli.Context, wd *workdir.Workdir) error {
 	t := table.NewWriter()
 	t.AppendHeader(table.Row{
 		"Runtime",
@@ -341,12 +347,14 @@ func cmdRuntimeList(c *cli.Context, wd *workdir.Workdir) error {
 }
 
 func cmdRun(c *cli.Context, wd *workdir.Workdir) error {
+	ctx := c.Context
+
 	target := c.Args().First()
 	if target == "" {
 		return fmt.Errorf("target is required")
 	}
 
-	if err := wd.RunTool(c.Context, target, c.Args().Tail()...); err != nil {
+	if err := wd.RunTool(ctx, target, c.Args().Tail()...); err != nil {
 		if errors.Is(err, workdir.ErrToolNotFoundInSpec) {
 			fmt.Println("tool not added. Run `toolset add --help` to add this tool")
 			os.Exit(1)
@@ -381,7 +389,7 @@ func cmdSync(c *cli.Context, wd *workdir.Workdir) error {
 		return fmt.Errorf("sync: %w", err)
 	}
 
-	if err := wd.Save(); err != nil {
+	if err := wd.Save(ctx); err != nil {
 		return fmt.Errorf("save: %w", err)
 	}
 
@@ -420,11 +428,11 @@ func cmdUpgrade(c *cli.Context, wd *workdir.Workdir) error {
 		}
 	}
 
-	if err := wd.Upgrade(c.Context, filter); err != nil {
+	if err := wd.Upgrade(ctx, filter); err != nil {
 		return fmt.Errorf("upgrade: %w", err)
 	}
 
-	if err := wd.Save(); err != nil {
+	if err := wd.Save(ctx); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
 
@@ -432,7 +440,7 @@ func cmdUpgrade(c *cli.Context, wd *workdir.Workdir) error {
 		return fmt.Errorf("sync: %w", err)
 	}
 
-	if err := wd.Save(); err != nil {
+	if err := wd.Save(ctx); err != nil {
 		return fmt.Errorf("save context: %w", err)
 	}
 
@@ -538,25 +546,27 @@ func cmdWhich(c *cli.Context, wd *workdir.Workdir) error {
 }
 
 func cmdRemove(c *cli.Context, wd *workdir.Workdir) error {
+	ctx := c.Context
+
 	targets := c.Args().Slice()
 	if len(targets) == 0 {
 		return fmt.Errorf("target is required")
 	}
 
 	for _, target := range targets {
-		if err := wd.RemoveTool(c.Context, target); err != nil {
+		if err := wd.RemoveTool(ctx, target); err != nil {
 			return fmt.Errorf("remove tool (%s): %w", target, err)
 		}
 	}
 
-	if err := wd.Save(); err != nil {
+	if err := wd.Save(ctx); err != nil {
 		return fmt.Errorf("save: %w", err)
 	}
 
 	return nil
 }
 
-func cmdInfo(c *cli.Context, wd *workdir.Workdir) error {
+func cmdInfo(_ *cli.Context, wd *workdir.Workdir) error {
 	info, err := wd.GetSystemInfo()
 	if err != nil {
 		return fmt.Errorf("get system info: %w", err)
@@ -574,7 +584,6 @@ func cmdInfo(c *cli.Context, wd *workdir.Workdir) error {
 		{"Cache dir:", info.Locations.CacheDir},
 		{"Toolset File:", info.Locations.ToolsetFile},
 		{"Toolset Lock File:", info.Locations.ToolsetLockFile},
-		{"Cache Dir:", info.Locations.CacheDir},
 		{"Project Root Dir:", info.Locations.ProjectRootDir},
 		{"Current Dir:", info.Locations.CurrentDir},
 		{"Stats File:", info.Locations.StatsFile},
@@ -616,7 +625,7 @@ func cmdEnsureModuleVersion(c *cli.Context, wd *workdir.Workdir) error {
 
 	fmt.Println("Module added:", runtime, mod)
 
-	if err := wd.Save(); err != nil {
+	if err := wd.Save(ctx); err != nil {
 		return fmt.Errorf("save workdir: %w", err)
 	}
 

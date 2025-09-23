@@ -52,7 +52,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		return nil, fmt.Errorf("get locations: %w", err)
 	}
 
-	spec, err := fsh.ReadJson[structs.Spec](fs, locations.ToolsetFile)
+	spec, err := fsh.ReadJson[structs.Spec](ctx, fs, locations.ToolsetFile)
 	if err != nil {
 		return nil, fmt.Errorf("spec file not found: %w", err)
 	}
@@ -62,12 +62,12 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 		spec.Dir = ""
 	}
 
-	lockFile, err := fsh.ReadJson[structs.Lock](fs, locations.ToolsetLockFile)
+	lockFile, err := fsh.ReadJson[structs.Lock](ctx, fs, locations.ToolsetLockFile)
 	if err != nil {
 		return nil, fmt.Errorf("read lock file: %w", err)
 	}
 
-	statsFile, err := fsh.ReadOrCreateJson(fs, locations.StatsFile, structs.Stats{
+	statsFile, err := fsh.ReadOrCreateJson(ctx, fs, locations.StatsFile, structs.Stats{
 		Version:        StatsVer1,
 		ToolsByWorkdir: make(map[string]map[string]time.Time),
 	})
@@ -97,7 +97,7 @@ func New(ctx context.Context, fs fsh.FS, dir string) (*Workdir, error) {
 }
 
 // Init will initialize context in specified directory.
-func Init(fs fsh.FS, dir string) error {
+func Init(ctx context.Context, fs fsh.FS, dir string) error {
 	locations, err := getLocations(fs, dir, false)
 	if err != nil {
 		return fmt.Errorf("get locations: %w", err)
@@ -114,7 +114,7 @@ func Init(fs fsh.FS, dir string) error {
 			Tools:    make(structs.Tools, 0),
 			Includes: make([]structs.Include, 0),
 		}
-		if err := fsh.WriteJson(fs, spec, locations.ToolsetFile); err != nil {
+		if err := fsh.WriteJson(ctx, fs, spec, locations.ToolsetFile); err != nil {
 			return fmt.Errorf("write init spec: %w", err)
 		}
 
@@ -122,11 +122,11 @@ func Init(fs fsh.FS, dir string) error {
 			Tools:   make(structs.Tools, 0),
 			Remotes: make([]structs.RemoteSpec, 0),
 		}
-		if err := fsh.WriteJson(fs, lock, locations.ToolsetLockFile); err != nil {
+		if err := fsh.WriteJson(ctx, fs, lock, locations.ToolsetLockFile); err != nil {
 			return fmt.Errorf("write init lock: %w", err)
 		}
 
-		_, errStats := fsh.ReadOrCreateJson(fs, locations.StatsFile, structs.Stats{
+		_, errStats := fsh.ReadOrCreateJson(ctx, fs, locations.StatsFile, structs.Stats{
 			Version:        StatsVer1,
 			ToolsByWorkdir: make(map[string]map[string]time.Time),
 		})
@@ -138,16 +138,16 @@ func Init(fs fsh.FS, dir string) error {
 	}
 }
 
-func (c *Workdir) Save() error {
-	if err := fsh.WriteJson(c.fs, *c.spec, c.locations.ToolsetFile); err != nil {
+func (c *Workdir) Save(ctx context.Context) error {
+	if err := fsh.WriteJson(ctx, c.fs, *c.spec, c.locations.ToolsetFile); err != nil {
 		return fmt.Errorf("write spec: %w", err)
 	}
 
-	if err := fsh.WriteJson(c.fs, *c.lock, c.locations.ToolsetLockFile); err != nil {
+	if err := fsh.WriteJson(ctx, c.fs, *c.lock, c.locations.ToolsetLockFile); err != nil {
 		return fmt.Errorf("write lock: %w", err)
 	}
 
-	if err := c.saveStats(); err != nil {
+	if err := c.saveStats(ctx); err != nil {
 		return fmt.Errorf("save stats: %w", err)
 	}
 
@@ -301,7 +301,7 @@ func (c *Workdir) RunTool(ctx context.Context, str string, args ...string) error
 	}
 
 	c.stats.ToolsByWorkdir[c.locations.ProjectRootDir][ts.Tool.ID()] = time.Now()
-	if err := c.saveStats(); err != nil {
+	if err := c.saveStats(ctx); err != nil {
 		return fmt.Errorf("save stats: %w", err)
 	}
 
@@ -539,8 +539,8 @@ func (c *Workdir) getModuleInfo(ctx context.Context, tool structs.Tool) (*struct
 	return mod, nil
 }
 
-func (c *Workdir) saveStats() error {
-	return fsh.WriteJson(c.fs, *c.stats, c.locations.StatsFile)
+func (c *Workdir) saveStats(ctx context.Context) error {
+	return fsh.WriteJson(ctx, c.fs, *c.stats, c.locations.StatsFile)
 }
 
 func (c *Workdir) getToolLastUse(id string) optional.Val[time.Time] {
