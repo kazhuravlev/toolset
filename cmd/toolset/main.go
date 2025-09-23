@@ -584,7 +584,6 @@ func cmdInfo(_ *cli.Context, wd *workdir.Workdir) error {
 		{"Cache dir:", info.Locations.CacheDir},
 		{"Toolset File:", info.Locations.ToolsetFile},
 		{"Toolset Lock File:", info.Locations.ToolsetLockFile},
-		{"Cache Dir:", info.Locations.CacheDir},
 		{"Project Root Dir:", info.Locations.ProjectRootDir},
 		{"Current Dir:", info.Locations.CurrentDir},
 		{"Stats File:", info.Locations.StatsFile},
