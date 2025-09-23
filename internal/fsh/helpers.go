@@ -1,6 +1,7 @@
 package fsh
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -28,7 +29,16 @@ func Abs(fSys FS, path string) (string, error) {
 	return filepath.Join(fSys.GetCurrentDir(), path), nil
 }
 
-func ReadJson[T any](fs FS, path string) (*T, error) {
+func ReadJson[T any](ctx context.Context, fs FS, path string) (*T, error) {
+	{
+		unlock, err := fs.RLock(ctx, path)
+		if err != nil {
+			return nil, fmt.Errorf("rlock file: %w", err)
+		}
+
+		defer unlock()
+	}
+
 	bb, err := afero.ReadFile(fs, path)
 	if err != nil {
 		return nil, fmt.Errorf("read file (%s): %w", path, err)
@@ -42,7 +52,16 @@ func ReadJson[T any](fs FS, path string) (*T, error) {
 	return &res, nil
 }
 
-func WriteJson(fs FS, in any, path string) error {
+func WriteJson(ctx context.Context, fs FS, in any, path string) error {
+	{
+		unlock, err := fs.Lock(ctx, path)
+		if err != nil {
+			return fmt.Errorf("lock file: %w", err)
+		}
+
+		defer unlock()
+	}
+
 	file, err := fs.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
@@ -62,18 +81,18 @@ func WriteJson(fs FS, in any, path string) error {
 	return nil
 }
 
-func ReadOrCreateJson[T any](fs FS, path string, defaultVal T) (*T, error) {
+func ReadOrCreateJson[T any](ctx context.Context, fs FS, path string, defaultVal T) (*T, error) {
 	if !IsExists(fs, path) {
 		if err := fs.MkdirAll(filepath.Dir(path), DefaultDirPerm); err != nil {
 			return nil, fmt.Errorf("mkdir: %w", err)
 		}
 
-		if err := WriteJson(fs, defaultVal, path); err != nil {
+		if err := WriteJson(ctx, fs, defaultVal, path); err != nil {
 			return nil, fmt.Errorf("write json to file: %w", err)
 		}
 	}
 
-	res, err := ReadJson[T](fs, path)
+	res, err := ReadJson[T](ctx, fs, path)
 	if err != nil {
 		return nil, fmt.Errorf("read json: %w", err)
 	}
