@@ -169,6 +169,12 @@ At this point tool will not be installed. In order to install added tool please 
 				Args:   false,
 			},
 			{
+				Name:   "clear-cache",
+				Usage:  "clear all cache dir and stats",
+				Action: withWorkdir(cmdClearCache),
+				Args:   false,
+			},
+			{
 				Name:  "runtime",
 				Usage: "manage runtimes",
 				Subcommands: []*cli.Command{
@@ -597,6 +603,23 @@ func cmdInfo(_ *cli.Context, wd *workdir.Workdir) error {
 
 	res := t.Render()
 	fmt.Println(res)
+
+	return nil
+}
+
+func cmdClearCache(_ *cli.Context, wd *workdir.Workdir) error {
+	info, err := wd.GetSystemInfo()
+	if err != nil {
+		return fmt.Errorf("get system info: %w", err)
+	}
+
+	fmt.Println("Removing cache dir:", info.Locations.CacheDir)
+
+	if err := os.RemoveAll(info.Locations.CacheDir); err != nil {
+		return fmt.Errorf("remove cache dir: %w", err)
+	}
+
+	fmt.Println("Done!")
 
 	return nil
 }
