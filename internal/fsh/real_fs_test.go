@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/stretchr/testify/assert"
@@ -98,5 +99,46 @@ func TestReadOrCreateJson(t *testing.T) {
 		res, err = fsh.ReadOrCreateJson[SampleJson](ctx, fs, "/data.json", SampleJson{Field: "another-default"})
 		require.NoError(t, err)
 		require.Equal(t, SampleJson{Field: "default-value"}, *res)
+	})
+}
+
+func TestLocks(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("auto_create_file_when_not_exists", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("skip for Windows")
+		}
+
+		fs := fsh.NewRealFS()
+
+		const filename = "/tmp/test.lock"
+
+		// Lock file
+		unlock, err := fs.Lock(ctx, filename)
+		require.NoError(t, err)
+
+		ch := make(chan struct{})
+		go func() {
+			// Lock file again. It will stuck.
+			unlock, err := fs.Lock(ctx, filename)
+			require.NoError(t, err)
+
+			close(ch)
+			unlock()
+		}()
+
+		select {
+		case <-ch:
+			t.Fatal("File should be locked")
+		case <-time.After(1 * time.Second):
+		}
+
+		unlock()
+		select {
+		case <-ch:
+		case <-time.After(1 * time.Second):
+			t.Fatal("File should be unlocked")
+		}
 	})
 }
