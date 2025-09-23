@@ -1,15 +1,20 @@
 package fsh
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/gofrs/flock"
 	"github.com/spf13/afero"
 )
 
 const DefaultDirPerm = 0o755
+
+var _ FS = (*RealFs)(nil)
 
 type RealFs struct {
 	fs *afero.OsFs
@@ -98,4 +103,44 @@ func (r *RealFs) Mkdir(name string, perm os.FileMode) error {
 
 func (r *RealFs) Open(name string) (afero.File, error) {
 	return r.fs.Open(name)
+}
+
+func (r *RealFs) RLock(ctx context.Context, filename string) (func(), error) {
+	fileLock := flock.New(filename)
+
+	locked, err := fileLock.TryRLockContext(ctx, time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("try rlock: %w", err)
+	}
+
+	if !locked {
+		return nil, errors.New("acquire rlock on file")
+	}
+
+	return func() {
+		if err := fileLock.Unlock(); err != nil {
+			// TODO(zhuravlev): log errors
+			panic(err)
+		}
+	}, nil
+}
+
+func (r *RealFs) Lock(ctx context.Context, filename string) (func(), error) {
+	fileLock := flock.New(filename)
+
+	locked, err := fileLock.TryLockContext(ctx, time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("try lock: %w", err)
+	}
+
+	if !locked {
+		return nil, errors.New("acquire lock on file")
+	}
+
+	return func() {
+		if err := fileLock.Unlock(); err != nil {
+			// TODO(zhuravlev): log error
+			panic(err)
+		}
+	}, nil
 }

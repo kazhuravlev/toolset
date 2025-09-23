@@ -1,6 +1,7 @@
 package fsh_test
 
 import (
+	"context"
 	"os"
 	"runtime"
 	"testing"
@@ -23,9 +24,11 @@ func TestIsExists(t *testing.T) {
 }
 
 func TestReadJson(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("error_on_file_not_exists", func(t *testing.T) {
 		fs := fsh.NewMemFS(nil)
-		res, err := fsh.ReadJson[SampleJson](fs, "/not/exists/path")
+		res, err := fsh.ReadJson[SampleJson](ctx, fs, "/not/exists/path")
 		require.Error(t, err)
 		require.ErrorIs(t, err, os.ErrNotExist)
 		assert.Nil(t, res)
@@ -36,7 +39,7 @@ func TestReadJson(t *testing.T) {
 			"/data.xml": "<xml></xml>",
 		})
 
-		res, err := fsh.ReadJson[SampleJson](fs, "/data.xml")
+		res, err := fsh.ReadJson[SampleJson](ctx, fs, "/data.xml")
 		require.Error(t, err)
 		require.Nil(t, res)
 	})
@@ -44,31 +47,35 @@ func TestReadJson(t *testing.T) {
 	t.Run("valid_file", func(t *testing.T) {
 		fs := fsh.NewMemFS(nil)
 		input := SampleJson{Field: "value"}
-		require.NoError(t, fsh.WriteJson(fs, input, "/data.json"))
+		require.NoError(t, fsh.WriteJson(ctx, fs, input, "/data.json"))
 
-		res, err := fsh.ReadJson[SampleJson](fs, "/data.json")
+		res, err := fsh.ReadJson[SampleJson](ctx, fs, "/data.json")
 		require.NoError(t, err)
 		require.Equal(t, input, *res)
 	})
 }
 
 func TestWriteJson(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("write_new_file_and_rewrite_it", func(t *testing.T) {
 		fs := fsh.NewMemFS(nil)
 		input := SampleJson{Field: "value"}
-		require.NoError(t, fsh.WriteJson(fs, input, "/data.json"))
-		require.NoError(t, fsh.WriteJson(fs, input, "/data.json"))
-		require.NoError(t, fsh.WriteJson(fs, input, "/data.json"))
+		require.NoError(t, fsh.WriteJson(ctx, fs, input, "/data.json"))
+		require.NoError(t, fsh.WriteJson(ctx, fs, input, "/data.json"))
+		require.NoError(t, fsh.WriteJson(ctx, fs, input, "/data.json"))
 	})
 
 	t.Run("bad_input_structure", func(t *testing.T) {
 		fs := fsh.NewMemFS(nil)
 		input := map[struct{}]int{{}: 1}
-		require.Error(t, fsh.WriteJson(fs, input, "/data.json"))
+		require.Error(t, fsh.WriteJson(ctx, fs, input, "/data.json"))
 	})
 }
 
 func TestReadOrCreateJson(t *testing.T) {
+	ctx := context.Background()
+
 	t.Run("auto_create_file_when_not_exists", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			t.Skip("skip for Windows")
@@ -80,7 +87,7 @@ func TestReadOrCreateJson(t *testing.T) {
 		require.False(t, fsh.IsExists(fs, "/data.json"))
 
 		// 2. auto-create file with default content
-		res, err := fsh.ReadOrCreateJson[SampleJson](fs, "/data.json", SampleJson{Field: "default-value"})
+		res, err := fsh.ReadOrCreateJson[SampleJson](ctx, fs, "/data.json", SampleJson{Field: "default-value"})
 		require.NoError(t, err)
 		require.Equal(t, SampleJson{Field: "default-value"}, *res)
 
@@ -88,7 +95,7 @@ func TestReadOrCreateJson(t *testing.T) {
 		require.True(t, fsh.IsExists(fs, "/data.json"))
 
 		// 4. content is equal to written before
-		res, err = fsh.ReadOrCreateJson[SampleJson](fs, "/data.json", SampleJson{Field: "another-default"})
+		res, err = fsh.ReadOrCreateJson[SampleJson](ctx, fs, "/data.json", SampleJson{Field: "another-default"})
 		require.NoError(t, err)
 		require.Equal(t, SampleJson{Field: "default-value"}, *res)
 	})
