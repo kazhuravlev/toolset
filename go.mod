@@ -1,21 +1,25 @@
 module github.com/kazhuravlev/toolset
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/gofrs/flock v0.12.1
+	github.com/google/go-github/v75 v75.0.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/kazhuravlev/optional v0.5.0
 	github.com/spf13/afero v1.14.0
 	github.com/stretchr/testify v1.10.0
+	github.com/ulikunitz/xz v0.5.15
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/mod v0.26.0
+	golang.org/x/oauth2 v0.32.0
 	golang.org/x/sync v0.16.0
 )
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
