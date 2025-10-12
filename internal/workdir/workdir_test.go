@@ -43,7 +43,7 @@ func TestInit(t *testing.T) {
 	require.NotEmpty(t, wd)
 
 	require.NoError(t, wd.Save(ctx))
-	require.Equal(t, []string{"go"}, wd.RuntimeList())
+	require.Equal(t, []string{"gh", "go"}, wd.RuntimeList())
 
 	tools, err := wd.GetTools(ctx)
 	require.NoError(t, err)
