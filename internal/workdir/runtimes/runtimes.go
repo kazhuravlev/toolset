@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	runtimegh "github.com/kazhuravlev/toolset/internal/workdir/runtimes/runtime-github-release"
 	runtimego "github.com/kazhuravlev/toolset/internal/workdir/runtimes/runtime-go"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -104,8 +105,17 @@ func (r *Runtimes) Discover(ctx context.Context) error {
 		return fmt.Errorf("discovering go runtimes: %w", err)
 	}
 
-	r.impls = make(map[string]IRuntime, len(goRuntimes))
+	ghRuntimes, err := runtimegh.Discover(ctx, r.fs, r.binToolDir)
+	if err != nil {
+		return fmt.Errorf("discovering github runtimes: %w", err)
+	}
+
+	r.impls = make(map[string]IRuntime, len(goRuntimes)+len(ghRuntimes))
 	for _, rt := range goRuntimes {
+		r.impls[rt.Version()] = rt
+	}
+
+	for _, rt := range ghRuntimes {
 		r.impls[rt.Version()] = rt
 	}
 
