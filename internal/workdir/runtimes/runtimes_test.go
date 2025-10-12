@@ -32,7 +32,7 @@ func TestRuntimes(t *testing.T) {
 	require.Empty(t, res)
 
 	require.NoError(t, rt.Discover(ctx))
-	require.Equal(t, []string{"go"}, rt.List())
+	require.Equal(t, []string{"gh", "go"}, rt.List())
 
 	res, err = rt.Get("go")
 	require.NoError(t, err)
@@ -46,5 +46,5 @@ func TestRuntimes(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, res)
 
-	require.Equal(t, []string{"go", "go@1.22.10"}, rt.List())
+	require.Equal(t, []string{"gh", "go", "go@1.22.10"}, rt.List())
 }
