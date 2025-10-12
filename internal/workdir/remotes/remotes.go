@@ -87,7 +87,7 @@ func FetchRemote(ctx context.Context, fs fsh.FS, source string, tags []string, e
 		if err != nil {
 			return nil, fmt.Errorf("fetch source: %w", err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		bb, err := io.ReadAll(resp.Body)
 		if err != nil {
