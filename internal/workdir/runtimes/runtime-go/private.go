@@ -8,12 +8,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	"github.com/kazhuravlev/toolset/internal/envh"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/prog"
@@ -66,7 +65,7 @@ func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 	buf := bytes.NewBuffer(nil)
 	{
 		cmd := exec.CommandContext(ctx, goBin, "env", "GOPRIVATE")
-		cmd.Env = envh.GetAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
+		cmd.Env = envAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
 		cmd.Stdout = buf
 		cmd.Stderr = io.Discard
 		if err := cmd.Run(); err != nil {
@@ -133,7 +132,7 @@ func fetchModule(ctx context.Context, fs fsh.FS, goBin, link string) (*moduleInf
 		if err != nil {
 			return nil, fmt.Errorf("get go module: %w", err)
 		}
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		if resp.StatusCode != http.StatusOK {
 			if resp.StatusCode == http.StatusNotFound {
@@ -180,7 +179,7 @@ func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo
 
 	{
 		cmd := exec.CommandContext(ctx, goBin, "mod", "init", "sample")
-		cmd.Env = envh.GetAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
+		cmd.Env = envAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -191,7 +190,7 @@ func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo
 
 	{
 		cmd := exec.CommandContext(ctx, goBin, "get", mod.Mod.S())
-		cmd.Env = envh.GetAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
+		cmd.Env = envAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -222,7 +221,7 @@ func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo
 
 func getGoVersion(ctx context.Context, bin string) (string, error) {
 	cmd := exec.CommandContext(ctx, bin, "version")
-	cmd.Env = envh.GetAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
+	cmd.Env = envAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
 
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
@@ -239,4 +238,78 @@ func getGoVersion(ctx context.Context, bin string) (string, error) {
 	}
 
 	return "", errors.New("could not determine go version")
+}
+
+// envAllOverride will set some envs and return all envs together. Go-specific.
+// This is also will cleanup all envs from host installation except the goprivate and some other important vars.
+//
+// Example variables that not excluded
+// GOEXPERIMENT='rangefunc'
+// GONOPROXY='github.com/example/provate'
+// GONOSUMDB='github.com/example/provate'
+// GOPRIVATE='github.com/example/provate'
+// GOPROXY='https://proxy.golang.org,direct'
+// GOSUMDB='sum.golang.org'
+// GOTELEMETRY='local'
+func envAllOverride(envs [][2]string) []string {
+	excluded := []string{
+		"AR",
+		"CC",
+		"CGO_CFLAGS",
+		"CGO_CPPFLAGS",
+		"CGO_CXXFLAGS",
+		"CGO_ENABLED",
+		"CGO_FFLAGS",
+		"CGO_LDFLAGS",
+		"CXX",
+		"GCCGO",
+		"GO111MODULE",
+		"GOARCH",
+		"GOARM64",
+		"GOAUTH",
+		"GOBIN",
+		"GOCACHE",
+		"GOCACHEPROG",
+		"GODEBUG",
+		"GOENV",
+		"GOEXE",
+		//"GOEXPERIMENT",
+		"GOFIPS140",
+		"GOFLAGS",
+		"GOGCCFLAGS",
+		"GOHOSTARCH",
+		"GOHOSTOS",
+		"GOINSECURE",
+		"GOMOD",
+		"GOMODCACHE",
+		//"GONOPROXY",
+		//"GONOSUMDB",
+		"GOOS",
+		"GOPATH",
+		//"GOPRIVATE",
+		//"GOPROXY",
+		"GOROOT",
+		//"GOSUMDB",
+		//"GOTELEMETRY",
+		"GOTELEMETRYDIR",
+		"GOTMPDIR",
+		"GOTOOLCHAIN",
+		"GOTOOLDIR",
+		"GOVCS",
+		"GOVERSION",
+		"GOWORK",
+		"PKG_CONFIG",
+	}
+
+	for _, env := range excluded {
+		os.Unsetenv(env)
+	}
+
+	for _, pair := range envs {
+		key := pair[0]
+		val := pair[1]
+		os.Setenv(key, val)
+	}
+
+	return os.Environ()
 }

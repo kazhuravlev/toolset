@@ -12,7 +12,6 @@ import (
 
 	"github.com/spf13/afero"
 
-	"github.com/kazhuravlev/toolset/internal/envh"
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/version"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
@@ -87,7 +86,7 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 	}
 
 	cmd := exec.CommandContext(ctx, r.goBin, "install", program)
-	cmd.Env = envh.GetAllOverride([][2]string{{"GOTOOLCHAIN", "local"}, {"GOBIN", mod.BinDir}})
+	cmd.Env = envAllOverride([][2]string{{"GOTOOLCHAIN", "local"}, {"GOBIN", mod.BinDir}})
 
 	var stdout bytes.Buffer
 	cmd.Stderr = &stdout
