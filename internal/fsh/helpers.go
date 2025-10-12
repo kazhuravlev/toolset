@@ -3,6 +3,7 @@ package fsh
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -135,4 +136,48 @@ func DirSize(fSys FS, path string) (int64, error) {
 	})
 
 	return size, err
+}
+
+// FirstDir returns first directory name in given directory.
+func FirstDir(fSys FS, dir string) (string, error) {
+	entries, err := afero.ReadDir(fSys, dir)
+	if err != nil {
+		return "", err
+	}
+
+	for _, e := range entries {
+		if e.IsDir() {
+			return e.Name(), nil
+		}
+	}
+
+	return "", errors.New("no directory found")
+}
+
+// Ext works like filepath.Ext but supports .tar.gz extensions.
+func Ext(filename string) string {
+	base := filepath.Base(filename)
+	base = strings.ToLower(base)
+	last6chars := base[max(len(base)-len(".tar.lzma"), 0):]
+
+	_, ext, ok := strings.Cut(last6chars, ".")
+	if !ok {
+		return ""
+	}
+
+	return "." + ext
+}
+
+// SetExecutable mark file as executable.
+func SetExecutable(fSys FS, path string) error {
+	info, err := fSys.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	mode := info.Mode().Perm()
+
+	// 0o111 == execute for user/group/other
+
+	return fSys.Chmod(path, mode|0o111)
 }
