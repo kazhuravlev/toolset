@@ -19,7 +19,7 @@ func Extract(fs fsh.FS, archivePath, destDir string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	ext := fsh.Ext(archivePath)
 
@@ -66,14 +66,14 @@ func extractZip(fs fsh.FS, f afero.File, dest string) error {
 			return err
 		}
 		// FIXME: ...
-		defer rc.Close()
+		defer rc.Close() //nolint:errcheck
 
 		out, err := fs.Create(target)
 		if err != nil {
 			return err
 		}
 		// FIXME: ...
-		defer out.Close()
+		defer out.Close() //nolint:errcheck
 
 		if _, err := io.Copy(out, rc); err != nil {
 			return err
@@ -117,7 +117,7 @@ func extractTar(fs fsh.FS, f afero.File, dest string, wrap func(io.Reader) (io.R
 				return err
 			}
 			// FIXME: ...
-			defer out.Close()
+			defer out.Close() //nolint:errcheck
 
 			if _, err := io.Copy(out, tr); err != nil {
 				return err

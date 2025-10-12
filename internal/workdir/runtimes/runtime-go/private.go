@@ -302,13 +302,13 @@ func envAllOverride(envs [][2]string) []string {
 	}
 
 	for _, env := range excluded {
-		os.Unsetenv(env)
+		os.Unsetenv(env) //nolint:errcheck
 	}
 
 	for _, pair := range envs {
 		key := pair[0]
 		val := pair[1]
-		os.Setenv(key, val)
+		os.Setenv(key, val) //nolint:errcheck
 	}
 
 	return os.Environ()
