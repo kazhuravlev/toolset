@@ -46,7 +46,7 @@ func autoDiscoverAsset(assets []*github.ReleaseAsset, toolName, version string) 
 	}[runtime.GOARCH]
 
 	if osName == "" || archName == "" {
-		return nil, fmt.Errorf("unsupported (local) platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		return nil, fmt.Errorf("unsupported local platform (%s/%s)", runtime.GOOS, runtime.GOARCH)
 	}
 
 	pattern := fmt.Sprintf(`(?i)^%s[-_]?(v)?%s[-_]?%s[-_]?(%s)(\.tar\.gz|\.zip|\.tgz|\.tar\.xz|\.tar\.bz2)$`,
@@ -75,13 +75,13 @@ func (r *Runtime) downloadAsset(ctx context.Context, owner string, repo string, 
 	if err != nil {
 		return fmt.Errorf("download asset: %w", err)
 	}
-	defer body.Close()
+	defer body.Close() //nolint:errcheck
 
 	target, err := r.fs.OpenFile(targetFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
 	}
-	defer target.Close()
+	defer target.Close() //nolint:errcheck
 
 	if _, err := io.Copy(target, body); err != nil {
 		return fmt.Errorf("copy body to file: %w", err)

@@ -19,7 +19,7 @@ func Extract(fs fsh.FS, archivePath, destDir string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	ext := fsh.Ext(archivePath)
 
@@ -49,35 +49,42 @@ func extractZip(fs fsh.FS, f afero.File, dest string) error {
 	}
 
 	for _, zf := range r.File {
-		target := filepath.Join(dest, zf.Name)
-		if zf.FileInfo().IsDir() {
-			if err := fs.MkdirAll(target, 0755); err != nil {
-				return err
-			}
-			continue
+		if err := extractZipFile(fs, zf, dest); err != nil {
+			return err
 		}
+	}
 
-		if err := fs.MkdirAll(filepath.Dir(target), 0755); err != nil {
+	return nil
+}
+
+func extractZipFile(fs fsh.FS, zf *zip.File, dest string) error {
+	target := filepath.Join(dest, zf.Name)
+	if zf.FileInfo().IsDir() {
+		if err := fs.MkdirAll(target, 0755); err != nil {
 			return err
 		}
 
-		rc, err := zf.Open()
-		if err != nil {
-			return err
-		}
-		// FIXME: ...
-		defer rc.Close()
+		return nil
+	}
 
-		out, err := fs.Create(target)
-		if err != nil {
-			return err
-		}
-		// FIXME: ...
-		defer out.Close()
+	if err := fs.MkdirAll(filepath.Dir(target), 0755); err != nil {
+		return err
+	}
 
-		if _, err := io.Copy(out, rc); err != nil {
-			return err
-		}
+	rc, err := zf.Open()
+	if err != nil {
+		return err
+	}
+	defer rc.Close() //nolint:errcheck
+
+	out, err := fs.Create(target)
+	if err != nil {
+		return err
+	}
+	defer out.Close() //nolint:errcheck
+
+	if _, err := io.Copy(out, rc); err != nil {
+		return err
 	}
 
 	return nil
@@ -96,32 +103,38 @@ func extractTar(fs fsh.FS, f afero.File, dest string, wrap func(io.Reader) (io.R
 		if err == io.EOF {
 			break
 		}
-
 		if err != nil {
 			return err
 		}
 
-		target := filepath.Join(dest, hdr.Name)
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			if err := fs.MkdirAll(target, 0755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			if err := fs.MkdirAll(filepath.Dir(target), 0755); err != nil {
-				return err
-			}
+		if err := extractTarFile(fs, tr, dest, hdr); err != nil {
+			return err
+		}
+	}
 
-			out, err := fs.Create(target)
-			if err != nil {
-				return err
-			}
-			// FIXME: ...
-			defer out.Close()
+	return nil
+}
 
-			if _, err := io.Copy(out, tr); err != nil {
-				return err
-			}
+func extractTarFile(fs fsh.FS, tr *tar.Reader, dest string, hdr *tar.Header) error {
+	target := filepath.Join(dest, hdr.Name)
+	switch hdr.Typeflag {
+	case tar.TypeDir:
+		if err := fs.MkdirAll(target, 0755); err != nil {
+			return err
+		}
+	case tar.TypeReg:
+		if err := fs.MkdirAll(filepath.Dir(target), 0755); err != nil {
+			return err
+		}
+
+		out, err := fs.Create(target)
+		if err != nil {
+			return err
+		}
+		defer out.Close() //nolint:errcheck
+
+		if _, err := io.Copy(out, tr); err != nil {
+			return err
 		}
 	}
 
