@@ -8,19 +8,19 @@
 		},
 		{
 			"runtime": "go@1.24.4",
-			"module": "github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8",
-			"alias": null,
-			"tags": null
-		},
-		{
-			"runtime": "go@1.24.4",
 			"module": "mvdan.cc/gofumpt@v0.9.1",
 			"alias": null,
 			"tags": null
 		},
 		{
 			"runtime": "go@1.24.4",
-			"module": "golang.org/x/tools/cmd/goimports@v0.37.0",
+			"module": "golang.org/x/tools/cmd/goimports@v0.38.0",
+			"alias": null,
+			"tags": null
+		},
+		{
+			"runtime": "gh",
+			"module": "golangci/golangci-lint@v2.5.0",
 			"alias": null,
 			"tags": null
 		}
