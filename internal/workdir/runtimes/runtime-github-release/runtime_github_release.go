@@ -130,7 +130,11 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 		return fmt.Errorf("set executable (%s): %w", binFile, err)
 	}
 
-	if err := r.fs.RemoveAll(tmpDirBase); err != nil {
+	if err := r.fs.RemoveAll(tmpDir); err != nil {
+		return fmt.Errorf("remove tmp dir: %w", err)
+	}
+
+	if err := r.fs.RemoveAll(tmpDirUnarchived); err != nil {
 		return fmt.Errorf("remove tmp dir: %w", err)
 	}
 
