@@ -55,7 +55,7 @@ func New(fs fsh.FS, binToolDir string) (*Runtimes, error) {
 func (r *Runtimes) Get(runtime string) (IRuntime, error) {
 	rt, ok := r.impls[runtime]
 	if !ok {
-		return nil, ErrNotFound
+		return nil, fmt.Errorf("get runtime (%s): %w", runtime, ErrNotFound)
 	}
 
 	return rt, nil
