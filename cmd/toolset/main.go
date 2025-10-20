@@ -128,8 +128,16 @@ When cache is configured, sync automatically downloads from cache and uploads ne
 				},
 			},
 			{
-				Name:   "run",
-				Usage:  "run installed tool by its name",
+				Name:  "run",
+				Usage: "run installed tool by its name",
+				Description: `Execute an installed tool with the specified arguments.
+The tool must be added and synced before running.
+
+	$ toolset run golangci-lint --version
+	$ toolset run gofumpt -l -w .
+	$ toolset run <tool-name> [args...]
+
+If tool is not added, run 'toolset add'. If not installed, run 'toolset sync'.`,
 				Action: withWorkdir(cmdRun),
 				Args:   true,
 			},
