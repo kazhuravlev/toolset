@@ -35,6 +35,7 @@ type IRuntime interface {
 	Run(ctx context.Context, program string, args ...string) error
 	GetLatest(ctx context.Context, module string) (string, bool, error)
 	Remove(ctx context.Context, tool structs.Tool) error
+	Version() string
 }
 
 type Runtimes struct {
