@@ -142,8 +142,17 @@ If tool is not added, run 'toolset add'. If not installed, run 'toolset sync'.`,
 				Args:   true,
 			},
 			{
-				Name:   "upgrade",
-				Usage:  "upgrade deps to the latest versions",
+				Name:  "upgrade",
+				Usage: "upgrade deps to the latest versions",
+				Description: `Upgrade tools to their latest available versions and sync them.
+Updates .toolset.json with new versions and installs them.
+
+	$ toolset upgrade
+	$ toolset upgrade golangci-lint
+	$ toolset upgrade --tags=linters
+	$ toolset upgrade --parallel=8
+
+Upgrades all tools by default. Specify a module name or use --tags to filter.`,
 				Action: withWorkdir(cmdUpgrade),
 				Flags: []cli.Flag{
 					flagParallel,
