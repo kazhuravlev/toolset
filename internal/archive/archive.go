@@ -60,14 +60,14 @@ func extractZip(fs fsh.FS, f afero.File, dest string) error {
 func extractZipFile(fs fsh.FS, zf *zip.File, dest string) error {
 	target := filepath.Join(dest, zf.Name)
 	if zf.FileInfo().IsDir() {
-		if err := fs.MkdirAll(target, 0755); err != nil {
+		if err := fs.MkdirAll(target, 0o755); err != nil {
 			return err
 		}
 
 		return nil
 	}
 
-	if err := fs.MkdirAll(filepath.Dir(target), 0755); err != nil {
+	if err := fs.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
 	}
 
@@ -119,11 +119,11 @@ func extractTarFile(fs fsh.FS, tr *tar.Reader, dest string, hdr *tar.Header) err
 	target := filepath.Join(dest, hdr.Name)
 	switch hdr.Typeflag {
 	case tar.TypeDir:
-		if err := fs.MkdirAll(target, 0755); err != nil {
+		if err := fs.MkdirAll(target, 0o755); err != nil {
 			return err
 		}
 	case tar.TypeReg:
-		if err := fs.MkdirAll(filepath.Dir(target), 0755); err != nil {
+		if err := fs.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
 
