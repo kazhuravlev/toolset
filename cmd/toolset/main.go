@@ -106,8 +106,17 @@ At this point tool will not be installed. In order to install added tool please 
 				Args: true,
 			},
 			{
-				Name:   "sync",
-				Usage:  "install all required tools from toolset file",
+				Name:  "sync",
+				Usage: "install all required tools from toolset file",
+				Description: `Install or update all tools defined in .toolset.json to match the configuration.
+This command downloads, builds, and installs tools that are missing or outdated.
+Updates .toolset.lock.json with installed versions.
+
+	$ toolset sync
+	$ toolset sync --parallel=8
+	$ toolset sync --tags=linters,formatters
+
+When cache is configured, sync automatically downloads from cache and uploads new builds.`,
 				Action: withWorkdir(cmdSync),
 				Flags: []cli.Flag{
 					flagParallel,
