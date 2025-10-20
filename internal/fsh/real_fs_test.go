@@ -112,11 +112,20 @@ func TestLocks(t *testing.T) {
 
 		fs := fsh.NewRealFS()
 
-		const filename = "/tmp/test.lock"
+		// Use a unique temporary file for this test
+		tmpDir := t.TempDir()
+		filename := tmpDir + "/test.lock"
+
+		// Ensure clean state
+		_ = os.Remove(filename)
 
 		// Lock file
 		unlock, err := fs.Lock(ctx, filename)
 		require.NoError(t, err)
+		defer func() {
+			// Cleanup: ensure the lock is released and file is removed
+			_ = os.Remove(filename)
+		}()
 
 		ch := make(chan struct{})
 		go func() {
