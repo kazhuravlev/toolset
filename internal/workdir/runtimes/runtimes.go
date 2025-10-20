@@ -70,26 +70,35 @@ func (r *Runtimes) GetInstall(ctx context.Context, runtime string) (IRuntime, er
 	return r.Get(runtime)
 }
 
-func (r *Runtimes) EnsureInstalled(ctx context.Context, runtime string) error {
-	if _, err := r.Get(runtime); err == nil {
+func (r *Runtimes) EnsureInstalled(ctx context.Context, runtime string) (string, error) {
+	// Check if already installed with the exact runtime string
+	if rt, err := r.Get(runtime); err == nil {
 		// Already installed
-		return nil
+		return rt.Version(), nil
 	}
 
-	if !strings.HasPrefix(runtime, runtimeGo+"@") {
-		return fmt.Errorf("unsupported runtime: %s", runtime)
-	}
+	name, requestedVersion, hasPart := strings.Cut(runtime, "@")
+	switch name {
+	default:
+		return "", fmt.Errorf("unsupported runtime: %s", runtime)
+	case runtimeGo:
+		if !hasPart {
+			return "", fmt.Errorf("runtime (%s) should be specified with version", runtime)
+		}
 
-	ver := strings.TrimPrefix(runtime, runtimeGo+"@")
-	if err := runtimego.Install(ctx, r.fs, r.binToolDir, ver); err != nil {
-		return fmt.Errorf("install tool runtime (%s): %w", runtime, err)
-	}
+		ver, err := runtimego.Install(ctx, r.fs, r.binToolDir, requestedVersion)
+		if err != nil {
+			return "", fmt.Errorf("install tool runtime (%s): %w", runtime, err)
+		}
 
-	if err := r.Discover(ctx); err != nil {
-		return fmt.Errorf("discover tools: %w", err)
-	}
+		if err := r.Discover(ctx); err != nil {
+			return "", fmt.Errorf("discover tools: %w", err)
+		}
 
-	return nil
+		return runtimeGo + "@" + ver, nil
+	case runtimeGithub:
+		return runtimeGithub, nil
+	}
 }
 
 func (r *Runtimes) List() []string {
