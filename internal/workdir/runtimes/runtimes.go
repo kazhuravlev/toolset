@@ -63,7 +63,8 @@ func (r *Runtimes) Get(runtime string) (IRuntime, error) {
 
 // GetInstall will get installed runtime or try to install it in other case.
 func (r *Runtimes) GetInstall(ctx context.Context, runtime string) (IRuntime, error) {
-	if err := r.EnsureInstalled(ctx, runtime); err != nil {
+	runtime, err := r.EnsureInstalled(ctx, runtime)
+	if err != nil {
 		return nil, err
 	}
 
