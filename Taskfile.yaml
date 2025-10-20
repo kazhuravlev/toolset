@@ -59,7 +59,6 @@ tasks:
     dir: temp_tests
     cmds:
       - "rm .toolset.json .toolset.lock.json || true"
-      - "rm -rf ./bin"
       - "{{.TOOLSET}} init --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
 
   test:remove:
@@ -85,11 +84,12 @@ tasks:
     dir: temp_tests
     cmds:
       - "rm .toolset.json .toolset.lock.json || true"
-      - "rm -rf ./bin"
       - "{{.TOOLSET}} init"
       - "{{.TOOLSET}} runtime add go@1.22.10"
       - "{{.TOOLSET}} runtime add go@1.24"
       - "{{.TOOLSET}} runtime add go@1.25"
+      - "{{.TOOLSET}} runtime add go"
+      - "{{.TOOLSET}} runtime add gh"
       - "{{.TOOLSET}} runtime list"
       - "{{.TOOLSET}} ensure go@1.25 golang.org/x/tools/cmd/goimports"
       - "{{.TOOLSET}} sync"
