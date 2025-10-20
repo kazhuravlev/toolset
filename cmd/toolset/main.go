@@ -55,6 +55,15 @@ func main() {
 			{
 				Name:  "init",
 				Usage: "init toolset in specified directory",
+				Description: `Initialize a new toolset configuration in the specified directory.
+Creates .toolset.json and .toolset.lock.json files to start managing tools.
+
+	$ toolset init
+	$ toolset init ./myproject
+
+Optionally copy tools from an existing toolset:
+
+	$ toolset init --copy-from=../other-project/.toolset.json`,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     keyCopyFrom,
