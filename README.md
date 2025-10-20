@@ -16,6 +16,9 @@ reproducible builds.
   your project.
 - **Reproducible Builds**: Ensure consistent results by locking tool versions in your project configuration.
 - **Automatic Updates**: Keep your tools up-to-date with a single command, avoiding manual version checks and upgrades.
+- **Multiple Runtimes**: Support for both Go builds and GitHub releases. Use the `gh` runtime to install pre-built
+  binaries from GitHub releases (like golangci-lint) for significantly faster installation compared to building from
+  source.
 
 ## Use Cases
 
@@ -64,17 +67,21 @@ toolset init --copy-from git+https://gist.github.com/3f16049ce3f9f478e6b917237b2
 
 ### Add Tools
 
+`toolset` supports multiple runtimes for installing tools. Use `go` runtime to build from source, or `gh` runtime to
+download pre-built binaries from GitHub releases (faster for tools like golangci-lint).
+
 #### Direct tools
 
 Explicitly add tool to your configuration. They have an priority on top of includes.
 
 ```shell
-# Add the latest version (automatically resolves to the most recent version)
-toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint
-# ... or with @latest
-toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-# Add a specific version
+# Add using Go runtime (builds from source)
 toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.2
+# Add the latest version (automatically resolves to the most recent version)
+toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+# Add using GitHub releases runtime (downloads pre-built binary - faster!)
+toolset add gh golangci/golangci-lint@v1.61.0
 ```
 
 #### Copy from source
@@ -118,6 +125,35 @@ toolset add --tags linters,ci go github.com/golangci/golangci-lint/cmd/golangci-
 # Add tools to group `ci`
 toolset add --tags ci go github.com/jstemmer/go-junit-report/v2@latest
 toolset add --tags ci go github.com/boumenot/gocover-cobertura
+```
+
+#### Add tools from GitHub Releases (gh runtime)
+
+**Important Feature**: `toolset` supports installing tools directly from GitHub releases using the `gh` runtime. This is
+particularly useful for tools like `golangci-lint` that provide pre-built binaries, making installation much faster than
+building from source.
+
+```shell
+# Install golangci-lint from GitHub releases (much faster than building from source)
+toolset add gh golangci/golangci-lint@v1.61.0
+toolset sync
+
+# Run the tool
+toolset run golangci-lint version
+
+# Upgrade to a newer release
+toolset upgrade golangci-lint
+```
+
+The `gh` runtime downloads pre-compiled binaries from GitHub releases, which is significantly faster than the `go`
+runtime that builds from source. This is especially beneficial for large tools like golangci-lint.
+
+**Authentication**: For private repositories or to avoid rate limits, set `GITHUB_TOKEN` or `TOOLSET_GITHUB_TOKEN`
+environment variable:
+
+```shell
+export GITHUB_TOKEN=ghp_your_token_here
+toolset add gh owner/private-repo@v1.0.0
 ```
 
 #### Use specific golang version
@@ -225,6 +261,54 @@ toolset list
 toolset list --unused
 ```
 
+## Supported Runtimes
+
+`toolset` supports multiple runtime environments for installing tools:
+
+### Go Runtime (`go`)
+
+Builds tools from Go source code. Supports any Go module that can be built with `go install`.
+
+```shell
+toolset add go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+toolset add go golang.org/x/tools/cmd/goimports@latest
+```
+
+**Advantages:**
+
+- Works with any Go module
+- Can use specific Go versions for building
+- Full source code compilation
+
+**Disadvantages:**
+
+- Slower installation (needs to compile from source)
+
+### GitHub Releases Runtime (`gh`)
+
+Downloads pre-built binaries directly from GitHub releases.
+
+```shell
+toolset add gh golangci/golangci-lint@v1.61.0
+toolset add gh owner/repository@v2.5.0
+```
+
+**Advantages:**
+
+- Much faster installation (downloads pre-compiled binaries)
+- No compilation required
+- Perfect for large tools like golangci-lint
+
+**Disadvantages:**
+
+- Only works with projects that publish release binaries
+- Requires consistent release naming conventions
+
+**When to use which:**
+
+- Use `gh` for tools that provide pre-built binaries (faster)
+- Use `go` for tools without releases or when you need specific Go versions
+
 ## Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests to improve toolset.
@@ -257,3 +341,23 @@ Just export variable like that `export TOOLSET_CACHE_DIR=/tmp/some-directory`.
 
 Just export variable like that `export TOOLSET_SPEC_DIR=.some/directory`. Toolset will try to find spec files into this
 dir.
+
+**How do I use GitHub authentication for the gh runtime?**
+
+Set the `GITHUB_TOKEN` or `TOOLSET_GITHUB_TOKEN` environment variable with your GitHub personal access token. This is
+useful for:
+
+- Accessing private repositories
+- Avoiding GitHub API rate limits
+- CI/CD environments
+
+```shell
+export GITHUB_TOKEN=ghp_your_token_here
+toolset add gh owner/private-repo@v1.0.0
+```
+
+**What environment variables does toolset support?**
+
+- `TOOLSET_CACHE_DIR` - Change where tools are stored (default: `~/.cache/toolset`)
+- `TOOLSET_SPEC_DIR` - Change where `.toolset.json` and `.toolset.lock.json` are located
+- `GITHUB_TOKEN` or `TOOLSET_GITHUB_TOKEN` - GitHub authentication for the `gh` runtime
