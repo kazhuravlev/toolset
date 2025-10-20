@@ -231,12 +231,23 @@ func Discover(ctx context.Context, fSys fsh.FS, binToolDir string) ([]*Runtime, 
 	return res, nil
 }
 
-func Install(ctx context.Context, fSys fsh.FS, binToolDir, ver string) error {
+// Install install runtime and return installed version. Installed version can be different in case if requested version is partial like "1.25".
+func Install(ctx context.Context, fSys fsh.FS, binToolDir, ver string) (string, error) {
+	// Resolve partial version to full version
+	{
+		resolvedVer, err := version.ResolvePartialVersion(ctx, ver)
+		if err != nil {
+			return "", fmt.Errorf("resolve version (%s): %w", ver, err)
+		}
+
+		ver = resolvedVer
+	}
+
 	dstDir := filepath.Join(binToolDir, runtimePrefix+ver)
 	if err := version.Install(ctx, dstDir, "go"+ver); err != nil {
 		_ = fSys.RemoveAll(dstDir)
-		return fmt.Errorf("install go (%s): %w", ver, err)
+		return "", fmt.Errorf("install go (%s): %w", ver, err)
 	}
 
-	return nil
+	return ver, nil
 }
