@@ -68,8 +68,10 @@ func runGo(root string) {
 
 	handleSignals()
 
-	if err := cmd.Run(); err != nil {
-		// TODO: return the same exit status maybe.
+	err := cmd.Run()
+	if eerr, ok := err.(*exec.ExitError); ok {
+		os.Exit(eerr.ExitCode())
+	} else if err != nil {
 		os.Exit(1)
 	}
 	os.Exit(0)
@@ -534,5 +536,5 @@ func dedupEnv(caseInsensitive bool, env []string) []string {
 func handleSignals() {
 	// Ensure that signals intended for the child process are not handled by
 	// this process' runtime (e.g. SIGQUIT). See issue #36976.
-	signal.Notify(make(chan os.Signal), signalsToIgnore...) //nolint:staticcheck
+	signal.Notify(make(chan os.Signal), signalsToIgnore...)
 }

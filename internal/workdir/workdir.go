@@ -179,7 +179,7 @@ func (c *Workdir) AddInclude(ctx context.Context, source string, tags []string) 
 }
 
 func (c *Workdir) Add(ctx context.Context, runtime, program string, alias optional.Val[string], tags []string) (bool, string, error) {
-	rt, err := c.runtimes.Get(runtime)
+	rt, err := c.runtimes.GetInstall(ctx, runtime)
 	if err != nil {
 		return false, "", fmt.Errorf("get runtime: %w", err)
 	}
@@ -190,7 +190,7 @@ func (c *Workdir) Add(ctx context.Context, runtime, program string, alias option
 	}
 
 	tool := structs.Tool{
-		Runtime: runtime,
+		Runtime: rt.Version(),
 		Module:  program,
 		Alias:   alias,
 		Tags:    tags,
@@ -216,7 +216,7 @@ func (c *Workdir) Ensure(ctx context.Context, runtime, program string, alias opt
 	}
 
 	tool := structs.Tool{
-		Runtime: runtime,
+		Runtime: rt.Version(),
 		Module:  program,
 		Alias:   alias,
 		Tags:    tags,
@@ -514,7 +514,7 @@ func (c *Workdir) GetTools(ctx context.Context) ([]structs.ToolState, error) {
 }
 
 func (c *Workdir) RuntimeAdd(ctx context.Context, runtime string) error {
-	if err := c.runtimes.EnsureInstalled(ctx, runtime); err != nil {
+	if _, err := c.runtimes.EnsureInstalled(ctx, runtime); err != nil {
 		return fmt.Errorf("install runtime: %w", err)
 	}
 

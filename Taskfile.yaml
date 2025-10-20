@@ -39,6 +39,12 @@ tasks:
     cmds:
       - echo ">> Run tests..."
       - toolset run gotestsum
+      - task: "test:remove"
+      - task: "test:alias"
+      - task: "test:runtimes"
+      - task: "test:ensure"
+      - task: "test:ensure:gh"
+      - task: "test:other"
 
   upd:dl:
     - rm -rf dl
@@ -53,7 +59,6 @@ tasks:
     dir: temp_tests
     cmds:
       - "rm .toolset.json .toolset.lock.json || true"
-      - "rm -rf ./bin"
       - "{{.TOOLSET}} init --copy-from git+https://gist.github.com/c92c40d0e4329c1c2fe9372216474cd7.git:/formatters.json"
 
   test:remove:
@@ -70,23 +75,27 @@ tasks:
     dir: temp_tests
     cmds:
       - task: "init"
-      - "{{.TOOLSET}} add go github.com/vburenin/ifacemaker iface"
+      - "{{.TOOLSET}} add go github.com/vburenin/ifacemaker hello"
       - "{{.TOOLSET}} sync"
       - "{{.TOOLSET}} list"
-      - ls -lsa bin/tools | grep iface
+      - "{{.TOOLSET}} list | grep hello"
 
   test:runtimes:
     dir: temp_tests
     cmds:
       - "rm .toolset.json .toolset.lock.json || true"
-      - "rm -rf ./bin"
       - "{{.TOOLSET}} init"
       - "{{.TOOLSET}} runtime add go@1.22.10"
+      - "{{.TOOLSET}} runtime add go@1.24"
+      - "{{.TOOLSET}} runtime add go@1.25"
+      - "{{.TOOLSET}} runtime add go"
+      - "{{.TOOLSET}} runtime add gh"
       - "{{.TOOLSET}} runtime list"
-      - "{{.TOOLSET}} add go@1.22.10 golang.org/x/tools/cmd/goimports"
+      - "{{.TOOLSET}} ensure go@1.25 golang.org/x/tools/cmd/goimports"
       - "{{.TOOLSET}} sync"
+      - "{{.TOOLSET}} list"
       - "{{.TOOLSET}} remove goimports"
-      - "{{.TOOLSET}} add go golang.org/x/tools/cmd/goimports"
+      - "{{.TOOLSET}} ensure go@1.24 golang.org/x/tools/cmd/goimports"
       - "{{.TOOLSET}} sync"
       - "{{.TOOLSET}} remove goimports"
       - "{{.TOOLSET}} list"
@@ -123,7 +132,7 @@ tasks:
       - "{{.TOOLSET}} list"
       - "{{.TOOLSET}} run golangci-lint version"
 
-  test:
+  test:other:
     dir: temp_tests
     cmds:
       - task: "init"
