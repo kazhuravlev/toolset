@@ -257,6 +257,11 @@ WARNING: This removes all cached binaries. Tools will need to be rebuilt.`,
 			{
 				Name:  "runtime",
 				Usage: "manage runtimes",
+				Description: `Manage runtime environments for executing tools.
+Runtimes are language-specific environments (e.g., Go versions) used to run tools.
+
+	$ toolset runtime add go@1.22
+	$ toolset runtime list`,
 				Subcommands: []*cli.Command{
 					{
 						Name:  "add",
