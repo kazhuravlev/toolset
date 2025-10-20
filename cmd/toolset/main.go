@@ -165,8 +165,16 @@ Upgrades all tools by default. Specify a module name or use --tags to filter.`,
 				Args: true,
 			},
 			{
-				Name:   "ensure",
-				Usage:  "ensure concrete version is exists. work like upsert semantic",
+				Name:  "ensure",
+				Usage: "ensure concrete version is exists. work like upsert semantic",
+				Description: `Ensure a specific tool version exists in the configuration.
+Works like upsert: adds the tool if missing, or updates if present with different version.
+
+	$ toolset ensure go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+	$ toolset ensure go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0 golangci
+	$ toolset ensure go <module@version> [alias] --tags=linters
+
+This does NOT install the tool. Run 'toolset sync' afterward to install.`,
 				Action: withWorkdir(cmdEnsureModuleVersion),
 				Flags: []cli.Flag{
 					&cli.StringSliceFlag{
