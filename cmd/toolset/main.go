@@ -205,8 +205,15 @@ Use --unused flag to find tools that have never been executed (helpful for clean
 				Action: withWorkdir(cmdList),
 			},
 			{
-				Name:   "which",
-				Usage:  "show path to the actual binary",
+				Name:  "which",
+				Usage: "show path to the actual binary",
+				Description: `Display the full filesystem path to the installed tool binary.
+Useful for debugging or integrating with other tools.
+
+	$ toolset which golangci-lint
+	$ toolset which gofumpt goimports
+
+Can query multiple tools at once.`,
 				Action: withWorkdir(cmdWhich),
 				Args:   true,
 			},
