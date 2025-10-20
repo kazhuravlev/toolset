@@ -15,7 +15,10 @@ import (
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
 )
 
-const runtimeGo = "go"
+const (
+	runtimeGo     = "go"
+	runtimeGithub = "gh"
+)
 
 var ErrNotFound = errors.New("not found")
 
