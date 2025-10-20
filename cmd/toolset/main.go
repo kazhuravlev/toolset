@@ -265,10 +265,14 @@ Runtimes are language-specific environments (e.g., Go versions) used to run tool
 				Subcommands: []*cli.Command{
 					{
 						Name:  "add",
-						Usage: "add new",
-						Description: `Install runtime in local project dir.
+						Usage: "add new runtime",
+						Description: `Install a specific runtime version in the local project directory.
+Runtimes are needed to execute tools built for that runtime.
 
-$ toolset runtime add go@1.22`,
+	$ toolset runtime add go@1.22
+	$ toolset runtime add go@1.23.4
+
+Downloads and installs the runtime if not already present.`,
 						Action: withWorkdir(cmdRuntimeAdd),
 						Args:   true,
 					},
