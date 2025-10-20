@@ -42,7 +42,11 @@ func main() {
 		Usage: "Manage local toolsets",
 		Commands: []*cli.Command{
 			{
-				Name: "version",
+				Name:  "version",
+				Usage: "show toolset version",
+				Description: `Display the current version of toolset.
+
+	$ toolset version`,
 				Action: func(c *cli.Context) error {
 					fmt.Println("version:", version)
 					return nil
