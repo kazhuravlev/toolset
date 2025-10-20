@@ -273,8 +273,12 @@ $ toolset runtime add go@1.22`,
 						Args:   true,
 					},
 					{
-						Name:   "list",
-						Usage:  "list all runtimes",
+						Name:  "list",
+						Usage: "list all runtimes",
+						Description: `Display all runtimes currently installed in the project.
+Shows runtime names and versions available for use.
+
+	$ toolset runtime list`,
 						Action: withWorkdir(cmdRuntimeList),
 					},
 				},
