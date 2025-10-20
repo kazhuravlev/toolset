@@ -188,6 +188,13 @@ This does NOT install the tool. Run 'toolset sync' afterward to install.`,
 			{
 				Name:  "list",
 				Usage: "list of project tools and their stats",
+				Description: `Display a table of all tools with runtime, version, installation status, and usage statistics.
+Shows tool metadata including aliases, tags, and last usage time.
+
+	$ toolset list
+	$ toolset list --unused
+
+Use --unused flag to find tools that have never been executed (helpful for cleanup).`,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  keyUnused,
