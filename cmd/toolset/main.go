@@ -42,7 +42,11 @@ func main() {
 		Usage: "Manage local toolsets",
 		Commands: []*cli.Command{
 			{
-				Name: "version",
+				Name:  "version",
+				Usage: "show toolset version",
+				Description: `Display the current version of toolset.
+
+	$ toolset version`,
 				Action: func(c *cli.Context) error {
 					fmt.Println("version:", version)
 					return nil
@@ -51,6 +55,15 @@ func main() {
 			{
 				Name:  "init",
 				Usage: "init toolset in specified directory",
+				Description: `Initialize a new toolset configuration in the specified directory.
+Creates .toolset.json and .toolset.lock.json files to start managing tools.
+
+	$ toolset init
+	$ toolset init ./myproject
+
+Optionally copy tools from an existing toolset:
+
+	$ toolset init --copy-from=../other-project/.toolset.json`,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     keyCopyFrom,
@@ -93,8 +106,17 @@ At this point tool will not be installed. In order to install added tool please 
 				Args: true,
 			},
 			{
-				Name:   "sync",
-				Usage:  "install all required tools from toolset file",
+				Name:  "sync",
+				Usage: "install all required tools from toolset file",
+				Description: `Install or update all tools defined in .toolset.json to match the configuration.
+This command downloads, builds, and installs tools that are missing or outdated.
+Updates .toolset.lock.json with installed versions.
+
+	$ toolset sync
+	$ toolset sync --parallel=8
+	$ toolset sync --tags=linters,formatters
+
+When cache is configured, sync automatically downloads from cache and uploads new builds.`,
 				Action: withWorkdir(cmdSync),
 				Flags: []cli.Flag{
 					flagParallel,
@@ -106,14 +128,31 @@ At this point tool will not be installed. In order to install added tool please 
 				},
 			},
 			{
-				Name:   "run",
-				Usage:  "run installed tool by its name",
+				Name:  "run",
+				Usage: "run installed tool by its name",
+				Description: `Execute an installed tool with the specified arguments.
+The tool must be added and synced before running.
+
+	$ toolset run golangci-lint --version
+	$ toolset run gofumpt -l -w .
+	$ toolset run <tool-name> [args...]
+
+If tool is not added, run 'toolset add'. If not installed, run 'toolset sync'.`,
 				Action: withWorkdir(cmdRun),
 				Args:   true,
 			},
 			{
-				Name:   "upgrade",
-				Usage:  "upgrade deps to the latest versions",
+				Name:  "upgrade",
+				Usage: "upgrade deps to the latest versions",
+				Description: `Upgrade tools to their latest available versions and sync them.
+Updates .toolset.json with new versions and installs them.
+
+	$ toolset upgrade
+	$ toolset upgrade golangci-lint
+	$ toolset upgrade --tags=linters
+	$ toolset upgrade --parallel=8
+
+Upgrades all tools by default. Specify a module name or use --tags to filter.`,
 				Action: withWorkdir(cmdUpgrade),
 				Flags: []cli.Flag{
 					flagParallel,
@@ -126,8 +165,16 @@ At this point tool will not be installed. In order to install added tool please 
 				Args: true,
 			},
 			{
-				Name:   "ensure",
-				Usage:  "ensure concrete version is exists. work like upsert semantic",
+				Name:  "ensure",
+				Usage: "ensure concrete version is exists. work like upsert semantic",
+				Description: `Ensure a specific tool version exists in the configuration.
+Works like upsert: adds the tool if missing, or updates if present with different version.
+
+	$ toolset ensure go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+	$ toolset ensure go github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0 golangci
+	$ toolset ensure go <module@version> [alias] --tags=linters
+
+This does NOT install the tool. Run 'toolset sync' afterward to install.`,
 				Action: withWorkdir(cmdEnsureModuleVersion),
 				Flags: []cli.Flag{
 					&cli.StringSliceFlag{
@@ -141,6 +188,13 @@ At this point tool will not be installed. In order to install added tool please 
 			{
 				Name:  "list",
 				Usage: "list of project tools and their stats",
+				Description: `Display a table of all tools with runtime, version, installation status, and usage statistics.
+Shows tool metadata including aliases, tags, and last usage time.
+
+	$ toolset list
+	$ toolset list --unused
+
+Use --unused flag to find tools that have never been executed (helpful for cleanup).`,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  keyUnused,
@@ -151,45 +205,84 @@ At this point tool will not be installed. In order to install added tool please 
 				Action: withWorkdir(cmdList),
 			},
 			{
-				Name:   "which",
-				Usage:  "show path to the actual binary",
+				Name:  "which",
+				Usage: "show path to the actual binary",
+				Description: `Display the full filesystem path to the installed tool binary.
+Useful for debugging or integrating with other tools.
+
+	$ toolset which golangci-lint
+	$ toolset which gofumpt goimports
+
+Can query multiple tools at once.`,
 				Action: withWorkdir(cmdWhich),
 				Args:   true,
 			},
 			{
-				Name:   "remove",
-				Usage:  "remove tool",
+				Name:  "remove",
+				Usage: "remove tool",
+				Description: `Remove one or more tools from the toolset configuration.
+Removes from .toolset.json but does not delete the installed binary.
+
+	$ toolset remove golangci-lint
+	$ toolset remove gofumpt goimports
+
+Can remove multiple tools in a single command.`,
 				Action: withWorkdir(cmdRemove),
 				Args:   true,
 			},
 			{
-				Name:   "info",
-				Usage:  "show information and stats",
+				Name:  "info",
+				Usage: "show information and stats",
+				Description: `Display system information including toolset version, cache size, and file locations.
+Shows paths to configuration files, cache directory, and environment variables.
+
+	$ toolset info
+
+Useful for debugging and understanding the toolset environment.`,
 				Action: withWorkdir(cmdInfo),
 				Args:   false,
 			},
 			{
-				Name:   "clear-cache",
-				Usage:  "clear all cache dir and stats",
+				Name:  "clear-cache",
+				Usage: "clear all cache dir and stats",
+				Description: `Delete the entire cache directory including all installed tools and statistics.
+This will free up disk space but require re-building tools on next sync.
+
+	$ toolset clear-cache
+
+WARNING: This removes all cached binaries. Tools will need to be rebuilt.`,
 				Action: withWorkdir(cmdClearCache),
 				Args:   false,
 			},
 			{
 				Name:  "runtime",
 				Usage: "manage runtimes",
+				Description: `Manage runtime environments for executing tools.
+Runtimes are language-specific environments (e.g., Go versions) used to run tools.
+
+	$ toolset runtime add go@1.22
+	$ toolset runtime list`,
 				Subcommands: []*cli.Command{
 					{
 						Name:  "add",
-						Usage: "add new",
-						Description: `Install runtime in local project dir.
+						Usage: "add new runtime",
+						Description: `Install a specific runtime version in the local project directory.
+Runtimes are needed to execute tools built for that runtime.
 
-$ toolset runtime add go@1.22`,
+	$ toolset runtime add go@1.22
+	$ toolset runtime add go@1.23.4
+
+Downloads and installs the runtime if not already present.`,
 						Action: withWorkdir(cmdRuntimeAdd),
 						Args:   true,
 					},
 					{
-						Name:   "list",
-						Usage:  "list all runtimes",
+						Name:  "list",
+						Usage: "list all runtimes",
+						Description: `Display all runtimes currently installed in the project.
+Shows runtime names and versions available for use.
+
+	$ toolset runtime list`,
 						Action: withWorkdir(cmdRuntimeList),
 					},
 				},
