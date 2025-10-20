@@ -218,8 +218,15 @@ Can query multiple tools at once.`,
 				Args:   true,
 			},
 			{
-				Name:   "remove",
-				Usage:  "remove tool",
+				Name:  "remove",
+				Usage: "remove tool",
+				Description: `Remove one or more tools from the toolset configuration.
+Removes from .toolset.json but does not delete the installed binary.
+
+	$ toolset remove golangci-lint
+	$ toolset remove gofumpt goimports
+
+Can remove multiple tools in a single command.`,
 				Action: withWorkdir(cmdRemove),
 				Args:   true,
 			},
