@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kazhuravlev/toolset/internal/humanize"
 	"github.com/kazhuravlev/toolset/internal/timeh"
 
 	"github.com/kazhuravlev/optional"
@@ -679,7 +680,7 @@ func cmdInfo(_ *cli.Context, wd *workdir.Workdir) error {
 
 	rows := []table.Row{
 		{"Version:", version},
-		{"Cache Size:", humanizeBytes(info.Storage.TotalBytes)},
+		{"Cache Size:", humanize.Bytes(info.Storage.TotalBytes)},
 		{"Cache dir:", info.Locations.CacheDir},
 		{"Toolset File:", info.Locations.ToolsetFile},
 		{"Toolset Lock File:", info.Locations.ToolsetLockFile},
@@ -746,17 +747,4 @@ func cmdEnsureModuleVersion(c *cli.Context, wd *workdir.Workdir) error {
 	}
 
 	return nil
-}
-
-func humanizeBytes(bytes int64) string {
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
-	}
-	div, exp := int64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
