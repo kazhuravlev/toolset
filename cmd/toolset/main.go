@@ -231,8 +231,14 @@ Can remove multiple tools in a single command.`,
 				Args:   true,
 			},
 			{
-				Name:   "info",
-				Usage:  "show information and stats",
+				Name:  "info",
+				Usage: "show information and stats",
+				Description: `Display system information including toolset version, cache size, and file locations.
+Shows paths to configuration files, cache directory, and environment variables.
+
+	$ toolset info
+
+Useful for debugging and understanding the toolset environment.`,
 				Action: withWorkdir(cmdInfo),
 				Args:   false,
 			},
