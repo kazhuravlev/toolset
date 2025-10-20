@@ -243,8 +243,14 @@ Useful for debugging and understanding the toolset environment.`,
 				Args:   false,
 			},
 			{
-				Name:   "clear-cache",
-				Usage:  "clear all cache dir and stats",
+				Name:  "clear-cache",
+				Usage: "clear all cache dir and stats",
+				Description: `Delete the entire cache directory including all installed tools and statistics.
+This will free up disk space but require re-building tools on next sync.
+
+	$ toolset clear-cache
+
+WARNING: This removes all cached binaries. Tools will need to be rebuilt.`,
 				Action: withWorkdir(cmdClearCache),
 				Args:   false,
 			},
