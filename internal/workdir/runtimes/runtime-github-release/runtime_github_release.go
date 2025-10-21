@@ -170,14 +170,37 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 }
 
 func (r *Runtime) GetLatest(ctx context.Context, moduleReq string) (string, bool, error) {
-	mod, err := r.GetModule(ctx, moduleReq)
+	mod, err := parse(moduleReq)
 	if err != nil {
-		return "", false, fmt.Errorf("get module (%s): %w", moduleReq, err)
+		return "", false, fmt.Errorf("parse module (%s): %w", moduleReq, err)
 	}
 
-	// TODO: implement upgrade through github client. Get release with `latest` mark.
+	owner, repo, ok := strings.Cut(mod.Mod.Name(), "/")
+	if !ok {
+		return "", false, fmt.Errorf("unexpected module name (%s)", mod.Mod.Name())
+	}
 
-	return mod.Mod.S(), false, nil
+	// Get the latest release from GitHub
+	latestRelease, _, err := r.github.Repositories.GetLatestRelease(ctx, owner, repo)
+	if err != nil {
+		return "", false, fmt.Errorf("get latest release: %w", err)
+	}
+
+	latestTag := latestRelease.GetTagName()
+	if latestTag == "" {
+		return "", false, fmt.Errorf("latest release has no tag")
+	}
+
+	// Compare current version with latest version
+	currentVersion := mod.Mod.Version()
+	if currentVersion == latestTag {
+		return moduleReq, false, nil
+	}
+
+	// Build the new module string with latest version
+	latestModule := mod.Mod.Name() + "@" + latestTag
+
+	return latestModule, true, nil
 }
 
 func (r *Runtime) Remove(ctx context.Context, tool structs.Tool) error {
