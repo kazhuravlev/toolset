@@ -14,7 +14,6 @@ import (
 	"github.com/kazhuravlev/toolset/internal/archive"
 	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/workdir/structs"
-	"github.com/spf13/afero"
 	"golang.org/x/oauth2"
 )
 
@@ -144,65 +143,59 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 // It handles multiple cases:
 // 1. Binary is directly in the archive root
 // 2. Binary is in a subdirectory (e.g., toolname-v1.0.0/toolname)
-// 3. Binary might have platform-specific suffixes (e.g., toolname_darwin_amd64)
+// 3. Binary is in common directories like bin/, cmd/
+// 4. Binary might have platform-specific suffixes (e.g., toolname_darwin_amd64)
 func (r *Runtime) findBinary(extractedDir, binaryName string) (string, error) {
-	// First, try to find the binary directly in the root
-	directPath := filepath.Join(extractedDir, binaryName)
-	if fsh.IsExists(r.fs, directPath) {
-		return directPath, nil
+	// List of paths to check, in order of preference
+	pathsToCheck := []string{
+		// 1. Direct in root
+		filepath.Join(extractedDir, binaryName),
 	}
 
-	// Check if there's a subdirectory
+	// 2. Check if there's a subdirectory (common for releases)
 	dirName, err := fsh.FirstDir(r.fs, extractedDir)
 	if err == nil {
-		// Try binary in subdirectory
-		subDirPath := filepath.Join(extractedDir, dirName, binaryName)
-		if fsh.IsExists(r.fs, subDirPath) {
-			return subDirPath, nil
+		pathsToCheck = append(pathsToCheck,
+			// In first subdirectory
+			filepath.Join(extractedDir, dirName, binaryName),
+			// In first subdirectory's bin/ folder
+			filepath.Join(extractedDir, dirName, "bin", binaryName),
+			// In first subdirectory's cmd/ folder
+			filepath.Join(extractedDir, dirName, "cmd", binaryName),
+		)
+	}
+
+	// 3. Also check common directories at root level
+	pathsToCheck = append(pathsToCheck,
+		filepath.Join(extractedDir, "bin", binaryName),
+		filepath.Join(extractedDir, "cmd", binaryName),
+	)
+
+	// Check all paths
+	for _, path := range pathsToCheck {
+		if info, err := r.fs.Stat(path); err == nil && !info.IsDir() {
+			return path, nil
 		}
 	}
 
-	// Look for any executable file that might be the binary
-	entries, err := afero.ReadDir(r.fs, extractedDir)
-	if err != nil {
-		return "", fmt.Errorf("read extracted dir: %w", err)
-	}
-
-	// If there's only one file and it's executable, use it
-	var executableFiles []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			filePath := filepath.Join(extractedDir, entry.Name())
-			info, err := r.fs.Stat(filePath)
-			if err == nil && info.Mode().Perm()&0o111 != 0 {
-				executableFiles = append(executableFiles, filePath)
-			}
+	// 4. If not found by name, search recursively for any file matching the binary name
+	var found string
+	walkErr := r.fs.Walk(extractedDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // Skip errors, continue walking
 		}
-	}
-
-	if len(executableFiles) == 1 {
-		return executableFiles[0], nil
-	}
-
-	// If we have a subdirectory, search in it
-	if dirName != "" {
-		subDirFullPath := filepath.Join(extractedDir, dirName)
-		subEntries, err := afero.ReadDir(r.fs, subDirFullPath)
-		if err == nil {
-			var subExecFiles []string
-			for _, entry := range subEntries {
-				if !entry.IsDir() {
-					filePath := filepath.Join(subDirFullPath, entry.Name())
-					info, err := r.fs.Stat(filePath)
-					if err == nil && info.Mode().Perm()&0o111 != 0 {
-						subExecFiles = append(subExecFiles, filePath)
-					}
-				}
-			}
-			if len(subExecFiles) == 1 {
-				return subExecFiles[0], nil
-			}
+		if info.IsDir() {
+			return nil
 		}
+		if info.Name() == binaryName {
+			found = path
+			return filepath.SkipDir // Stop walking once found
+		}
+		return nil
+	})
+
+	if walkErr == nil && found != "" {
+		return found, nil
 	}
 
 	return "", fmt.Errorf("could not find binary %q in extracted archive", binaryName)

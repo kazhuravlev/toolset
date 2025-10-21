@@ -140,6 +140,14 @@ tasks:
       - "{{.TOOLSET}} ensure gh aquasecurity/trivy@v0.67.2"
       - "{{.TOOLSET}} ensure gh equinix-labs/otel-cli@v0.4.5"
       - "{{.TOOLSET}} sync"
+      - "{{.TOOLSET}} run golangci-lint --help"
+      - "{{.TOOLSET}} run gitleaks --help"
+      - "{{.TOOLSET}} run gotestsum --help"
+      - "{{.TOOLSET}} run gowrap help"
+      - "{{.TOOLSET}} run sqlc --help"
+      - "{{.TOOLSET}} run buf --help"
+      - "{{.TOOLSET}} run trivy --help"
+      - "{{.TOOLSET}} run otel-cli --help"
 
   test:other:
     dir: temp_tests
