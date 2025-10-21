@@ -125,15 +125,21 @@ tasks:
       - "{{.TOOLSET}} init ."
       - "{{.TOOLSET}} ensure gh golangci/golangci-lint@v2.3.0"
       - "{{.TOOLSET}} sync"
-      - "{{.TOOLSET}} list"
       - "{{.TOOLSET}} upgrade golangci-lint"
-      - "{{.TOOLSET}} list"
       - "{{.TOOLSET}} ensure gh golangci/golangci-lint@v2.4.0"
       - "{{.TOOLSET}} sync"
       - "{{.TOOLSET}} ensure gh golangci/golangci-lint@v2.5.0"
       - "{{.TOOLSET}} sync"
       - "{{.TOOLSET}} list"
       - "{{.TOOLSET}} run golangci-lint version"
+      - "{{.TOOLSET}} ensure gh gitleaks/gitleaks@v8.28.0"
+      - "{{.TOOLSET}} ensure gh gotestyourself/gotestsum@v1.13.0"
+      - "{{.TOOLSET}} ensure gh hexdigest/gowrap@v1.4.0"
+      - "{{.TOOLSET}} ensure gh sqlc-dev/sqlc@v1.30.0"
+      - "{{.TOOLSET}} ensure gh bufbuild/buf@v1.59.0"
+      - "{{.TOOLSET}} ensure gh aquasecurity/trivy@v0.67.2"
+      - "{{.TOOLSET}} ensure gh equinix-labs/otel-cli@v0.4.5"
+      - "{{.TOOLSET}} sync"
 
   test:other:
     dir: temp_tests
