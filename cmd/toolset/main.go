@@ -510,7 +510,17 @@ func cmdUpgrade(c *cli.Context, wd *workdir.Workdir) error {
 	filter := func(tool structs.Tool) bool { return true }
 	if module != "" {
 		fmt.Println("upgrade module:", module)
-		filter = func(tool structs.Tool) bool { return tool.ModuleName() == module }
+		filter = func(tool structs.Tool) bool {
+			if alias, ok := tool.Alias.Get(); ok {
+				if alias == module {
+					return true
+				}
+			}
+
+			moduleName := tool.ModuleName()
+
+			return moduleName == module || strings.HasSuffix(moduleName, "/"+module)
+		}
 	}
 
 	if len(tags) != 0 {
