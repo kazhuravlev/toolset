@@ -11,7 +11,7 @@ builds:
     ldflags:
       - -s
       - -w
-      - -X main.version={{.Summary}}
+      - -X github.com/kazhuravlev/toolset/internal/toolversion.version={{.Summary}}
     mod_timestamp: '{{ .CommitTimestamp }}'
     env:
       - CGO_ENABLED=0

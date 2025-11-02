@@ -10,6 +10,7 @@ import (
 
 	"github.com/kazhuravlev/toolset/internal/humanize"
 	"github.com/kazhuravlev/toolset/internal/timeh"
+	"github.com/kazhuravlev/toolset/internal/toolversion"
 
 	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -27,8 +28,6 @@ const (
 	keyTags     = "tags"
 	keyUnused   = "unused"
 )
-
-var version = "unknown-dirty"
 
 var flagParallel = &cli.IntFlag{
 	Name:    keyParallel,
@@ -49,7 +48,7 @@ func main() {
 
 	$ toolset version`,
 				Action: func(c *cli.Context) error {
-					fmt.Println("version:", version)
+					fmt.Println("version:", toolversion.GetVersion())
 					return nil
 				},
 			},
@@ -689,7 +688,7 @@ func cmdInfo(_ *cli.Context, wd *workdir.Workdir) error {
 	})
 
 	rows := []table.Row{
-		{"Version:", version},
+		{"Version:", toolversion.GetVersion()},
 		{"Cache Size:", humanize.Bytes(info.Storage.TotalBytes)},
 		{"Cache dir:", info.Locations.CacheDir},
 		{"Toolset File:", info.Locations.ToolsetFile},
