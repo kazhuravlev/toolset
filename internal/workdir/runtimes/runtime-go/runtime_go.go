@@ -28,15 +28,22 @@ type Runtime struct {
 	isGlobal   bool
 	goVersion  string // ex: 1.23
 	binToolDir string
+	goCacheDir string
 }
 
-func New(fs fsh.FS, binToolDir, goBin, goVer string) *Runtime {
+func New(fs fsh.FS, binToolDir, goBin, goVer string) (*Runtime, error) {
+	goCacheDir := filepath.Join(binToolDir, "go", goVer)
+	if err := fs.MkdirAll(goCacheDir, 0o755); err != nil {
+		return nil, fmt.Errorf("create go cache dir (%s): %w", goCacheDir, err)
+	}
+
 	return &Runtime{
 		fs:         fs,
 		goBin:      goBin,
 		goVersion:  goVer,
 		binToolDir: binToolDir,
-	}
+		goCacheDir: goCacheDir,
+	}, nil
 }
 
 // Parse will parse string to normal version.
@@ -48,7 +55,7 @@ func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
 		return "", errors.New("program name not provided")
 	}
 
-	goModule, err := fetchModule(ctx, r.fs, r.goBin, str)
+	goModule, err := r.fetchModule(ctx, str)
 	if err != nil {
 		return "", fmt.Errorf("get go module version: %w", err)
 	}
@@ -57,7 +64,7 @@ func (r *Runtime) Parse(ctx context.Context, str string) (string, error) {
 }
 
 func (r *Runtime) GetModule(ctx context.Context, module string) (*structs.ModuleInfo, error) {
-	mod, err := parse(ctx, r.goBin, module)
+	mod, err := r.parse(ctx, module)
 	if err != nil {
 		return nil, fmt.Errorf("parse module (%s): %w", module, err)
 	}
@@ -86,7 +93,7 @@ func (r *Runtime) Install(ctx context.Context, program string) error {
 	}
 
 	cmd := exec.CommandContext(ctx, r.goBin, "install", program)
-	cmd.Env = envAllOverride([][2]string{{"GOTOOLCHAIN", "local"}, {"GOBIN", mod.BinDir}})
+	cmd.Env = r.goEnv([2]string{"GOBIN", mod.BinDir})
 
 	var stdout bytes.Buffer
 	cmd.Stderr = &stdout
@@ -127,13 +134,13 @@ func (r *Runtime) Run(ctx context.Context, program string, args ...string) error
 }
 
 func (r *Runtime) GetLatest(ctx context.Context, moduleReq string) (string, bool, error) {
-	mod, err := parse(ctx, r.goBin, moduleReq)
+	mod, err := r.parse(ctx, moduleReq)
 	if err != nil {
 		return "", false, fmt.Errorf("parse module (%s): %w", moduleReq, err)
 	}
 
 	latestStr := mod.Mod.AsLatest().S()
-	latestMod, err := fetchModule(ctx, r.fs, r.goBin, latestStr)
+	latestMod, err := r.fetchModule(ctx, latestStr)
 	if err != nil {
 		return "", false, fmt.Errorf("get go module: %w", err)
 	}
@@ -160,6 +167,15 @@ func (r *Runtime) Remove(ctx context.Context, tool structs.Tool) error {
 	}
 
 	return nil
+}
+
+func (r *Runtime) goEnv(overrides ...[2]string) []string {
+	base := make([][2]string, 0, len(overrides)+2)
+	base = append(base, [2]string{"GOCACHE", r.goCacheDir})
+	base = append(base, [2]string{"GOTOOLCHAIN", "local"})
+	base = append(base, overrides...)
+
+	return envAllOverride(base)
 }
 
 func (r *Runtime) Version() string {
@@ -190,7 +206,10 @@ func Discover(ctx context.Context, fSys fsh.FS, binToolDir string) ([]*Runtime, 
 			return res, fmt.Errorf("get go version: %w", err)
 		}
 
-		rt := New(fSys, binToolDir, lp, ver)
+		rt, err := New(fSys, binToolDir, lp, ver)
+		if err != nil {
+			return res, fmt.Errorf("init go runtime (%s): %w", ver, err)
+		}
 		rt.isGlobal = true
 		res = append(res, rt)
 	}
@@ -224,7 +243,12 @@ func Discover(ctx context.Context, fSys fsh.FS, binToolDir string) ([]*Runtime, 
 				return res, fmt.Errorf("get go version for (%s): %w", goBin, err)
 			}
 
-			res = append(res, New(fSys, binToolDir, goBin, goVer))
+			rt, err := New(fSys, binToolDir, goBin, goVer)
+			if err != nil {
+				return res, fmt.Errorf("init go runtime (%s): %w", goVer, err)
+			}
+
+			res = append(res, rt)
 		}
 	}
 

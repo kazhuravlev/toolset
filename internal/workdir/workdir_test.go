@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -89,6 +90,8 @@ func TestCustomDir(t *testing.T) {
 		require.Equal(t, []string{
 			"/",
 			"/cache",
+			"/cache/go",
+			"/cache/go/" + strings.TrimPrefix(runtime.Version(), "go"), // FIXME: maybe it's not a good way?
 			"/cache/stats.json",
 			"/project",
 			"/project/.some-local-dir",
