@@ -14,7 +14,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/kazhuravlev/toolset/internal/fsh"
 	"github.com/kazhuravlev/toolset/internal/prog"
 	"github.com/spf13/afero"
 	"golang.org/x/mod/modfile"
@@ -31,7 +30,7 @@ type moduleInfo struct {
 }
 
 // parse will parse source string and try to extract all details about mentioned golang program.
-func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
+func (r *Runtime) parse(ctx context.Context, str string) (*moduleInfo, error) {
 	var mod, version, program string
 
 	{
@@ -64,8 +63,8 @@ func parse(ctx context.Context, goBin, str string) (*moduleInfo, error) {
 
 	buf := bytes.NewBuffer(nil)
 	{
-		cmd := exec.CommandContext(ctx, goBin, "env", "GOPRIVATE")
-		cmd.Env = envAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
+		cmd := exec.CommandContext(ctx, r.goBin, "env", "GOPRIVATE")
+		cmd.Env = r.goEnv()
 		cmd.Stdout = buf
 		cmd.Stderr = io.Discard
 		if err := cmd.Run(); err != nil {
@@ -97,19 +96,19 @@ type fetchedMod struct {
 // @ => @latest
 // @latest => @vX.X.X
 // @vX.X.X => @vX.X.X
-func fetchModule(ctx context.Context, fs fsh.FS, goBin, link string) (*moduleInfo, error) {
-	mod, err := parse(ctx, goBin, link)
+func (r *Runtime) fetchModule(ctx context.Context, link string) (*moduleInfo, error) {
+	mod, err := r.parse(ctx, link)
 	if err != nil {
 		return nil, fmt.Errorf("parse module (%s) string: %w", link, err)
 	}
 
 	if mod.IsPrivate {
-		privateMod, err := fetchPrivate(ctx, fs, goBin, *mod)
+		privateMod, err := r.fetchPrivate(ctx, *mod)
 		if err != nil {
 			return nil, fmt.Errorf("fetch private module: %w", err)
 		}
 
-		return parse(ctx, goBin, mod.Mod.Name()+at+privateMod.Mod.Version())
+		return r.parse(ctx, mod.Mod.Name()+at+privateMod.Mod.Version())
 	}
 
 	link = mod.Mod.Name()
@@ -153,7 +152,7 @@ func fetchModule(ctx context.Context, fs fsh.FS, goBin, link string) (*moduleInf
 			return nil, fmt.Errorf("unable to decode module: %w", err)
 		}
 
-		mod2, err := parse(ctx, goBin, mod.Mod.Name()+at+fMod.Version)
+		mod2, err := r.parse(ctx, mod.Mod.Name()+at+fMod.Version)
 		if err != nil {
 			return nil, fmt.Errorf("parse fetched module: %w", err)
 		}
@@ -170,16 +169,16 @@ func fetchModule(ctx context.Context, fs fsh.FS, goBin, link string) (*moduleInf
 // - Add dependency
 // - Get dep info
 // - Remove temp dir
-func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo) (*moduleInfo, error) {
-	tmpDir, err := afero.TempDir(fSys, "", "gomodtemp")
+func (r *Runtime) fetchPrivate(ctx context.Context, mod moduleInfo) (*moduleInfo, error) {
+	tmpDir, err := afero.TempDir(r.fs, "", "gomodtemp")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %v", err)
 	}
-	defer fSys.RemoveAll(tmpDir) //nolint:errcheck
+	defer r.fs.RemoveAll(tmpDir) //nolint:errcheck
 
 	{
-		cmd := exec.CommandContext(ctx, goBin, "mod", "init", "sample")
-		cmd.Env = envAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
+		cmd := exec.CommandContext(ctx, r.goBin, "mod", "init", "sample")
+		cmd.Env = r.goEnv()
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -189,8 +188,8 @@ func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo
 	}
 
 	{
-		cmd := exec.CommandContext(ctx, goBin, "get", mod.Mod.S())
-		cmd.Env = envAllOverride([][2]string{{"GOTOOLCHAIN", "local"}})
+		cmd := exec.CommandContext(ctx, r.goBin, "get", mod.Mod.S())
+		cmd.Env = r.goEnv()
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
@@ -200,7 +199,7 @@ func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo
 	}
 
 	goModFilename := filepath.Join(tmpDir, "go.mod")
-	bb, err := afero.ReadFile(fSys, goModFilename)
+	bb, err := afero.ReadFile(r.fs, goModFilename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read go.mod: %w", err)
 	}
@@ -212,7 +211,7 @@ func fetchPrivate(ctx context.Context, fSys fsh.FS, goBin string, mod moduleInfo
 
 	for _, require := range modFile.Require {
 		if strings.HasPrefix(mod.Mod.Name(), require.Mod.Path) {
-			return parse(ctx, goBin, mod.Mod.Name()+at+require.Mod.Version)
+			return r.parse(ctx, mod.Mod.Name()+at+require.Mod.Version)
 		}
 	}
 
@@ -268,12 +267,9 @@ func envAllOverride(envs [][2]string) []string {
 		"GOARM64",
 		"GOAUTH",
 		"GOBIN",
-		"GOCACHE",
-		"GOCACHEPROG",
 		"GODEBUG",
 		"GOENV",
 		"GOEXE",
-		//"GOEXPERIMENT",
 		"GOFIPS140",
 		"GOFLAGS",
 		"GOGCCFLAGS",
@@ -282,15 +278,9 @@ func envAllOverride(envs [][2]string) []string {
 		"GOINSECURE",
 		"GOMOD",
 		"GOMODCACHE",
-		//"GONOPROXY",
-		//"GONOSUMDB",
 		"GOOS",
 		"GOPATH",
-		//"GOPRIVATE",
-		//"GOPROXY",
 		"GOROOT",
-		//"GOSUMDB",
-		//"GOTELEMETRY",
 		"GOTELEMETRYDIR",
 		"GOTMPDIR",
 		"GOTOOLCHAIN",
@@ -299,6 +289,16 @@ func envAllOverride(envs [][2]string) []string {
 		"GOVERSION",
 		"GOWORK",
 		"PKG_CONFIG",
+
+		// "GOCACHE",
+		// "GOCACHEPROG",
+		// "GOEXPERIMENT",
+		// "GONOPROXY",
+		// "GONOSUMDB",
+		// "GOPRIVATE",
+		// "GOPROXY",
+		// "GOSUMDB",
+		// "GOTELEMETRY",
 	}
 
 	for _, env := range excluded {

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/fsh"
 
 	"github.com/kazhuravlev/toolset/internal/prog"
@@ -13,13 +14,12 @@ import (
 )
 
 func Test_parse(t *testing.T) {
-	goBin, err := exec.LookPath("go")
-	require.NoError(t, err, "install go")
+	rt := newTestRuntime(t)
 
 	f := func(name, in string, exp moduleInfo) {
 		t.Run(name, func(t *testing.T) {
 			ctx := context.Background()
-			mod, err := parse(ctx, goBin, in)
+			mod, err := rt.parse(ctx, in)
 			require.NoError(t, err)
 			require.NotEmpty(t, mod)
 			require.Equal(t, exp, *mod)
@@ -49,14 +49,12 @@ func Test_parse(t *testing.T) {
 }
 
 func Test_fetchModule(t *testing.T) {
-	fs := fsh.NewRealFS()
-	goBin, err := exec.LookPath("go")
-	require.NoError(t, err, "install go")
+	rt := newTestRuntime(t)
 
 	f := func(name, link string, exp moduleInfo) {
 		t.Run(name, func(t *testing.T) {
 			ctx := context.Background()
-			mod, err := fetchModule(ctx, fs, goBin, link)
+			mod, err := rt.fetchModule(ctx, link)
 			require.NoError(t, err)
 			require.NotEmpty(t, mod)
 			require.Equal(t, exp, *mod)
@@ -84,4 +82,23 @@ func Test_getGoVersion(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, goVersion)
 	require.True(t, strings.HasPrefix(goVersion, "1.")) // NOTE(zhuravlev): should looks like 1.23.4
+}
+
+func newTestRuntime(t *testing.T) *Runtime {
+	t.Helper()
+
+	fs := fsh.NewRealFS()
+	goBin, err := exec.LookPath("go")
+	require.NoError(t, err, "install go")
+
+	ctx := context.Background()
+	goVersion, err := getGoVersion(ctx, goBin)
+	require.NoError(t, err)
+
+	binDir := t.TempDir()
+
+	rt, err := New(fs, binDir, goBin, goVersion, optional.Empty[string]())
+	require.NoError(t, err)
+
+	return rt
 }
