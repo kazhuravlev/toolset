@@ -33,9 +33,8 @@ type Runtime struct {
 }
 
 func New(fs fsh.FS, binToolDir, goBin, goVer string, goCache optional.Val[string]) (*Runtime, error) {
-	goCacheVal, ok := goCache.Get()
-	if ok {
-		if err := fs.MkdirAll(goCacheVal, 0o755); err != nil {
+	if goCacheVal, ok := goCache.Get(); ok {
+		if err := fs.MkdirAll(goCacheVal, fsh.DefaultDirPerm); err != nil {
 			return nil, fmt.Errorf("create go cache dir (%s): %w", goCacheVal, err)
 		}
 	}
