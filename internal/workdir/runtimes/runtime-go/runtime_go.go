@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kazhuravlev/optional"
 	"github.com/spf13/afero"
 
 	"github.com/kazhuravlev/toolset/internal/fsh"
@@ -28,13 +29,15 @@ type Runtime struct {
 	isGlobal   bool
 	goVersion  string // ex: 1.23
 	binToolDir string
-	goCacheDir string
+	goCacheDir optional.Val[string]
 }
 
-func New(fs fsh.FS, binToolDir, goBin, goVer string) (*Runtime, error) {
-	goCacheDir := filepath.Join(binToolDir, "go", goVer)
-	if err := fs.MkdirAll(goCacheDir, 0o755); err != nil {
-		return nil, fmt.Errorf("create go cache dir (%s): %w", goCacheDir, err)
+func New(fs fsh.FS, binToolDir, goBin, goVer string, goCache optional.Val[string]) (*Runtime, error) {
+	goCacheVal, ok := goCache.Get()
+	if ok {
+		if err := fs.MkdirAll(goCacheVal, 0o755); err != nil {
+			return nil, fmt.Errorf("create go cache dir (%s): %w", goCacheVal, err)
+		}
 	}
 
 	return &Runtime{
@@ -42,7 +45,7 @@ func New(fs fsh.FS, binToolDir, goBin, goVer string) (*Runtime, error) {
 		goBin:      goBin,
 		goVersion:  goVer,
 		binToolDir: binToolDir,
-		goCacheDir: goCacheDir,
+		goCacheDir: goCache,
 	}, nil
 }
 
@@ -171,7 +174,11 @@ func (r *Runtime) Remove(ctx context.Context, tool structs.Tool) error {
 
 func (r *Runtime) goEnv(overrides ...[2]string) []string {
 	base := make([][2]string, 0, len(overrides)+2)
-	base = append(base, [2]string{"GOCACHE", r.goCacheDir})
+
+	if val, ok := r.goCacheDir.Get(); ok {
+		base = append(base, [2]string{"GOCACHE", val})
+	}
+
 	base = append(base, [2]string{"GOTOOLCHAIN", "local"})
 	base = append(base, overrides...)
 
@@ -206,10 +213,11 @@ func Discover(ctx context.Context, fSys fsh.FS, binToolDir string) ([]*Runtime, 
 			return res, fmt.Errorf("get go version: %w", err)
 		}
 
-		rt, err := New(fSys, binToolDir, lp, ver)
+		rt, err := New(fSys, binToolDir, lp, ver, optional.Empty[string]())
 		if err != nil {
 			return res, fmt.Errorf("init go runtime (%s): %w", ver, err)
 		}
+
 		rt.isGlobal = true
 		res = append(res, rt)
 	}
@@ -243,7 +251,9 @@ func Discover(ctx context.Context, fSys fsh.FS, binToolDir string) ([]*Runtime, 
 				return res, fmt.Errorf("get go version for (%s): %w", goBin, err)
 			}
 
-			rt, err := New(fSys, binToolDir, goBin, goVer)
+			goCache := filepath.Join(binToolDir, e.Name(), "gocache")
+
+			rt, err := New(fSys, binToolDir, goBin, goVer, optional.New(goCache))
 			if err != nil {
 				return res, fmt.Errorf("init go runtime (%s): %w", goVer, err)
 			}

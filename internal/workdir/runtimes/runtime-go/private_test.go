@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kazhuravlev/optional"
 	"github.com/kazhuravlev/toolset/internal/fsh"
 
 	"github.com/kazhuravlev/toolset/internal/prog"
@@ -96,7 +97,7 @@ func newTestRuntime(t *testing.T) *Runtime {
 
 	binDir := t.TempDir()
 
-	rt, err := New(fs, binDir, goBin, goVersion)
+	rt, err := New(fs, binDir, goBin, goVersion, optional.Empty[string]())
 	require.NoError(t, err)
 
 	return rt
