@@ -98,18 +98,18 @@ func TestResolvePartialVersion(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "partial version - 1.24",
-			input:   "1.24",
+			name:    "partial version - 1.26",
+			input:   "1.26",
 			wantErr: false,
 		},
 		{
 			name:    "partial version with go prefix",
-			input:   "go1.24",
+			input:   "go1.26",
 			wantErr: false,
 		},
 		{
 			name:    "full version",
-			input:   "1.24.9",
+			input:   "1.26.9",
 			wantErr: false,
 		},
 		{
