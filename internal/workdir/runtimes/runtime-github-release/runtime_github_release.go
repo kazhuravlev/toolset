@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/google/go-github/v75/github"
@@ -26,13 +27,16 @@ type Runtime struct {
 	fs         fsh.FS
 	binToolDir string
 	github     *github.Client
+	os, arch   string
 }
 
-func New(fs fsh.FS, binToolDir string, ghClient *github.Client) *Runtime {
+func New(fs fsh.FS, binToolDir string, ghClient *github.Client, goos, goarch string) *Runtime {
 	return &Runtime{
 		fs:         fs,
 		binToolDir: binToolDir,
 		github:     ghClient,
+		os:         goos,
+		arch:       goarch,
 	}
 }
 
@@ -301,7 +305,7 @@ func Discover(ctx context.Context, fSys fsh.FS, binToolDir string) ([]*Runtime, 
 
 	ghClient := github.NewClient(httpClient)
 
-	rt := New(fSys, binToolDir, ghClient)
+	rt := New(fSys, binToolDir, ghClient, runtime.GOOS, runtime.GOARCH)
 
 	return []*Runtime{rt}, nil
 }

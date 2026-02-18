@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"runtime"
 	"strings"
 
 	"github.com/google/go-github/v75/github"
@@ -22,7 +21,7 @@ func (r *Runtime) getAsset(ctx context.Context, owner string, repo string, tag s
 		return nil, fmt.Errorf("get release by tag: %w", err)
 	}
 
-	targetAsset, err := autoDiscoverAsset(release.Assets, repo, tag)
+	targetAsset, err := autoDiscoverAsset(release.Assets, repo, tag, r.os, r.arch)
 	if err != nil {
 		if errors.Is(err, errAutoDiscover) {
 			var assetNames []string
@@ -30,7 +29,7 @@ func (r *Runtime) getAsset(ctx context.Context, owner string, repo string, tag s
 				assetNames = append(assetNames, asset.GetName())
 			}
 			return nil, fmt.Errorf("could not auto-discover compatible asset for %s/%s (platform: %s/%s). Available assets: %v",
-				owner, repo, runtime.GOOS, runtime.GOARCH, assetNames)
+				owner, repo, r.os, r.arch, assetNames)
 		}
 		return nil, fmt.Errorf("auto-discover asset: %w", err)
 	}
@@ -38,14 +37,14 @@ func (r *Runtime) getAsset(ctx context.Context, owner string, repo string, tag s
 	return targetAsset, nil
 }
 
-func autoDiscoverAsset(assets []*github.ReleaseAsset, toolName, version string) (*github.ReleaseAsset, error) {
+func autoDiscoverAsset(assets []*github.ReleaseAsset, toolName, version, goos, goarch string) (*github.ReleaseAsset, error) {
 	// Map of OS names used in different release naming conventions
 	osNames := map[string][]string{
 		"darwin":  {"darwin", "macOS", "macos", "osx", "Darwin"},
 		"linux":   {"linux", "Linux"},
 		"windows": {"windows", "Windows"},
 		"freebsd": {"freebsd", "FreeBSD"},
-	}[runtime.GOOS]
+	}[goos]
 
 	// Map of architecture names used in different release naming conventions
 	archNames := map[string][]string{
@@ -53,10 +52,10 @@ func autoDiscoverAsset(assets []*github.ReleaseAsset, toolName, version string) 
 		"arm64": {"arm64", "aarch64", "ARM64"},
 		"386":   {"386", "x86", "i386", "32bit"},
 		"arm":   {"armv6", "armv7", "arm", "ARM"},
-	}[runtime.GOARCH]
+	}[goarch]
 
 	if len(osNames) == 0 || len(archNames) == 0 {
-		return nil, fmt.Errorf("unsupported local platform (%s/%s)", runtime.GOOS, runtime.GOARCH)
+		return nil, fmt.Errorf("unsupported local platform (%s/%s)", goos, goarch)
 	}
 
 	// Build regex patterns to try (in order of preference)
