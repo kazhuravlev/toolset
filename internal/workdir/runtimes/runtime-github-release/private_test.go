@@ -11,12 +11,12 @@ import (
 )
 
 func TestRuntimeVersion(t *testing.T) {
-	runtime := New(fsh.NewMemFS(nil), "/tmp/tools", nil)
+	runtime := New(fsh.NewMemFS(nil), "/tmp/tools", nil, "darwin", "arm64")
 	require.Equal(t, "gh", runtime.Version())
 }
 
 func TestRuntimeParse(t *testing.T) {
-	runtime := New(fsh.NewMemFS(nil), "/tmp/tools", nil)
+	runtime := New(fsh.NewMemFS(nil), "/tmp/tools", nil, "darwin", "arm64")
 	ctx := context.Background()
 
 	t.Run("valid module strings", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestRuntimeGetModule(t *testing.T) {
 	t.Run("constructs correct paths for module", func(t *testing.T) {
 		const binToolDir = "/cache/tools"
 		memFS := fsh.NewMemFS(nil)
-		runtime := New(memFS, binToolDir, nil)
+		runtime := New(memFS, binToolDir, nil, "darwin", "arm64")
 		ctx := context.Background()
 
 		tests := []struct {
@@ -133,7 +133,7 @@ func TestRuntimeGetModule(t *testing.T) {
 		memFS := fsh.NewMemFS(map[string]string{
 			binaryPath: "fake binary content",
 		})
-		runtime := New(memFS, binToolDir, nil)
+		runtime := New(memFS, binToolDir, nil, "darwin", "arm64")
 		ctx := context.Background()
 
 		moduleInfo, err := runtime.GetModule(ctx, "golangci/golangci-lint@v1.61.0")
@@ -143,7 +143,7 @@ func TestRuntimeGetModule(t *testing.T) {
 	})
 
 	t.Run("returns error for invalid module", func(t *testing.T) {
-		runtime := New(fsh.NewMemFS(nil), "/cache/tools", nil)
+		runtime := New(fsh.NewMemFS(nil), "/cache/tools", nil, "darwin", "arm64")
 		ctx := context.Background()
 
 		moduleInfo, err := runtime.GetModule(ctx, "invalid-module")
@@ -295,7 +295,7 @@ func TestAutoDiscoverAsset(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version)
+				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version, "darwin", "arm64")
 				require.NoError(t, err)
 				require.NotNil(t, result)
 				require.Equal(t, tt.wantAsset, result.GetName())
@@ -336,7 +336,7 @@ func TestAutoDiscoverAsset(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version)
+				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version, "darwin", "arm64")
 				require.NoError(t, err)
 				require.NotNil(t, result)
 				require.Equal(t, tt.wantAsset, result.GetName())
@@ -387,7 +387,7 @@ func TestAutoDiscoverAsset(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version)
+				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version, "darwin", "arm64")
 				require.NoError(t, err)
 				require.NotNil(t, result)
 				require.Equal(t, tt.wantAsset, result.GetName())
@@ -427,7 +427,7 @@ func TestAutoDiscoverAsset(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version)
+				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version, "darwin", "arm64")
 				require.NoError(t, err)
 				require.NotNil(t, result)
 				require.Equal(t, tt.wantAsset, result.GetName())
@@ -467,7 +467,7 @@ func TestAutoDiscoverAsset(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version)
+				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version, "darwin", "arm64")
 				require.NoError(t, err)
 				require.NotNil(t, result)
 				require.Equal(t, tt.wantAsset, result.GetName())
@@ -527,7 +527,7 @@ func TestAutoDiscoverAsset(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version)
+				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version, "darwin", "arm64")
 				require.NoError(t, err)
 				require.NotNil(t, result)
 				require.Equal(t, tt.wantAsset, result.GetName())
@@ -567,7 +567,7 @@ func TestAutoDiscoverAsset(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version)
+				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version, "darwin", "arm64")
 				require.NoError(t, err)
 				require.NotNil(t, result)
 				require.Equal(t, tt.wantAsset, result.GetName())
@@ -619,7 +619,7 @@ func TestAutoDiscoverAsset(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version)
+				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version, "darwin", "arm64")
 				require.Error(t, err)
 				require.ErrorIs(t, err, errAutoDiscover)
 				require.Nil(t, result)
@@ -700,7 +700,7 @@ func TestAutoDiscoverAsset(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version)
+				result, err := autoDiscoverAsset(tt.assets, tt.toolName, tt.version, "darwin", "arm64")
 				require.NoError(t, err)
 				require.NotNil(t, result)
 				require.Equal(t, tt.wantAsset, result.GetName())
