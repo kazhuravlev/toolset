@@ -14,7 +14,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: 'v2.5'
+          version: 'v2.10.1'
 
   build:
     name: Build on golang ${{ matrix.go_version }} and ${{ matrix.os }}
@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         go_version:
-          - '1.25'
+          - '1.26'
         os: [ ubuntu-latest, macOS-latest, windows-latest ]
 
     steps:
